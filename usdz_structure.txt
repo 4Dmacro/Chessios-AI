@@ -1,0 +1,3 @@
+🔍 Inspecting USDZ file: chess2/ch pieces32.usdz
+==================================================
+❌ Failed to load USDZ file
