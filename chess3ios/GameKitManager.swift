@@ -15,9 +15,16 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
     @Published var matchState: MatchState = .none
     @Published var currentMatch: GKMatch?
     @Published var errorMessage: String?
-    @Published var playerColor: PieceColor = .white // Current player's color
+    @Published var playerColor: PieceColor = .none // Current player's color
     @Published var isHost: Bool = false // Whether this player is the host
     @Published var canFlipBoard: Bool = false // Whether board flipping is allowed
+    
+    private var chessGameManager: ChessGameManager?
+    private var currentInvitation: GKInvite? // Track current invitation for host determination
+    
+    func setChessGameManager(_ manager: ChessGameManager) {
+        self.chessGameManager = manager
+    }
     
     enum MatchState: Equatable {
         case none
@@ -49,6 +56,14 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
             } else {
                 DispatchQueue.main.async {
                     self.isAuthenticated = true
+                    print("✅ GameKit: Authentication successful")
+                    
+                    // Set up invitation handling using modern API
+                    GKLocalPlayer.local.register(self)
+                    print("🎮 GameKit: Registered as invitation listener")
+                    
+                    // Check for existing invitations
+                    self.checkForPendingInvitations()
                 }
             }
         }
@@ -60,68 +75,81 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
             return
         }
         
+        print("🎮 GameKit: Starting host match (auto-match mode)")
+        
+        // iPad crash prevention - add delay when not connected to debugger
+        if UIDevice.current.userInterfaceIdiom == .pad && !ProcessInfo.processInfo.environment.keys.contains("XPC_SERVICE_NAME") {
+            print("📱 iPad running independently - adding crash prevention delay")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: DispatchWorkItem {
+                self.performAutoMatch()
+            })
+            return
+        }
+        
+        performAutoMatch()
+    }
+    
+    private func performAutoMatch() {
         DispatchQueue.main.async {
-            do {
-                let request = GKMatchRequest()
-                request.minPlayers = 2
-                request.maxPlayers = 2
+            print("🎮 GameKit: Creating auto-match request")
+            print("🎮 GameKit: Local player: \(GKLocalPlayer.local.displayName) (ID: \(GKLocalPlayer.local.gamePlayerID))")
+            
+            let request = GKMatchRequest()
+            request.minPlayers = 2
+            request.maxPlayers = 2
+            print("🎮 GameKit: Auto-match request - minPlayers: \(request.minPlayers), maxPlayers: \(request.maxPlayers)")
+            
+            guard let matchmaker = GKMatchmakerViewController(matchRequest: request) else {
+                self.errorMessage = "Could not create Game Center match request"
+                return
+            }
+            
+            matchmaker.matchmakerDelegate = self
+            
+            // Get the current window scene and root view controller
+            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = windowScene.windows.first,
+                  let rootViewController = window.rootViewController else {
+                self.errorMessage = "Could not present Game Center interface"
+                return
+            }
+            
+            // Additional iPad-specific safety check
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                print("📱 iPad detected - applying additional safety checks")
                 
-                guard let matchmaker = GKMatchmakerViewController(matchRequest: request) else {
-                    self.errorMessage = "Could not create Game Center match request"
+                // Ensure we're on the main thread and the view controller is ready
+                guard Thread.isMainThread else {
+                    self.errorMessage = "Must be called on main thread"
                     return
                 }
                 
-                matchmaker.matchmakerDelegate = self
-                
-                // Get the current window scene and root view controller
-                guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                      let window = windowScene.windows.first,
-                      let rootViewController = window.rootViewController else {
-                    self.errorMessage = "Could not present Game Center interface"
+                // Check if the view controller is in a valid state
+                guard rootViewController.view.window != nil else {
+                    self.errorMessage = "View controller not ready for presentation"
                     return
                 }
-                
-                // Additional iPad-specific safety check
-                if UIDevice.current.userInterfaceIdiom == .pad {
-                    print("📱 iPad detected - applying additional safety checks")
-                    
-                    // Ensure we're on the main thread and the view controller is ready
-                    guard Thread.isMainThread else {
-                        self.errorMessage = "Must be called on main thread"
-                        return
-                    }
-                    
-                    // Check if the view controller is in a valid state
-                    guard rootViewController.view.window != nil else {
-                        self.errorMessage = "View controller not ready for presentation"
-                        return
-                    }
-                }
-                
-                // Check if we can present
-                if rootViewController.presentedViewController != nil {
-                    print("📱 Dismissing existing view controller before presenting Game Center")
-                    rootViewController.dismiss(animated: true) {
-                        DispatchQueue.main.async {
-                            print("📱 Attempting to present Game Center interface")
-                            rootViewController.present(matchmaker, animated: true) { 
-                                print("📱 Game Center interface presented successfully")
-                            }
+            }
+            
+            // Check if we can present
+            if rootViewController.presentedViewController != nil {
+                print("📱 Dismissing existing view controller before presenting Game Center")
+                rootViewController.dismiss(animated: true) {
+                    DispatchQueue.main.async {
+                        print("📱 Attempting to present Game Center interface")
+                        rootViewController.present(matchmaker, animated: true) { 
+                            print("📱 Game Center interface presented successfully")
                         }
                     }
-                } else {
-                    print("📱 No existing view controller, presenting Game Center directly")
-                    rootViewController.present(matchmaker, animated: true) { 
-                        print("📱 Game Center interface presented successfully")
-                    }
                 }
-                
-                print("🎮 GameKit: Presenting host match interface")
-                
-            } catch {
-                self.errorMessage = "Failed to create Game Center interface: \(error.localizedDescription)"
-                print("❌ GameKit Error: \(error)")
+            } else {
+                print("📱 No existing view controller, presenting Game Center directly")
+                rootViewController.present(matchmaker, animated: true) { 
+                    print("📱 Game Center interface presented successfully")
+                }
             }
+            
+            print("🎮 GameKit: Presenting auto-match interface")
         }
     }
     
@@ -131,95 +159,209 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
             return
         }
         
+        print("🎮 GameKit: Starting join match (auto-match mode)")
+        
+        // iPad crash prevention - add delay when not connected to debugger
+        if UIDevice.current.userInterfaceIdiom == .pad && !ProcessInfo.processInfo.environment.keys.contains("XPC_SERVICE_NAME") {
+            print("📱 iPad running independently - adding crash prevention delay")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: DispatchWorkItem {
+                self.performAutoMatch()
+            })
+            return
+        }
+        
+        performAutoMatch()
+    }
+    
+    private func performJoinMatch() {
         DispatchQueue.main.async {
-            do {
-                // Use the proper initializer for GKMatchmakerViewController
-                let request = GKMatchRequest()
-                request.minPlayers = 2
-                request.maxPlayers = 2
-                request.inviteMessage = "Join my chess game!"
+            // For joining, we'll show the matchmaker interface for auto-match
+            // Invitations are handled through the GKLocalPlayer delegate
+            
+            // If no invitation, show the matchmaker interface for auto-match
+            let request = GKMatchRequest()
+            request.minPlayers = 2
+            request.maxPlayers = 2
+            
+            guard let matchmaker = GKMatchmakerViewController(matchRequest: request) else {
+                self.errorMessage = "Failed to create Game Center interface"
+                return
+            }
+            matchmaker.matchmakerDelegate = self
+            
+            // Get the current window scene and root view controller
+            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = windowScene.windows.first,
+                  let rootViewController = window.rootViewController else {
+                self.errorMessage = "Could not present Game Center interface"
+                return
+            }
+            
+            // Additional iPad-specific safety check
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                print("📱 iPad detected - applying additional safety checks")
                 
-                guard let matchmaker = GKMatchmakerViewController(matchRequest: request) else {
-                    self.errorMessage = "Failed to create Game Center interface"
+                // Ensure we're on the main thread and the view controller is ready
+                guard Thread.isMainThread else {
+                    self.errorMessage = "Must be called on main thread"
                     return
                 }
-                matchmaker.matchmakerDelegate = self
                 
-                // Get the current window scene and root view controller
-                guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                      let window = windowScene.windows.first,
-                      let rootViewController = window.rootViewController else {
-                    self.errorMessage = "Could not present Game Center interface"
+                // Check if the view controller is in a valid state
+                guard rootViewController.view.window != nil else {
+                    self.errorMessage = "View controller not ready for presentation"
                     return
                 }
-                
-                // Additional iPad-specific safety check
-                if UIDevice.current.userInterfaceIdiom == .pad {
-                    print("📱 iPad detected - applying additional safety checks")
-                    
-                    // Ensure we're on the main thread and the view controller is ready
-                    guard Thread.isMainThread else {
-                        self.errorMessage = "Must be called on main thread"
-                        return
-                    }
-                    
-                    // Check if the view controller is in a valid state
-                    guard rootViewController.view.window != nil else {
-                        self.errorMessage = "View controller not ready for presentation"
-                        return
-                    }
-                }
-                
-                // Check if we can present
-                if rootViewController.presentedViewController != nil {
-                    print("📱 Dismissing existing view controller before presenting Game Center")
-                    rootViewController.dismiss(animated: true) {
-                        DispatchQueue.main.async {
-                            print("📱 Attempting to present Game Center interface")
-                            rootViewController.present(matchmaker, animated: true) { 
-                                print("📱 Game Center interface presented successfully")
-                            }
+            }
+            
+            // Check if we can present
+            if rootViewController.presentedViewController != nil {
+                print("📱 Dismissing existing view controller before presenting Game Center")
+                rootViewController.dismiss(animated: true) {
+                    DispatchQueue.main.async {
+                        print("📱 Attempting to present Game Center interface")
+                        rootViewController.present(matchmaker, animated: true) { 
+                            print("📱 Game Center interface presented successfully")
                         }
                     }
-                } else {
-                    print("📱 No existing view controller, presenting Game Center directly")
+                }
+            } else {
+                print("📱 No existing view controller, presenting Game Center directly")
+                rootViewController.present(matchmaker, animated: true) { 
+                    print("📱 Game Center interface presented successfully")
+                }
+            }
+            
+            print("🎮 GameKit: Presenting join match interface")
+        }
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func checkForPendingInvitations() {
+        // Check if there are any pending invitations
+        // Note: Modern Game Center API handles invitations differently
+        print("🎮 GameKit: Checking for pending invitations...")
+        print("🎮 GameKit: Local player: \(GKLocalPlayer.local.displayName) (ID: \(GKLocalPlayer.local.gamePlayerID))")
+    }
+    
+    private func handleInvitation(_ invitation: GKInvite) {
+        print("🎮 GameKit: Handling invitation from \(invitation.sender.displayName)")
+        
+        // Store the invitation for host determination
+        currentInvitation = invitation
+        
+        // Show alert to accept/decline invitation
+        let alert = UIAlertController(
+            title: "Game Invitation",
+            message: "\(invitation.sender.displayName) invited you to play chess!",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Accept", style: .default) { _ in
+            self.acceptInvitation(invitation)
+        })
+        
+        alert.addAction(UIAlertAction(title: "Decline", style: .cancel) { _ in
+            self.declineInvitation(invitation)
+        })
+        
+        // Present the alert
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first,
+           let rootViewController = window.rootViewController {
+            rootViewController.present(alert, animated: true)
+        }
+    }
+    
+    private func acceptInvitation(_ invitation: GKInvite) {
+        print("🎮 GameKit: Accepting invitation...")
+        GKMatchmaker.shared().match(for: invitation) { match, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("❌ GameKit: Failed to accept invitation: \(error.localizedDescription)")
+                    self.errorMessage = "Failed to accept invitation: \(error.localizedDescription)"
+                            } else if let match = match {
+                print("🎮 GameKit: Successfully accepted invitation!")
+                print("🎮 GameKit: Match players after acceptance: \(match.players.count)")
+                for player in match.players {
+                    print("🎮 GameKit: Connected player: \(player.displayName) (ID: \(player.gamePlayerID))")
+                }
+                
+                self.currentMatch = match
+                match.delegate = self
+                print("🎮 GameKit: Match delegate set to self (invitation)")
+                self.matchState = .connected
+                
+                // Wait for connection state to be established before assigning colors
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    print("🎮 GameKit: Delayed color assignment - Match players: \(match.players.count)")
+                    // Don't clear invitation yet - we need it for color assignment
+                    self.assignPlayerColors()
+                    // Clear invitation after color assignment
+                    self.currentInvitation = nil
+                    print("🎮 GameKit: Invitation cleared after color assignment (accept)")
+                }
+            }
+            }
+        }
+    }
+    
+    private func declineInvitation(_ invitation: GKInvite) {
+        print("🎮 GameKit: Declining invitation")
+        // Modern API handles this differently
+    }
+    
+    private func presentGameCenterInterface(matchmaker: GKMatchmakerViewController, rootViewController: UIViewController) {
+        // Additional safety check for iPad
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            // Ensure the view controller is still valid
+            guard rootViewController.view.window != nil else {
+                print("❌ iPad: View controller no longer valid")
+                return
+            }
+        }
+        
+        // Check if we can present
+        if rootViewController.presentedViewController != nil {
+            print("📱 Dismissing existing view controller before presenting Game Center")
+            rootViewController.dismiss(animated: true) {
+                DispatchQueue.main.async {
+                    print("📱 Attempting to present Game Center interface")
+                    // Additional safety check after dismissal
+                    guard rootViewController.view.window != nil else {
+                        print("❌ View controller became invalid after dismissal")
+                        return
+                    }
                     rootViewController.present(matchmaker, animated: true) { 
                         print("📱 Game Center interface presented successfully")
                     }
                 }
-                
-                print("🎮 GameKit: Presenting join match interface")
-                
-            } catch {
-                self.errorMessage = "Failed to create Game Center interface: \(error.localizedDescription)"
-                print("❌ GameKit Error: \(error)")
-                
-                // Fallback: Show alert if Game Center interface fails
-                DispatchQueue.main.async {
-                    let alert = UIAlertController(
-                        title: "Game Center Unavailable",
-                        message: "Unable to present Game Center interface. Please check your Game Center settings and try again.",
-                        preferredStyle: .alert
-                    )
-                    alert.addAction(UIAlertAction(title: "OK", style: .default))
-                    
-                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                       let window = windowScene.windows.first,
-                       let rootViewController = window.rootViewController {
-                        rootViewController.present(alert, animated: true)
-                    }
-                }
+            }
+        } else {
+            print("📱 No existing view controller, presenting Game Center directly")
+            rootViewController.present(matchmaker, animated: true) { 
+                print("📱 Game Center interface presented successfully")
             }
         }
     }
     
     func sendMove(_ move: String) {
-        guard let match = currentMatch else { return }
+        guard let match = currentMatch else { 
+            print("❌ GameKit: No current match available for sending move")
+            return 
+        }
+        
+        print("🎮 GameKit: Attempting to send move: \(move)")
+        print("🎮 GameKit: Match state: \(matchState)")
+        print("🎮 GameKit: Match players count: \(match.players.count)")
         
         do {
             let data = move.data(using: .utf8)!
             try match.sendData(toAllPlayers: data, with: .reliable)
+            print("✅ GameKit: Move sent successfully: \(move)")
         } catch {
+            print("❌ GameKit: Failed to send move: \(error.localizedDescription)")
             errorMessage = "Failed to send move: \(error.localizedDescription)"
         }
     }
@@ -227,15 +369,73 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
     // MARK: - Player Color and Board Rotation
     
     func assignPlayerColors() {
-        guard let match = currentMatch else { return }
+        guard let match = currentMatch else { 
+            print("❌ GameKit: No current match for color assignment")
+            return 
+        }
         
-        // Host gets white, guest gets black
-        isHost = match.players.isEmpty || match.players.first?.gamePlayerID == GKLocalPlayer.local.gamePlayerID
+        // Prevent double assignment
+        if playerColor != .none {
+            print("🎮 GameKit: Player colors already assigned (\(playerColor.rawValue)), skipping")
+            return
+        }
+        
+        print("🎮 GameKit: Starting color assignment - Match players: \(match.players.count)")
+        print("🎮 GameKit: Current invitation: \(currentInvitation != nil ? "Present" : "None")")
+        
+        // Determine if this player is the host
+        // Host is the player who initiated the match (usually the one who sent the invitation)
+        let localPlayerID = GKLocalPlayer.local.gamePlayerID
+        
+        // For invitations, we need to determine host based on who sent vs who received
+        // For auto-match, we'll use a deterministic method based on player IDs
+        
+        // For auto-match, we can determine host even with 1 player connected
+        // The first player to connect becomes the host
+        if let invitation = currentInvitation {
+            // For invitations, the sender is the host
+            isHost = invitation.sender.gamePlayerID == localPlayerID
+            print("🎮 GameKit: Invitation match - Sender ID: \(invitation.sender.gamePlayerID), Local ID: \(localPlayerID), isHost: \(isHost)")
+        } else if match.players.count >= 1 {
+            // For auto-match, use deterministic method based on player IDs
+            // The player with the lower ID becomes the host
+            if match.players.isEmpty {
+                // This player is the first to connect, so they're the host
+                isHost = true
+                print("🎮 GameKit: Auto-match - First player connected, isHost: \(isHost)")
+            } else {
+                // Find the other player (not the local player)
+                let otherPlayer = match.players.first { $0.gamePlayerID != localPlayerID }
+                if let otherPlayer = otherPlayer {
+                    let otherPlayerID = otherPlayer.gamePlayerID
+                    isHost = localPlayerID < otherPlayerID
+                    print("🎮 GameKit: Auto-match with other player - Local ID: \(localPlayerID), Other ID: \(otherPlayerID), isHost: \(isHost)")
+                } else {
+                    print("⚠️ GameKit: Could not find other player in match")
+                    isHost = true
+                }
+            }
+        } else {
+            // If no players connected yet, this player is the host
+            print("🎮 GameKit: Auto-match - No other players yet, isHost: true")
+            isHost = true
+        }
         
         DispatchQueue.main.async {
+            // Host gets white, guest gets black
             self.playerColor = self.isHost ? .white : .black
             self.canFlipBoard = true
             print("🎮 GameKit: Player assigned color: \(self.playerColor.rawValue) (Host: \(self.isHost))")
+            print("🎮 GameKit: Local player ID: \(localPlayerID)")
+            print("🎮 GameKit: Match players: \(match.players.map { $0.gamePlayerID })")
+            print("🎮 GameKit: Host determination - Local ID: \(localPlayerID), Other ID: \(match.players.first?.gamePlayerID ?? "none")")
+            print("🎮 GameKit: Color assignment complete - this device is \(self.playerColor.rawValue)")
+            
+            // Rotate the board to match the player's perspective
+            if let chessGameManager = self.chessGameManager {
+                // Call the ChessGameManager's rotateBoardForGameKitPlayer function
+                chessGameManager.rotateBoardForGameKitPlayer(playerColor: self.playerColor)
+            }
         }
     }
     
@@ -255,11 +455,22 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
     // MARK: - GKMatchDelegate
     
     func match(_ match: GKMatch, didReceive data: Data, fromRemotePlayer player: GKPlayer) {
+        print("🎮 GameKit: Raw data received from \(player.displayName), size: \(data.count) bytes")
+        
         if let moveString = String(data: data, encoding: .utf8) {
             DispatchQueue.main.async {
                 // Handle received move
                 print("🎮 GameKit: Received move: \(moveString) from \(player.displayName)")
+                
+                // Process the received move in the chess game
+                if let chessGameManager = self.chessGameManager {
+                    chessGameManager.processReceivedMove(moveString)
+                } else {
+                    print("❌ GameKit: ChessGameManager not available to process move")
+                }
             }
+        } else {
+            print("❌ GameKit: Could not decode move string from received data")
         }
     }
     
@@ -271,8 +482,21 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
             case .connected:
                 self.matchState = .connected
                 print("🎮 GameKit: Player connected, total players: \(match.players.count)")
-                // Assign player colors when both players are connected
-                if match.players.count >= 1 {
+                print("🎮 GameKit: Match delegate status: \(match.delegate != nil ? "Set" : "Not set")")
+                print("🎮 GameKit: Connected player: \(player.displayName) (ID: \(player.gamePlayerID))")
+                
+                // Ensure match delegate is set
+                if match.delegate == nil {
+                    print("🎮 GameKit: Setting match delegate in connection handler")
+                    match.delegate = self
+                }
+                
+                // For auto-match, we can assign colors when the first player connects
+                print("🎮 GameKit: Player connected, total players: \(match.players.count)")
+                
+                // Since we're using auto-match, assign colors immediately when a player connects
+                print("🎮 GameKit: Auto-match - assigning colors after player connection")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     self.assignPlayerColors()
                 }
             case .disconnected:
@@ -283,6 +507,18 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
                 break
             }
         }
+    }
+}
+
+// MARK: - GKLocalPlayerListener
+extension GameKitManager: GKLocalPlayerListener {
+    func player(_ player: GKPlayer, didAccept invite: GKInvite) {
+        print("🎮 GameKit: Player accepted invitation")
+        handleInvitation(invite)
+    }
+    
+    func player(_ player: GKPlayer, didRequestMatchWithRecipients recipientPlayers: [GKPlayer]) {
+        print("🎮 GameKit: Player requested match with recipients")
     }
 }
 
@@ -304,12 +540,15 @@ extension GameKitManager: GKMatchmakerViewControllerDelegate {
         viewController.dismiss(animated: true)
         currentMatch = match
         match.delegate = self
+        print("🎮 GameKit: Match delegate set to self")
         matchState = .connected
         
-        // Assign player colors immediately when match is found
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        // Since we're now using auto-match for both host and join, treat all matches as auto-match
+        print("🎮 GameKit: Auto-match detected - proceeding with color assignment")
+        // For auto-match, proceed with color assignment
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: DispatchWorkItem {
             self.assignPlayerColors()
-        }
+        })
     }
     
     func matchmakerViewController(_ viewController: GKMatchmakerViewController, didFailWithError error: Error) {
@@ -320,11 +559,11 @@ extension GameKitManager: GKMatchmakerViewControllerDelegate {
         errorMessage = error.localizedDescription
         matchState = .none
         
-        // Show error alert to user
+        // Show error alert to user with more helpful message
         DispatchQueue.main.async {
             let alert = UIAlertController(
                 title: "Matchmaking Failed",
-                message: "Failed to find players: \(error.localizedDescription)",
+                message: "No other players found. Make sure both devices are searching for a match at the same time.",
                 preferredStyle: .alert
             )
             alert.addAction(UIAlertAction(title: "OK", style: .default))

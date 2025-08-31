@@ -93,6 +93,73 @@ class ChessGameManager: ObservableObject {
     // Flag to track loading mode to suppress check detection
     private var isLoadingMode: Bool = true
     
+    // Game Center integration
+    private var gameKitManager: GameKitManager?
+    
+    func setGameKitManager(_ manager: GameKitManager) {
+        print("🎮 GameKit: Setting GameKit manager in ChessGameManager")
+        self.gameKitManager = manager
+        print("🎮 GameKit: GameKit manager set successfully")
+        
+        // Initialize game state synchronization
+        initializeGameStateSync()
+    }
+    
+    // MARK: - Game State Synchronization
+    
+    // Flag to prevent sending moves when processing received moves
+    private var isProcessingReceivedMove = false
+    
+    // Pending move to be sent after confirmation timer expires
+    private var pendingGameKitMove: (from: ChessPosition3D, to: ChessPosition3D)?
+    
+    // Function to send pending GameKit move after confirmation timer expires
+    func sendPendingGameKitMove() {
+        guard let pendingMove = pendingGameKitMove else {
+            print("🎮 GameKit: No pending move to send")
+            return
+        }
+        
+        guard let gameKitManager = self.gameKitManager else {
+            print("🎮 GameKit: No GameKit manager available")
+            return
+        }
+        
+        if gameKitManager.matchState == .connected {
+            let fromSimple = "\(Character(UnicodeScalar(Character("a").asciiValue! + UInt8(pendingMove.from.file))))\(pendingMove.from.rank + 1)"
+            let toSimple = "\(Character(UnicodeScalar(Character("a").asciiValue! + UInt8(pendingMove.to.file))))\(pendingMove.to.rank + 1)"
+            
+            let moveString = "\(fromSimple)-\(toSimple):\(pendingMove.from.z)"
+            print("🎮 GameKit: Sending pending move after confirmation: \(moveString)")
+            gameKitManager.sendMove(moveString)
+            
+            // Clear the pending move
+            pendingGameKitMove = nil
+        } else {
+            print("🎮 GameKit: Match not connected, clearing pending move")
+            pendingGameKitMove = nil
+        }
+    }
+    
+    private func initializeGameStateSync() {
+        print("🎮 GameKit: Initializing game state synchronization")
+        
+        // Reset the chess board to ensure both devices start with identical state
+        chessBoard = ChessBoard3D()
+        chessBoard.setupInitialPosition()
+        
+        // Set initial turn to white (standard chess)
+        gameState = "White's Turn"
+        
+        // Clear any existing game state
+        selectedPiece = nil
+        validMoves = []
+        isGameActive = true
+        isProcessingReceivedMove = false
+        
+        print("🎮 GameKit: Game state synchronized - starting position set, turn: White")
+    }
+    
     init() {
         setupChessBoard()
     }
@@ -118,6 +185,256 @@ class ChessGameManager: ObservableObject {
         isGameActive = true
         
 
+    }
+    
+    // MARK: - Game Center Integration
+    
+    func processReceivedMove(_ moveString: String) {
+        print("🎮 GameKit: Processing received move: \(moveString)")
+        
+        // Set flag to prevent sending moves during processing
+        isProcessingReceivedMove = true
+        print("🎮 GameKit: Set isProcessingReceivedMove = true")
+        defer { 
+            isProcessingReceivedMove = false
+            print("🎮 GameKit: Set isProcessingReceivedMove = false")
+        }
+        
+        // Parse move string (format: "e2-e4:z")
+        let components = moveString.split(separator: "-")
+        guard components.count == 2 else {
+            print("❌ GameKit: Invalid move format: \(moveString)")
+            return
+        }
+        
+        let fromString = String(components[0])
+        let toAndZString = String(components[1])
+        
+        // Parse the to coordinates and z-level
+        let toAndZComponents = toAndZString.split(separator: ":")
+        guard toAndZComponents.count == 2 else {
+            print("❌ GameKit: Invalid to:z format: \(toAndZString)")
+            return
+        }
+        
+        let toString = String(toAndZComponents[0])
+        let zString = String(toAndZComponents[1])
+        
+        guard let zLevel = Int(zString) else {
+            print("❌ GameKit: Invalid z-level: \(zString)")
+            return
+        }
+        
+        // Use the new coordinate parsing with the provided z-level
+        guard let coordinates = parseMoveCoordinatesWithZ(fromString: fromString, toString: toString, zLevel: zLevel) else {
+            print("❌ GameKit: Could not parse move coordinates: \(fromString) -> \(toString) at z=\(zLevel)")
+            return
+        }
+        
+        // Execute the received move - bypass turn validation for received moves
+        print("🎮 GameKit: Executing received move from \(coordinates.from.stringValue) to \(coordinates.to.stringValue)")
+        let success = tryMoveWithoutTurnValidation(from: coordinates.from, to: coordinates.to)
+        
+        if success {
+            print("✅ GameKit: Received move executed successfully")
+            
+            // CRITICAL: Synchronize game state after receiving a move
+            DispatchQueue.main.async {
+                // Update game state to reflect the new turn
+                let currentTurn = self.chessBoard.getCurrentTurn()
+                self.gameState = "\(currentTurn.rawValue.capitalized)'s Turn"
+                print("🎮 GameKit: Synchronized game state after received move: \(self.gameState)")
+                
+                // Clear selection and valid moves since it's now the other player's turn
+                self.selectedPiece = nil
+                self.validMoves = []
+                
+                // Update piece lists to reflect the new turn
+                self.pieceController?.updatePieceLists()
+                
+                print("🎮 GameKit: Game state fully synchronized - turn: \(currentTurn.rawValue)")
+            }
+        } else {
+            print("❌ GameKit: Failed to execute received move")
+        }
+    }
+    
+    func rotateBoardForGameKitPlayer(playerColor: PieceColor) {
+        print("🎮 GameKit: Rotating board for \(playerColor.rawValue) player")
+        
+        // Rotate the board so the player sees their pieces at the bottom
+        // White pieces should be at the bottom for white player, top for black player
+        let targetRotation: Float = playerColor == .white ? 0.0 : Float.pi
+        
+        print("🎮 GameKit: Target rotation: \(targetRotation) radians (\(targetRotation * 180 / Float.pi) degrees)")
+        
+        // Apply rotation to the model node (container) - use Y-axis rotation, not X-axis
+        if let modelNode = modelNode {
+            let currentRotation = modelNode.eulerAngles.y
+            print("🎮 GameKit: Current model rotation: \(currentRotation) radians (\(currentRotation * 180 / Float.pi) degrees)")
+            
+            // Only rotate if the current rotation is different from target
+            if abs(currentRotation - targetRotation) > 0.01 {
+                modelNode.eulerAngles.y = targetRotation
+                print("🎮 GameKit: Model rotated to \(playerColor.rawValue) perspective (Y-axis rotation: \(targetRotation))")
+                print("🎮 GameKit: New model rotation: \(modelNode.eulerAngles.y) radians (\(modelNode.eulerAngles.y * 180 / Float.pi) degrees)")
+            } else {
+                print("🎮 GameKit: Model already at correct rotation, no change needed")
+            }
+        } else {
+            print("❌ GameKit: No model node found for rotation")
+        }
+        
+        // Also notify the piece controller to update piece positions and lists
+        pieceController?.updateBoardRotationForGameKit(playerColor: playerColor)
+        
+        // CRITICAL: Synchronize game state when player colors are assigned
+        synchronizeGameStateForGameKit()
+        
+        // Force update piece lists to reflect the correct player's pieces
+        DispatchQueue.main.async {
+            self.pieceController?.updatePieceLists()
+        }
+    }
+    
+    private func synchronizeGameStateForGameKit() {
+        print("🎮 GameKit: Synchronizing game state for multiplayer")
+        
+        // Ensure both devices start with the same game state
+        // White always goes first in chess
+        gameState = "White's Turn"
+        
+        // Clear any existing selection
+        selectedPiece = nil
+        validMoves = []
+        
+        // Update piece lists to reflect current state
+        pieceController?.updatePieceLists()
+        
+        print("🎮 GameKit: Game state synchronized - turn: White")
+    }
+    
+    // MARK: - Helper Functions
+    
+    private func parseChessPosition3D(_ string: String) -> ChessPosition3D? {
+        // Parse format like "e2" (file + rank, z defaults to 0 for standard chess)
+        guard string.count == 2 else { return nil }
+        let chars = Array(string.lowercased())
+        guard let fileChar = chars.first, let rankChar = chars.last else { return nil }
+        
+        let file = Int(fileChar.asciiValue! - Character("a").asciiValue!)
+        let rank = Int(rankChar.asciiValue! - Character("1").asciiValue!)
+        
+        // Support standard board (files 0-7 for a-h)
+        guard file >= 0 && file <= 7 && rank >= 0 && rank <= 7 else { return nil }
+        
+        // For GameKit moves, we need to map to the correct z-level
+        // Standard chess moves are on the bottom level (z=0) which corresponds to "i" prefix
+        // But the board uses "i" for z=0, "ii" for z=1, etc.
+        // For received moves, we need to find the piece on the correct z-level
+        
+        // First try z=0 (bottom level, "i" prefix)
+        let position = ChessPosition3D(file: file, rank: rank, z: 0)
+        
+        // Check if there's a piece at this position
+        if chessBoard.getPiece(at: position) != nil {
+            print("🎮 GameKit: Found piece at z=0 for move \(string)")
+            return position
+        }
+        
+        // If not found at z=0, try z=1 (second level, "ii" prefix)
+        let position2 = ChessPosition3D(file: file, rank: rank, z: 1)
+        if chessBoard.getPiece(at: position2) != nil {
+            print("🎮 GameKit: Found piece at z=1 for move \(string)")
+            return position2
+        }
+        
+        // If still not found, default to z=0 (standard chess level)
+        print("🎮 GameKit: No piece found at any z-level for \(string), defaulting to z=0")
+        return position
+    }
+    
+    // New function to parse move coordinates with explicit z-level
+    private func parseMoveCoordinatesWithZ(fromString: String, toString: String, zLevel: Int) -> (from: ChessPosition3D, to: ChessPosition3D)? {
+        print("🎮 GameKit: Parsing move coordinates with z-level: \(fromString) -> \(toString) at z=\(zLevel)")
+        
+        // Parse the from coordinates with the provided z-level
+        guard fromString.count == 2 else { return nil }
+        let fromChars = Array(fromString.lowercased())
+        guard let fromFileChar = fromChars.first, let fromRankChar = fromChars.last else { return nil }
+        
+        let fromFile = Int(fromFileChar.asciiValue! - Character("a").asciiValue!)
+        let fromRank = Int(fromRankChar.asciiValue! - Character("1").asciiValue!)
+        
+        guard fromFile >= 0 && fromFile <= 7 && fromRank >= 0 && fromRank <= 7 else { return nil }
+        
+        // Create the from position with the provided z-level
+        let from = ChessPosition3D(file: fromFile, rank: fromRank, z: zLevel)
+        
+        // Verify that there's a piece at this position
+        guard let piece = chessBoard.getPiece(at: from) else {
+            print("❌ GameKit: No piece found at from position: \(fromString) at z=\(zLevel)")
+            return nil
+        }
+        
+        print("🎮 GameKit: Found \(piece.color) \(piece.type) at \(from.stringValue) (z=\(zLevel))")
+        
+        // Parse the to coordinates
+        guard toString.count == 2 else { return nil }
+        let toChars = Array(toString.lowercased())
+        guard let toFileChar = toChars.first, let toRankChar = toChars.last else { return nil }
+        
+        let toFile = Int(toFileChar.asciiValue! - Character("a").asciiValue!)
+        let toRank = Int(toRankChar.asciiValue! - Character("1").asciiValue!)
+        
+        guard toFile >= 0 && toFile <= 7 && toRank >= 0 && toRank <= 7 else { return nil }
+        
+        // Create the to position with the same z-level
+        let finalTo = ChessPosition3D(file: toFile, rank: toRank, z: zLevel)
+        
+        print("🎮 GameKit: Move coordinates: \(from.stringValue) -> \(finalTo.stringValue) (z=\(zLevel))")
+        return (from: from, to: finalTo)
+    }
+    
+
+    
+    // Legacy function to parse move coordinates while maintaining z-level consistency
+    private func parseMoveCoordinates(fromString: String, toString: String) -> (from: ChessPosition3D, to: ChessPosition3D)? {
+        print("🎮 GameKit: Parsing move coordinates: \(fromString) -> \(toString)")
+        
+        // First, find the piece at the from position
+        guard let from = parseChessPosition3D(fromString) else {
+            print("❌ GameKit: Could not parse from position: \(fromString)")
+            return nil
+        }
+        
+        // Get the piece at the from position to determine its z-level
+        guard let piece = chessBoard.getPiece(at: from) else {
+            print("❌ GameKit: No piece found at from position: \(fromString)")
+            return nil
+        }
+        
+        print("🎮 GameKit: Found \(piece.color) \(piece.type) at \(from.stringValue) (z=\(from.z))")
+        
+        // For the to position, use the same z-level as the from position
+        // This ensures moves stay within the same z-level
+        _ = ChessPosition3D(file: from.file, rank: from.rank, z: from.z)
+        
+        // Parse the to coordinates
+        guard toString.count == 2 else { return nil }
+        let toChars = Array(toString.lowercased())
+        guard let toFileChar = toChars.first, let toRankChar = toChars.last else { return nil }
+        
+        let toFile = Int(toFileChar.asciiValue! - Character("a").asciiValue!)
+        let toRank = Int(toRankChar.asciiValue! - Character("1").asciiValue!)
+        
+        guard toFile >= 0 && toFile <= 7 && toRank >= 0 && toRank <= 7 else { return nil }
+        
+        // Create the to position with the same z-level as the from position
+        let finalTo = ChessPosition3D(file: toFile, rank: toRank, z: from.z)
+        
+        print("🎮 GameKit: Move coordinates: \(from.stringValue) -> \(finalTo.stringValue) (z=\(from.z))")
+        return (from: from, to: finalTo)
     }
     
     func resetGame() {
@@ -212,17 +529,19 @@ class ChessGameManager: ObservableObject {
         print("🔄 ChessGameManager: rotateBoardForTurn() called for \(currentTurn.rawValue)'s turn")
         print("🔄 ChessGameManager: Current stack trace: \(Thread.callStackSymbols.prefix(5).joined(separator: "\n"))")
         
-        // Notify the piece controller to handle the rotation
-        pieceController?.rotateBoardForTurn(currentTurn: currentTurn)
+        // CRITICAL: Check if this is a GameKit match and handle rotation accordingly
+        if let gameKitManager = self.gameKitManager, gameKitManager.matchState == .connected {
+            print("🔄 ChessGameManager: GameKit match detected - using GameKit rotation logic")
+            // For GameKit matches, use the player's assigned color for rotation
+            rotateBoardForGameKitPlayer(playerColor: gameKitManager.playerColor)
+        } else {
+            print("🔄 ChessGameManager: No GameKit match - using standard rotation logic")
+            // Notify the piece controller to handle the rotation
+            pieceController?.rotateBoardForTurn(currentTurn: currentTurn)
+        }
     }
     
-    // MARK: - GameKit Board Rotation
-    func rotateBoardForGameKitPlayer(playerColor: PieceColor) {
-        print("🎮 ChessGameManager: rotateBoardForGameKitPlayer() called for \(playerColor.rawValue) player")
-        
-        // Use the existing rotation system but with the GameKit player's color
-        pieceController?.rotateBoardForTurn(currentTurn: playerColor)
-    }
+
     
     private var modelNode: SCNNode?
     
@@ -508,8 +827,34 @@ class ChessGameManager: ObservableObject {
         }
     }
     
+    func tryMoveWithoutTurnValidation(from: ChessPosition3D, to: ChessPosition3D) -> Bool {
+        print("🔍 tryMoveWithoutTurnValidation called: from \(from.stringValue) to \(to.stringValue)")
+        print("🔍 tryMoveWithoutTurnValidation: bypassTurnValidation will be set to true")
+        
+        // Call tryMove with bypassTurnValidation flag
+        let result = tryMove(from: from, to: to, bypassTurnValidation: true)
+        
+        if result {
+            print("✅ tryMoveWithoutTurnValidation: Move executed successfully")
+            // Force update the game state after a successful move
+            DispatchQueue.main.async {
+                let currentTurn = self.chessBoard.getCurrentTurn()
+                self.gameState = "\(currentTurn.rawValue.capitalized)'s Turn"
+                print("🎮 GameKit: Turn updated after received move: \(self.gameState)")
+            }
+        } else {
+            print("❌ tryMoveWithoutTurnValidation: Move execution failed")
+        }
+        
+        return result
+    }
+    
     func tryMove(from: ChessPosition3D, to: ChessPosition3D) -> Bool {
-        print("🔍 tryMove called: from \(from.stringValue) to \(to.stringValue)")
+        return tryMove(from: from, to: to, bypassTurnValidation: false)
+    }
+    
+    func tryMove(from: ChessPosition3D, to: ChessPosition3D, bypassTurnValidation: Bool) -> Bool {
+        print("🔍 tryMove called: from \(from.stringValue) to \(to.stringValue) (bypassTurnValidation: \(bypassTurnValidation))")
         
         // Prevent concurrent move operations
         guard !isInMoveOperation else {
@@ -527,6 +872,33 @@ class ChessGameManager: ObservableObject {
         }
         
         print("🎯 Attempting to move \(piece.color) \(piece.type) from \(from.stringValue) to \(to.stringValue)")
+        
+        // GameKit turn validation (skip if bypassTurnValidation is true)
+        if !bypassTurnValidation {
+            if let gameKitManager = self.gameKitManager {
+                if gameKitManager.matchState == .connected {
+                    let currentTurn = chessBoard.getCurrentTurn()
+                    let playerColor = gameKitManager.playerColor
+                    
+                    print("🎮 GameKit: Turn validation - Current turn: \(currentTurn.rawValue), Player color: \(playerColor.rawValue)")
+                    print("🎮 GameKit: Turn validation - Game state: \(gameState)")
+                    
+                    if currentTurn != playerColor {
+                        print("❌ GameKit: Not your turn! Current turn: \(currentTurn.rawValue), Your color: \(playerColor.rawValue)")
+                        print("❌ GameKit: Turn validation failed - this should not happen if game state is synchronized")
+                        showInvalidMoveMessage("Not your turn! It's \(currentTurn.rawValue)'s turn.")
+                        return false
+                    }
+                    print("✅ GameKit: Turn validation passed - \(playerColor.rawValue) player making move")
+                } else {
+                    print("🎮 GameKit: No active GameKit match, skipping turn validation")
+                }
+            } else {
+                print("🎮 GameKit: No GameKit manager, skipping turn validation")
+            }
+        } else {
+            print("✅ GameKit: Skipping turn validation for received move")
+        }
         
         // Debug: Print current board state before move
         print("📊 Board state before move:")
@@ -640,6 +1012,27 @@ class ChessGameManager: ObservableObject {
         // Debug: Check if it's the correct turn
         print("🎯 Current turn: \(chessBoard.getCurrentTurn().rawValue), piece color: \(piece.color.rawValue)")
         
+        // Game Center turn validation (skip if bypassTurnValidation is true)
+        if !bypassTurnValidation {
+            if let gameKitManager = self.gameKitManager {
+                if gameKitManager.matchState == .connected {
+                    let currentTurn = chessBoard.getCurrentTurn()
+                    let playerColor = gameKitManager.playerColor
+                    
+                    // Only allow moves if it's the player's turn
+                    if currentTurn != playerColor {
+                        print("❌ GameKit: Not your turn! Current turn: \(currentTurn.rawValue), Your color: \(playerColor.rawValue)")
+                        showInvalidMoveMessage("Not your turn! It's \(currentTurn.rawValue)'s turn.")
+                        return false
+                    }
+                    
+                    print("✅ GameKit: Turn validation passed - \(playerColor.rawValue) player making move")
+                }
+            }
+        } else {
+            print("✅ GameKit: Skipping second turn validation for received move")
+        }
+        
         // Execute move
         print("🔍 About to execute chess engine move from \(from.stringValue) to \(to.stringValue)")
         // In learn mode, don't change turns (allow continuous white moves)
@@ -657,6 +1050,33 @@ class ChessGameManager: ObservableObject {
         
         if moveSuccess {
             print("✅ Chess engine move successful")
+            
+            // Send move via Game Center if in multiplayer mode (but not when processing received moves)
+            print("🎮 GameKit: Checking if move should be sent...")
+            if isProcessingReceivedMove {
+                print("🎮 GameKit: Skipping move sending - processing received move")
+            } else if let gameKitManager = self.gameKitManager {
+                print("🎮 GameKit: GameKit manager found, match state: \(gameKitManager.matchState)")
+                if gameKitManager.matchState == .connected {
+                    // Use format: "e2-e4:z1-z2" (file + rank + from-z + to-z for 3D moves)
+                    let fromSimple = "\(Character(UnicodeScalar(Character("a").asciiValue! + UInt8(from.file))))\(from.rank + 1)"
+                    let toSimple = "\(Character(UnicodeScalar(Character("a").asciiValue! + UInt8(to.file))))\(to.rank + 1)"
+                    
+                    // For now, use the original z-level format but include the destination z-level for 3D moves
+                    let moveString = "\(fromSimple)-\(toSimple):\(from.z)"
+                    print("🎮 GameKit: Storing move to be sent after confirmation: \(moveString)")
+                    pendingGameKitMove = (from: from, to: to)
+                    
+                    // CRITICAL: Store move to be sent after confirmation timer expires
+                    // This avoids timing conflicts with the confirmation timer
+                    print("🎮 GameKit: Storing move to be sent after confirmation: \(moveString)")
+                    pendingGameKitMove = (from: from, to: to)
+                } else {
+                    print("🎮 GameKit: Match not connected, not sending move")
+                }
+            } else {
+                print("🎮 GameKit: No GameKit manager found, not sending move")
+            }
             
             // Move successful
             // In learn mode, keep the piece selected for continuous moves
@@ -752,6 +1172,17 @@ class ChessGameManager: ObservableObject {
             }
             
             print("✅ Move: \(piece.type.rawValue) from \(from.stringValue) to \(to.stringValue)")
+            
+            // Send move via GameKit if connected
+            if let gameKitManager = self.gameKitManager {
+                if gameKitManager.matchState == .connected {
+                    let fromSimple = "\(Character(UnicodeScalar(Character("a").asciiValue! + UInt8(from.file))))\(from.rank + 1)"
+                    let toSimple = "\(Character(UnicodeScalar(Character("a").asciiValue! + UInt8(to.file))))\(to.rank + 1)"
+                    let moveString = "\(fromSimple)-\(toSimple)"
+                    print("🎮 GameKit: Sending move: \(moveString)")
+                    gameKitManager.sendMove(moveString)
+                }
+            }
             
             // Debug: Print current board state
             print("📊 Board state after move:")
@@ -1795,6 +2226,8 @@ class ChessGameManager: ObservableObject {
     
     private func matchesPieceColor(_ nodeName: String, color: PieceColor) -> Bool {
         switch color {
+        case .none:
+            return false // No color matching for none
         case .white:
             // White pieces can be identified by: WR (white/red), white, or placeholder_white
             return nodeName.contains("wr") || nodeName.contains("white") || nodeName.contains("placeholder_white")

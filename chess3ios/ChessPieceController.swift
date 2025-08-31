@@ -74,6 +74,7 @@ class ChessPieceController: ObservableObject {
     @Published var pendingPieceNode: SCNNode?
     
     var chessGame: ChessGameManager?
+    var gameKitManager: GameKitManager? // Add GameKitManager reference
     
     private var moveConfirmationTimer: Timer?
     
@@ -337,6 +338,26 @@ class ChessPieceController: ObservableObject {
     func setChessGame(_ chessGame: ChessGameManager) {
         self.chessGame = chessGame
         updatePieceLists()
+    }
+    
+    // GameKit board rotation
+    func updateBoardRotationForGameKit(playerColor: PieceColor) {
+        print("🎮 GameKit: ChessPieceController rotating board for \(playerColor.rawValue) player")
+        
+        // Update the board rotation state
+        isBoardRotatedForBlack = playerColor == .black
+        
+        // Update the game state display
+        if let chessGame = chessGame {
+            chessGame.gameState = "\(playerColor.rawValue.capitalized)'s Turn"
+        }
+        
+        // Force update piece lists to reflect the correct player's pieces
+        DispatchQueue.main.async {
+            self.updatePieceLists()
+        }
+        
+        print("🎮 GameKit: Board rotation updated - isBoardRotatedForBlack: \(isBoardRotatedForBlack)")
     }
     
     // Get the current turn
@@ -776,6 +797,7 @@ class ChessPieceController: ObservableObject {
         print("🎯 ChessPieceController: Piece color: \(piece?.color.rawValue ?? "unknown"), isBlack: \(isBlack)")
         print("🎯 ChessPieceController: Direction: \(direction), effectiveDistance: \(effectiveDistance)")
         print("🎯 ChessPieceController: Board rotated for black: \(isBoardRotatedForBlack)")
+        print("🎯 ChessPieceController: Current player color: \(gameKitManager?.playerColor.rawValue ?? "unknown")")
         
         // Apply board rotation perspective mapping for 2D directions
         var mappedDirection = direction
@@ -2011,8 +2033,7 @@ class ChessPieceController: ObservableObject {
             print("🔍 Timer Debug: piece at newPosition=\(chessGame.getPieceAtPosition(newPosition) != nil)")
             print("🔍 Timer Debug: piece at originalPosition=\(chessGame.getPieceAtPosition(originalPosition) == nil)")
             
-            let allConditionsMet = moveSuccess && chessGame.getPieceAtPosition(newPosition) != nil &&
-               chessGame.getPieceAtPosition(originalPosition) == nil
+            let allConditionsMet = moveSuccess && chessGame.getPieceAtPosition(newPosition) != nil && chessGame.getPieceAtPosition(originalPosition) == nil
             print("🔍 Timer Debug: All knight conditions met: \(allConditionsMet)")
             
             if allConditionsMet {
@@ -2626,6 +2647,11 @@ class ChessPieceController: ObservableObject {
         // Human move confirmed - AI can now take its turn immediately
         print("⏰ Human move confirmed - AI can now take its turn")
         
+        // Send pending GameKit move after confirmation timer expires
+        if let chessGame = chessGame {
+            chessGame.sendPendingGameKitMove()
+        }
+        
         // Rotate board for the new turn after a 2-second delay
         if let chessGame = chessGame {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -2898,6 +2924,11 @@ struct ChessPieceControllerView: View {
     
     // Computed property to automatically show current player's pieces
     private var currentPlayerPieces: Bool {
+        // In GameKit mode, show pieces based on player color, not current turn
+        if let gameKitManager = controller.gameKitManager, gameKitManager.matchState == .connected {
+            return gameKitManager.playerColor == .white
+        }
+        // Fall back to current turn for non-GameKit games
         return controller.getCurrentTurn() == .white
     }
     

@@ -192,7 +192,7 @@ struct ContentView: View {
         .onAppear {
             setupChessGame()
         }
-        .onChange(of: gameKitManager.playerColor) { newColor in
+        .onChange(of: gameKitManager.playerColor) { _, newColor in
             // Rotate board when GameKit player color changes
             if gameKitManager.matchState == .connected {
                 chessGame.rotateBoardForGameKitPlayer(playerColor: newColor)
@@ -690,6 +690,13 @@ struct ContentView: View {
         // Set up piece controller
         pieceController.setChessGame(chessGame)
         chessGame.setPieceController(pieceController)
+        
+                    // Connect GameKitManager to ChessGameManager for move synchronization
+            gameKitManager.setChessGameManager(chessGame)
+            chessGame.setGameKitManager(gameKitManager)
+            
+            // Connect GameKitManager to ChessPieceController for piece list synchronization
+            pieceController.gameKitManager = gameKitManager
         
         print("🎯 Chess interaction setup complete")
     }
