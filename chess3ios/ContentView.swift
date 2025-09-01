@@ -156,14 +156,14 @@ struct ContentView: View {
                                 Text("🤖 AI Learning Statistics")
                                     .font(.title2)
                                     .fontWeight(.bold)
-                                    .foregroundColor(.white)
+                        .foregroundColor(.white)
                                 
                                 Spacer()
                                 
                                 Button("✕") {
                                     showAIStats = false
                                 }
-                                .foregroundColor(.white)
+                        .foregroundColor(.white)
                                 .font(.title2)
                             }
                             
@@ -171,18 +171,18 @@ struct ContentView: View {
                                 ScrollView {
                                     Text(summary)
                                         .font(.system(.body, design: .monospaced))
-                                        .foregroundColor(.white)
+                        .foregroundColor(.white)
                                         .padding()
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 }
                                 .frame(maxHeight: 300)
                                 .background(.regularMaterial.opacity(0.3))
-                                .cornerRadius(8)
+                        .cornerRadius(8)
                             }
-                        }
-                        .padding()
+                    }
+                    .padding()
                         .background(.regularMaterial.opacity(0.8))
-                        .cornerRadius(12)
+                    .cornerRadius(12)
                         .padding()
                     }
                 }
@@ -275,11 +275,11 @@ struct ContentView: View {
                         .foregroundColor(.white)
                         .scaleEffect(uiScale)
                         .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
+                            .padding(.vertical, 4)
                         .background(chessGame.gameState.contains("Checkmate") ? Color.red.opacity(0.8) : 
                                    chessGame.gameState.contains("White") ? Color.red.opacity(0.6) : 
                                    chessGame.gameState.contains("Black") ? Color.blue.opacity(0.6) : Color.clear)
-                        .cornerRadius(6)
+                            .cornerRadius(6)
                     
                    
                     
@@ -307,7 +307,7 @@ struct ContentView: View {
                                 chessGame.resetAILearning()
                             }
                             .buttonStyle(AdaptiveButtonStyle())
-                            .font(.caption)
+                                .font(.caption)
                             .scaleEffect(uiScale)
                         }
                     }
@@ -318,14 +318,14 @@ struct ContentView: View {
                     Text("Camera Controls")
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .foregroundColor(.white)
+                                .foregroundColor(.white)
                         .scaleEffect(uiScale)
                     
                     Button("↑ Boards Up") {
                         lowerCamera()
                     }
                     .buttonStyle(AdaptiveButtonStyle())
-                    .font(.caption)
+                                .font(.caption)
                     .scaleEffect(uiScale)
                     
                     Button("↓ Boards Down") {
@@ -346,7 +346,7 @@ struct ContentView: View {
                         zoomOut()
                     }
                     .buttonStyle(AdaptiveButtonStyle())
-                    .font(.caption)
+                        .font(.caption)
                     .scaleEffect(uiScale)
                 }
                 
@@ -439,8 +439,8 @@ struct ContentView: View {
                      )
                     
                     // AI Controls
-                    Button(chessGame.isAITurn() ? "🤖 AI Thinking..." : "🤖 vs AI") {
-                        if !chessGame.isAITurn() {
+                        Button(chessGame.isAITurn() ? "🤖 AI Thinking..." : "🤖 vs AI") {
+                            if !chessGame.isAITurn() {
                             // Show warning message
                             showAIWarning = true
                             
@@ -461,7 +461,7 @@ struct ContentView: View {
                     .background(chessGame.aiModeActive ? Color.green.opacity(0.4) : Color.clear)
                     .disabled(chessGame.aiModeActive)
                 
-                 
+                    
                     // Game State Display
                     Text(chessGame.gameState)
                         .font(.caption)
@@ -526,7 +526,7 @@ struct ContentView: View {
                         lowerCamera()
                     }
                     .font(.caption2)
-                    .foregroundColor(.white)
+                            .foregroundColor(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
                     .background(.regularMaterial.opacity(0.2))
@@ -548,7 +548,7 @@ struct ContentView: View {
                         zoomIn()
                     }
                     .font(.caption2)
-                    .foregroundColor(.white)
+                                    .foregroundColor(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
                     .background(.regularMaterial.opacity(0.2))
@@ -570,11 +570,11 @@ struct ContentView: View {
                         resetCamera()
                     }
                     .font(.caption2)
-                    .foregroundColor(.white)
+                        .foregroundColor(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
                     .background(.regularMaterial.opacity(0.2))
-                    .cornerRadius(8)
+                        .cornerRadius(8)
                     .scaleEffect(uiScale)
                 }
                 .padding(.bottom, 240) // Add bottom padding to avoid rounded corners
@@ -620,7 +620,7 @@ struct ContentView: View {
         setupChessInteraction()
         
         // Set up AI timer
-        startAITimer()
+                        startAITimer()
         
         // Set up Combine subscriptions
         setupSubscriptions()
@@ -633,7 +633,7 @@ struct ContentView: View {
         scene.rootNode.addChildNode(cameraNode)
         
         print("📷 Camera positioned at: \(cameraNode.position)")
-        
+       
         // Add ambient light for base illumination
         let ambientLight = SCNNode()
         ambientLight.light = SCNLight()
@@ -977,9 +977,9 @@ struct ContentView: View {
         
         guard chessGame.aiModeActive else {
             print("🤖 AI timer: Not starting - AI mode is not active")
-            return
-        }
-        
+                return
+            }
+            
         print("🤖 AI timer: Starting timer for AI mode")
         
         aiTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
@@ -998,7 +998,7 @@ struct ContentView: View {
     // MARK: - Critical Game Functionality (from macOS version)
     
     private func loadChessBoardAndPieces() {
-        let containerNode = SCNNode()
+            let containerNode = SCNNode()
         containerNode.name = "ChessContainer"
         
         guard let boardNode = loadChessBoard(into: containerNode) else {
@@ -1020,27 +1020,27 @@ struct ContentView: View {
     }
     
     private func centerAndScaleContainer(_ containerNode: SCNNode) {
-        let boundingBox = containerNode.boundingBox
-        let center = SCNVector3(
-            (boundingBox.max.x + boundingBox.min.x) / 2,
-            (boundingBox.max.y + boundingBox.min.y) / 2,
-            (boundingBox.max.z + boundingBox.min.z) / 2
-        )
-        
+            let boundingBox = containerNode.boundingBox
+            let center = SCNVector3(
+                (boundingBox.max.x + boundingBox.min.x) / 2,
+                (boundingBox.max.y + boundingBox.min.y) / 2,
+                (boundingBox.max.z + boundingBox.min.z) / 2
+            )
+            
         print("📏 Container bounding box: min=\(boundingBox.min), max=\(boundingBox.max)")
         print("📏 Container center: \(center)")
         
-        let maxDimension = max(boundingBox.max.x - boundingBox.min.x,
-                             boundingBox.max.y - boundingBox.min.y,
-                             boundingBox.max.z - boundingBox.min.z)
+            let maxDimension = max(boundingBox.max.x - boundingBox.min.x,
+                                 boundingBox.max.y - boundingBox.min.y,
+                                 boundingBox.max.z - boundingBox.min.z)
         
         let scale = 21.0 / maxDimension
-        containerNode.scale = SCNVector3(scale, scale, scale)
-        
+            containerNode.scale = SCNVector3(scale, scale, scale)
+            
         containerNode.position = SCNVector3(-center.x * scale - 1.0, -center.y * scale + 0.5, -center.z * scale )
-        // Set initial rotation to match reset view angle with 15 degree Y-axis rotation (clockwise)
+                    // Set initial rotation to match reset view angle with 15 degree Y-axis rotation (clockwise)
         containerNode.eulerAngles = SCNVector3(-Float.pi * 6/12, Float.pi * 1/7, 0)
-        
+            
         print("📏 Container scale: \(scale)")
         print("📏 Container final position: \(containerNode.position)")
         

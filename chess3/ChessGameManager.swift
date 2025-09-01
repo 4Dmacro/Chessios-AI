@@ -1788,6 +1788,8 @@ class ChessGameManager: ObservableObject {
     
     private func matchesPieceColor(_ nodeName: String, color: PieceColor) -> Bool {
         switch color {
+        case .none:
+            return false // No pieces should match "none" color
         case .white:
             // White pieces can be identified by: WR (white/red), white, or placeholder_white
             return nodeName.contains("wr") || nodeName.contains("white") || nodeName.contains("placeholder_white")

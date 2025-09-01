@@ -27,6 +27,7 @@ enum PieceType: String, CaseIterable {
 
 // MARK: - Chess Colors
 enum PieceColor: String, CaseIterable {
+    case none = "none"
     case white = "white"
     case black = "black"
     
