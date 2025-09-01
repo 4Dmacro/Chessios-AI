@@ -2648,8 +2648,12 @@ class ChessPieceController: ObservableObject {
         print("⏰ Human move confirmed - AI can now take its turn")
         
         // Send pending GameKit move after confirmation timer expires
+        print("🎮 GameKit: confirmMove() - about to send pending move")
         if let chessGame = chessGame {
+            print("🎮 GameKit: confirmMove() - chessGame found, calling sendPendingGameKitMove()")
             chessGame.sendPendingGameKitMove()
+        } else {
+            print("🎮 GameKit: confirmMove() - chessGame is nil!")
         }
         
         // Rotate board for the new turn after a 2-second delay
@@ -2875,7 +2879,7 @@ class ChessPieceController: ObservableObject {
                 return
             }
         }
-        // Try to move the piece using the chess engine
+        // Try to move the piece using the chess engine with confirmation timer
         print("🔍 About to call chessGame.tryMove from \(from.stringValue) to \(toPosition.stringValue)")
         let moveSuccess = chessGame.tryMove(from: from, to: toPosition)
         print("🎯 tryCustomMove: Move attempted, success: \(moveSuccess)")
@@ -2893,6 +2897,7 @@ class ChessPieceController: ObservableObject {
             }
         }
         if moveSuccess {
+            // Use the same flow as regular moves for GameKit synchronization
             selectedPiecePosition = toPosition
             if let newNode = chessGame.getPieceNode(at: toPosition) {
                 selectedPiece = newNode
@@ -2907,9 +2912,22 @@ class ChessPieceController: ObservableObject {
                 self.objectWillChange.send()
             }
             
-            // Rotate board for the new turn after a 2-second delay (same as normal moves)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                chessGame.rotateBoardForTurn()
+            // Use the confirmation timer system for GameKit synchronization
+            // This ensures moves are sent to the opponent with proper timing
+            print("🔍 Timer UI Debug: Setting isMovePending=true, moveConfirmationTimeRemaining=5.0")
+            
+            // Store pending move details
+            pendingMoveFrom = from
+            pendingMoveTo = toPosition
+            pendingPieceNode = selectedPiece
+            isMovePending = true
+            moveConfirmationTimeRemaining = 2.0
+            
+            print("🔍 Timer UI Debug: isMovePending set to \(isMovePending), timeRemaining=\(moveConfirmationTimeRemaining)")
+            
+            // Start countdown timer
+            moveConfirmationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+                self?.updateMoveConfirmationTimer()
             }
         }
     }

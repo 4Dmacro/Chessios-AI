@@ -32,24 +32,58 @@ class GameKitManager: NSObject, ObservableObject {
     }
     
     func authenticatePlayer() {
+        print("🎮 GameKit: Starting authentication...")
+        print("🎮 GameKit: GKLocalPlayer.local.isAuthenticated: \(GKLocalPlayer.local.isAuthenticated)")
+        print("🎮 GameKit: GKLocalPlayer.local.displayName: \(GKLocalPlayer.local.displayName)")
+        
+        // If already authenticated, set up immediately
+        if GKLocalPlayer.local.isAuthenticated {
+            print("✅ GameKit: Already authenticated")
+            DispatchQueue.main.async {
+                self.isAuthenticated = true
+                self.currentPlayer = GKLocalPlayer.local
+                print("🎮 GameKit: Player name: \(GKLocalPlayer.local.displayName)")
+                print("🎮 GameKit: Player ID: \(GKLocalPlayer.local.gamePlayerID)")
+                
+                // Register for invitations
+                GKLocalPlayer.local.register(self)
+                print("🎮 GameKit: Registered as invitation listener")
+                
+                // Check for pending invitations
+                self.checkForPendingInvitations()
+            }
+            return
+        }
+        
         GKLocalPlayer.local.authenticateHandler = { viewController, error in
+            print("🎮 GameKit: Authentication handler called")
+            print("🎮 GameKit: viewController: \(viewController != nil ? "present" : "nil")")
+            print("🎮 GameKit: error: \(error?.localizedDescription ?? "nil")")
+            
             if let viewController = viewController {
+                print("🎮 GameKit: Presenting authentication view controller")
                 // Present the authentication view controller on macOS
                 DispatchQueue.main.async {
                     if let window = NSApplication.shared.windows.first {
+                        print("🎮 GameKit: Found window, presenting as sheet")
                         window.contentViewController?.presentAsSheet(viewController)
+                    } else {
+                        print("❌ GameKit: No window found to present authentication")
                     }
                 }
             } else if error != nil {
-                print("Game Center authentication error: \(error?.localizedDescription ?? "Unknown error")")
+                print("❌ GameKit: Authentication error: \(error?.localizedDescription ?? "Unknown error")")
                 DispatchQueue.main.async {
                     self.isAuthenticated = false
                 }
             } else {
+                print("✅ GameKit: Authentication successful - no view controller needed")
                 DispatchQueue.main.async {
                     self.isAuthenticated = true
                     self.currentPlayer = GKLocalPlayer.local
                     print("✅ GameKit: Authentication successful")
+                    print("🎮 GameKit: Player name: \(GKLocalPlayer.local.displayName)")
+                    print("🎮 GameKit: Player ID: \(GKLocalPlayer.local.gamePlayerID)")
                     
                     // Register for invitations
                     GKLocalPlayer.local.register(self)

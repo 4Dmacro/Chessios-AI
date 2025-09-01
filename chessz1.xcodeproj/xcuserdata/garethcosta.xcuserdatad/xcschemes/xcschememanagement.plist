@@ -6,11 +6,15 @@
 	<dict>
 		<key>chess z  1.xcscheme_^#shared#^_</key>
 		<dict>
+			<key>isShown</key>
+			<false/>
 			<key>orderHint</key>
 			<integer>1</integer>
 		</dict>
 		<key>chess z .xcscheme_^#shared#^_</key>
 		<dict>
+			<key>isShown</key>
+			<false/>
 			<key>orderHint</key>
 			<integer>0</integer>
 		</dict>
@@ -21,8 +25,10 @@
 		</dict>
 		<key>chess2.xcscheme_^#shared#^_</key>
 		<dict>
+			<key>isShown</key>
+			<false/>
 			<key>orderHint</key>
-			<integer>4</integer>
+			<integer>2</integer>
 		</dict>
 		<key>chess3 AI.xcscheme_^#shared#^_</key>
 		<dict>
@@ -32,7 +38,7 @@
 		<key>chess3.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>2</integer>
+			<integer>4</integer>
 		</dict>
 		<key>chess3ios.xcscheme_^#shared#^_</key>
 		<dict>
@@ -53,6 +59,21 @@
 			<true/>
 		</dict>
 		<key>FF6ABED72E234EF700EB04B8</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>FF9A08A52E262C8D002D3CF1</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>FF9A08B12E262C8E002D3CF1</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>FF9A08BB2E262C8E002D3CF1</key>
 		<dict>
 			<key>primary</key>
 			<true/>
