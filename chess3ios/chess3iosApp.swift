@@ -16,9 +16,6 @@ struct chess3iosApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(gameKitManager)
-                .onAppear {
-                    gameKitManager.authenticatePlayer()
-                }
         }
     }
 }

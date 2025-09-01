@@ -445,6 +445,20 @@ struct ContentView: View {
                             .animation(.easeInOut(duration: 0.6), value: chessGame.invalidMoveMessage)
                     }
                     
+                    // Game Center Error Message Display
+                    if !gameKitManager.errorMessage.isEmpty {
+                        Text(gameKitManager.errorMessage)
+                            .font(.caption)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.red.opacity(0.8))
+                            .background(.ultraThinMaterial)
+                            .cornerRadius(8)
+                            .multilineTextAlignment(.center)
+                            .animation(.easeInOut(duration: 0.6), value: gameKitManager.errorMessage)
+                    }
+                    
                     // Reset View button
                     Button(action: {
                         resetCamera()

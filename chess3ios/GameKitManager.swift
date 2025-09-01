@@ -40,23 +40,39 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
     }
     
     func authenticatePlayer() {
+        print("🎮 GameKit: Starting iOS authentication...")
+        print("🎮 GameKit: GKLocalPlayer.local.isAuthenticated: \(GKLocalPlayer.local.isAuthenticated)")
+        print("🎮 GameKit: GKLocalPlayer.local.displayName: \(GKLocalPlayer.local.displayName)")
+        
         GKLocalPlayer.local.authenticateHandler = { viewController, error in
+            print("🎮 GameKit: iOS Authentication handler called")
+            print("🎮 GameKit: viewController: \(viewController != nil ? "present" : "nil")")
+            print("🎮 GameKit: error: \(error?.localizedDescription ?? "nil")")
+            
             if let viewController = viewController {
+                print("🎮 GameKit: Presenting iOS authentication view controller")
                 // Present the authentication view controller on iOS
                 DispatchQueue.main.async {
                     if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                        let window = windowScene.windows.first {
+                        print("🎮 GameKit: Found iOS window, presenting authentication")
                         window.rootViewController?.present(viewController, animated: true)
+                    } else {
+                        print("❌ GameKit: No iOS window found to present authentication")
                     }
                 }
             } else if error != nil {
+                print("❌ GameKit: iOS Authentication error: \(error?.localizedDescription ?? "Unknown error")")
                 DispatchQueue.main.async {
-                    self.errorMessage = "Game Center authentication failed"
+                    self.errorMessage = "Game Center authentication failed: \(error?.localizedDescription ?? "Unknown error")"
                 }
             } else {
+                print("✅ GameKit: iOS Authentication successful - no view controller needed")
                 DispatchQueue.main.async {
                     self.isAuthenticated = true
                     print("✅ GameKit: Authentication successful")
+                    print("🎮 GameKit: Player name: \(GKLocalPlayer.local.displayName)")
+                    print("🎮 GameKit: Player ID: \(GKLocalPlayer.local.gamePlayerID)")
                     
                     // Set up invitation handling using modern API
                     GKLocalPlayer.local.register(self)

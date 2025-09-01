@@ -2,6 +2,7 @@ import Foundation
 import GameKit
 import SwiftUI
 import AppKit
+import SystemConfiguration
 
 class GameKitManager: NSObject, ObservableObject {
     @Published var isAuthenticated = false
@@ -36,9 +37,24 @@ class GameKitManager: NSObject, ObservableObject {
         print("🎮 GameKit: GKLocalPlayer.local.isAuthenticated: \(GKLocalPlayer.local.isAuthenticated)")
         print("🎮 GameKit: GKLocalPlayer.local.displayName: \(GKLocalPlayer.local.displayName)")
         
+        // Perform network diagnostics
+        performNetworkDiagnostics()
+        
         // If already authenticated, set up immediately
         if GKLocalPlayer.local.isAuthenticated {
             print("✅ GameKit: Already authenticated")
+            
+            // Additional check: ensure we have a valid display name
+            if GKLocalPlayer.local.displayName.isEmpty {
+                print("⚠️ GameKit: Authenticated but displayName is empty - forcing re-authentication")
+                // Force re-authentication by clearing the handler and setting it again
+                GKLocalPlayer.local.authenticateHandler = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.authenticatePlayer()
+                }
+                return
+            }
+            
             DispatchQueue.main.async {
                 self.isAuthenticated = true
                 self.currentPlayer = GKLocalPlayer.local
@@ -73,26 +89,63 @@ class GameKitManager: NSObject, ObservableObject {
                 }
             } else if error != nil {
                 print("❌ GameKit: Authentication error: \(error?.localizedDescription ?? "Unknown error")")
+                
+                // Provide specific guidance for macOS Game Center authentication
+                if error?.localizedDescription.contains("not been authenticated") == true {
+                    print("🔧 GameKit: macOS Game Center Setup Required:")
+                    print("🔧 1. Open System Preferences → Game Center")
+                    print("🔧 2. Sign in with your Apple ID")
+                    print("🔧 3. Ensure Game Center is enabled")
+                    print("🔧 4. Restart the chess app")
+                    
+                    // Try to force a fresh authentication attempt
+                    print("🔄 GameKit: Attempting to force fresh authentication...")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        GKLocalPlayer.local.authenticateHandler = nil
+                        self.authenticatePlayer()
+                    }
+                }
+                
                 DispatchQueue.main.async {
                     self.isAuthenticated = false
+                    self.errorMessage = "Game Center authentication failed. Please sign in to Game Center in System Preferences first."
                 }
             } else {
                 print("✅ GameKit: Authentication successful - no view controller needed")
-                DispatchQueue.main.async {
-                    self.isAuthenticated = true
-                    self.currentPlayer = GKLocalPlayer.local
-                    print("✅ GameKit: Authentication successful")
-                    print("🎮 GameKit: Player name: \(GKLocalPlayer.local.displayName)")
-                    print("🎮 GameKit: Player ID: \(GKLocalPlayer.local.gamePlayerID)")
-                    
-                    // Register for invitations
-                    GKLocalPlayer.local.register(self)
-                    print("🎮 GameKit: Registered as invitation listener")
-                    
-                    // Check for pending invitations
-                    self.checkForPendingInvitations()
+                
+                // Verify we have a valid authentication state
+                if GKLocalPlayer.local.displayName.isEmpty {
+                    print("⚠️ GameKit: Authentication successful but displayName is empty - waiting for full initialization")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        if GKLocalPlayer.local.displayName.isEmpty {
+                            print("❌ GameKit: Still no displayName after delay - forcing re-authentication")
+                            GKLocalPlayer.local.authenticateHandler = nil
+                            self.authenticatePlayer()
+                        } else {
+                            self.completeAuthentication()
+                        }
+                    }
+                } else {
+                    self.completeAuthentication()
                 }
             }
+        }
+    }
+    
+    private func completeAuthentication() {
+        DispatchQueue.main.async {
+            self.isAuthenticated = true
+            self.currentPlayer = GKLocalPlayer.local
+            print("✅ GameKit: Authentication successful")
+            print("🎮 GameKit: Player name: \(GKLocalPlayer.local.displayName)")
+            print("🎮 GameKit: Player ID: \(GKLocalPlayer.local.gamePlayerID)")
+            
+            // Register for invitations
+            GKLocalPlayer.local.register(self)
+            print("🎮 GameKit: Registered as invitation listener")
+            
+            // Check for pending invitations
+            self.checkForPendingInvitations()
         }
     }
     
@@ -133,6 +186,11 @@ class GameKitManager: NSObject, ObservableObject {
             print("🎮 GameKit: Creating auto-match request")
             print("🎮 GameKit: Local player: \(GKLocalPlayer.local.displayName) (ID: \(GKLocalPlayer.local.gamePlayerID))")
             
+            // Add network diagnostics for macOS
+            print("🔍 GameKit: Network diagnostics for macOS:")
+            print("🔍 - App sandbox enabled: \(ProcessInfo.processInfo.environment["APP_SANDBOX_CONTAINER_ID"] != nil)")
+            print("🔍 - Network permissions should be in entitlements")
+            
             let request = GKMatchRequest()
             request.minPlayers = 2
             request.maxPlayers = 2
@@ -140,17 +198,20 @@ class GameKitManager: NSObject, ObservableObject {
             
             guard let matchmaker = GKMatchmakerViewController(matchRequest: request) else {
                 self.errorMessage = "Could not create Game Center match request"
+                print("❌ GameKit: Failed to create matchmaker view controller")
                 return
             }
             
             matchmaker.matchmakerDelegate = self
             
-            // Present the matchmaker on macOS
+            // Present the matchmaker on macOS with better error handling
             if let window = NSApplication.shared.windows.first {
+                print("🎮 GameKit: Found window, presenting matchmaker as sheet")
                 window.contentViewController?.presentAsSheet(matchmaker)
                 print("🎮 GameKit: Presenting auto-match interface")
             } else {
-                self.errorMessage = "Could not present Game Center interface"
+                self.errorMessage = "Could not present Game Center interface - no window found"
+                print("❌ GameKit: No window found to present matchmaker")
             }
         }
     }
@@ -259,6 +320,52 @@ class GameKitManager: NSObject, ObservableObject {
         matchState = .none
         print("Disconnected from match")
     }
+    
+    // MARK: - Network Diagnostics
+    
+    func performNetworkDiagnostics() {
+        print("🔍 GameKit: Performing network diagnostics...")
+        
+        // Check authentication status
+        print("🔍 - Authentication: \(isAuthenticated ? "✅" : "❌")")
+        print("🔍 - Player name: \(GKLocalPlayer.local.displayName)")
+        print("🔍 - Player ID: \(GKLocalPlayer.local.gamePlayerID)")
+        
+        // Check network permissions
+        print("🔍 - App sandbox: \(ProcessInfo.processInfo.environment["APP_SANDBOX_CONTAINER_ID"] != nil ? "✅" : "❌")")
+        
+        // Check for network connectivity
+        print("🔍 - Network connectivity:")
+        let reachability = try? SCNetworkReachabilityCreateWithName(nil, "apple.com")
+        var flags = SCNetworkReachabilityFlags()
+        if let reachability = reachability,
+           SCNetworkReachabilityGetFlags(reachability, &flags) {
+            let isReachable = flags.contains(.reachable)
+            print("🔍   - Internet reachable: \(isReachable ? "✅" : "❌")")
+        } else {
+            print("🔍   - Could not check network reachability")
+        }
+        
+        // Check firewall status
+        let task = Process()
+        task.launchPath = "/usr/libexec/ApplicationFirewall/socketfilterfw"
+        task.arguments = ["--getglobalstate"]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        
+        do {
+            try task.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            if let output = String(data: data, encoding: .utf8) {
+                print("🔍 - Firewall: \(output.contains("enabled") ? "⚠️ Enabled" : "✅ Disabled")")
+            }
+        } catch {
+            print("🔍 - Firewall: Could not check status")
+        }
+        
+        print("🔍 Network diagnostics complete")
+    }
 }
 
 // MARK: - GKMatchmakerDelegate
@@ -273,6 +380,17 @@ extension GameKitManager: GKMatchmakerViewControllerDelegate {
         print("❌ GameKit: Matchmaker failed with error: \(error.localizedDescription)")
         print("❌ GameKit: Error domain: \(error._domain), code: \(error._code)")
         
+        // Add specific handling for macOS network errors
+        if error._domain == "NSPOSIXErrorDomain" && error._code == 1 {
+            print("🔧 GameKit: macOS Network Permission Error Detected")
+            print("🔧 This is likely due to missing network entitlements or firewall settings")
+            print("🔧 Solutions:")
+            print("🔧 1. Ensure network entitlements are added to the app")
+            print("🔧 2. Check macOS firewall settings")
+            print("🔧 3. Try running the app outside of Xcode")
+            print("🔧 4. Ensure Game Center is properly signed in")
+        }
+        
         viewController.dismiss(nil)
         errorMessage = error.localizedDescription
         matchState = .none
@@ -281,7 +399,18 @@ extension GameKitManager: GKMatchmakerViewControllerDelegate {
         DispatchQueue.main.async {
             let alert = NSAlert()
             alert.messageText = "Matchmaking Failed"
-            alert.informativeText = "No other players found. Make sure both devices are searching for a match at the same time."
+            
+            var informativeText = "No other players found. Make sure both devices are searching for a match at the same time."
+            
+            // Add specific guidance for network errors
+            if error._domain == "NSPOSIXErrorDomain" && error._code == 1 {
+                informativeText += "\n\nNetwork permission error detected. Please ensure:"
+                informativeText += "\n• Game Center is signed in"
+                informativeText += "\n• Both devices are on the same network"
+                informativeText += "\n• Try running the app outside of Xcode"
+            }
+            
+            alert.informativeText = informativeText
             alert.addButton(withTitle: "OK")
             alert.runModal()
         }

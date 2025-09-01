@@ -4,5 +4,12 @@
 <dict>
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This app uses local network for Game Center multiplayer chess games.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_gamekit._tcp</string>
+		<string>_gamekit._udp</string>
+	</array>
 </dict>
 </plist>
