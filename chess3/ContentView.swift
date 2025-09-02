@@ -438,7 +438,7 @@ struct ContentView: View {
                         )
                     } else {
                         // Show buttons for other states too, but with different functionality
-                        Button("🔄 New Game (Local)") {
+                        Button("🔄 New Game") {
                             chessGame.resetGame()
                         }
                         .buttonStyle(PlainButtonStyle())

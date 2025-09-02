@@ -465,17 +465,20 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
         
         DispatchQueue.main.async {
             let oldColor = self.playerColor
+            // CRITICAL FIX: Flip to the OPPOSITE color to ensure devices are always opposite
             self.playerColor = self.playerColor == .white ? .black : .white
             print("🔄 GameKit: Board flipped from \(oldColor.rawValue) to \(self.playerColor.rawValue) perspective")
             print("🔄 GameKit: UI should now show 'You are \(self.playerColor.rawValue)'")
             
             // Send board flip command to connected device
+            // CRITICAL: Send the OPPOSITE color so the other device becomes the opposite
             if let match = self.currentMatch {
-                let flipCommand = "FLIP_BOARD:\(self.playerColor.rawValue)"
+                let oppositeColor = self.playerColor == .white ? "black" : "white"
+                let flipCommand = "FLIP_BOARD:\(oppositeColor)"
                 if let data = flipCommand.data(using: .utf8) {
                     do {
                         try match.sendData(toAllPlayers: data, with: .reliable)
-                        print("🔄 GameKit: Sent board flip command: \(flipCommand)")
+                        print("🔄 GameKit: Sent board flip command: \(flipCommand) - other device will become \(oppositeColor)")
                     } catch {
                         print("❌ GameKit: Failed to send board flip command: \(error)")
                     }
@@ -527,10 +530,12 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
                     if components.count == 2, let colorString = components.last {
                         let oldColor = self.playerColor
                         print("🔄 GameKit: Received board flip command to \(colorString) from \(player.displayName)")
-                        if colorString == "white" {
-                            self.playerColor = .white
-                        } else if colorString == "black" {
+                        print("🔄 GameKit: This ensures devices have OPPOSITE colors for proper gameplay")
+                        
+                        if colorString == "black" {
                             self.playerColor = .black
+                        } else if colorString == "white" {
+                            self.playerColor = .white
                         }
                         print("🔄 GameKit: Color changed from \(oldColor.rawValue) to \(self.playerColor.rawValue)")
                         print("🔄 GameKit: UI should now show 'You are \(self.playerColor.rawValue)'")

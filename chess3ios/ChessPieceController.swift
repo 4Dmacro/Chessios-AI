@@ -397,6 +397,14 @@ class ChessPieceController: ObservableObject {
         let success = chessGame.performCastling(side: side)
         if success {
             print("♔ Castling successful: \(side)")
+            
+            // CRITICAL: Send castling move via GameKit for multiplayer
+            if let gameKitManager = chessGame.gameKitManager, gameKitManager.matchState == .connected {
+                let castlingMove = side == .kingside ? "O-O" : "O-O-O"
+                print("🎮 GameKit: Sending castling move: \(castlingMove)")
+                gameKitManager.sendMove(castlingMove)
+            }
+            
             // Update piece lists
             updatePieceLists()
             

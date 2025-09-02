@@ -376,6 +376,14 @@ class ChessPieceController: ObservableObject {
         let success = chessGame.performCastling(side: side)
         if success {
             print("♔ Castling successful: \(side)")
+            
+            // CRITICAL: Send castling move via GameKit for multiplayer
+            if let gameKitManager = chessGame.gameKitManager, gameKitManager.matchState == .connected {
+                let castlingMove = side == .kingside ? "O-O" : "O-O-O"
+                print("🎮 GameKit: Sending castling move: \(castlingMove)")
+                gameKitManager.sendMove(castlingMove)
+            }
+            
             // Update piece lists
             updatePieceLists()
             
@@ -2530,34 +2538,61 @@ class ChessPieceController: ObservableObject {
         
         print("🔍 Timer UI Debug: isMovePending set to \(isMovePending), timeRemaining=\(moveConfirmationTimeRemaining)")
         
-        // Start countdown timer
-        moveConfirmationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            self?.updateMoveConfirmationTimer()
+        // Start countdown timer - reduced frequency to prevent hang risk
+        moveConfirmationTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            // CRITICAL: Check if move is still pending before proceeding
+            guard self.isMovePending else { return }
+            // CRITICAL: Check if timer is still valid before proceeding
+            guard self.moveConfirmationTimer != nil else { return }
+            self.updateMoveConfirmationTimer()
         }
     }
     
     private func updateMoveConfirmationTimer() {
-        moveConfirmationTimeRemaining -= 0.1
+        // CRITICAL: Check if move is still pending before proceeding
+        guard isMovePending else {
+            print("⏰ Timer update called but move is no longer pending - stopping")
+            return
+        }
+        
+        // Safety check: Ensure timer is still valid
+        guard moveConfirmationTimer != nil else {
+            print("⚠️ Timer update called but timer is nil - stopping")
+            return
+        }
+        
+        moveConfirmationTimeRemaining -= 0.5
         
         // Safety check: Stop timer if it's no longer the player's turn
         if let chessGame = chessGame,
            let piece = chessGame.getPieceAtPosition(pendingMoveFrom ?? ChessPosition3D(file: 0, rank: 0, z: 0)),
            piece.color != chessGame.getCurrentTurn() {
             print("⚠️ Timer stopped - no longer player's turn")
-            cancelMove()
+            DispatchQueue.main.async {
+                self.cancelMove()
+            }
             return
         }
         
         if moveConfirmationTimeRemaining <= 0 {
-            confirmMove()
+            DispatchQueue.main.async {
+                self.confirmMove()
+            }
         }
     }
     
     func confirmMove() {
         print("✅ Move confirmed: \(pendingMoveFrom?.stringValue ?? "unknown") -> \(pendingMoveTo?.stringValue ?? "unknown")")
         
-        // Stop timer
-        moveConfirmationTimer?.invalidate()
+        // CRITICAL: Set flag first to prevent timer callbacks from executing
+        isMovePending = false
+        
+        // Stop timer with proper cleanup
+        if let timer = moveConfirmationTimer {
+            timer.invalidate()
+            print("⏰ Timer invalidated and stopped")
+        }
         moveConfirmationTimer = nil
         
         // Execute the pending move
@@ -2671,8 +2706,14 @@ class ChessPieceController: ObservableObject {
         print("❌ Move cancelled: \(pendingMoveFrom?.stringValue ?? "unknown") -> \(pendingMoveTo?.stringValue ?? "unknown")")
         print("🔍 Cancel debug: pendingPieceNode=\(pendingPieceNode != nil), pendingMoveFrom=\(pendingMoveFrom?.stringValue ?? "nil"), pendingMoveTo=\(pendingMoveTo?.stringValue ?? "nil"), chessGame=\(chessGame != nil)")
         
-        // Stop timer
-        moveConfirmationTimer?.invalidate()
+        // CRITICAL: Set flag first to prevent timer callbacks from executing
+        isMovePending = false
+        
+        // Stop timer with proper cleanup
+        if let timer = moveConfirmationTimer {
+            timer.invalidate()
+            print("⏰ Timer invalidated and stopped")
+        }
         moveConfirmationTimer = nil
         
         // Reset piece to original position
@@ -2705,7 +2746,6 @@ class ChessPieceController: ObservableObject {
         }
         
         // Clear pending state
-        isMovePending = false
         moveConfirmationTimeRemaining = 5.0
         pendingMoveFrom = nil
         pendingMoveTo = nil

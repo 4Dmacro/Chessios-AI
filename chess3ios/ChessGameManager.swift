@@ -204,7 +204,7 @@ class ChessGameManager: ObservableObject {
     func processReceivedMove(_ moveString: String) {
         print("🎮 GameKit: Processing received move: \(moveString)")
         
-        // CRITICAL: Check for GameKit commands first (like promotion)
+        // CRITICAL: Check for GameKit commands first (like promotion and castling)
         if moveString.hasPrefix("PROMOTION:") {
             let promotionTypeString = String(moveString.dropFirst("PROMOTION:".count))
             print("🎮 GameKit: Received promotion command: \(promotionTypeString)")
@@ -215,6 +215,21 @@ class ChessGameManager: ObservableObject {
                 executePendingPromotion(to: promotionType)
             } else {
                 print("❌ GameKit: Invalid promotion type: \(promotionTypeString)")
+            }
+            return
+        }
+        
+        // Check for castling moves
+        if moveString == "O-O" || moveString == "O-O-O" {
+            let castlingSide: CastlingSide = moveString == "O-O" ? .kingside : .queenside
+            print("🎮 GameKit: Received castling move: \(moveString) (\(castlingSide))")
+            
+            // Execute castling on the receiving device
+            let success = performCastling(side: castlingSide)
+            if success {
+                print("✅ GameKit: Castling executed successfully: \(castlingSide)")
+            } else {
+                print("❌ GameKit: Failed to execute castling: \(castlingSide)")
             }
             return
         }
