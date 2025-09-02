@@ -401,27 +401,6 @@ struct ContentView: View {
                     }
                     
                     // New Game Button (Game Center) - Right after AI Controls in same HStack
-                    // Debug: Show current match state
-                    Text("Match State: \(String(describing: gameKitManager.matchState))")
-                        .font(.caption2)
-                        .foregroundColor(.yellow)
-                    
-                    // Debug: Show authentication status
-                    Text("Authenticated: \(gameKitManager.isAuthenticated ? "Yes" : "No")")
-                        .font(.caption2)
-                        .foregroundColor(.yellow)
-                    
-                    // Debug: Force authentication button
-                    Button("🔐 Force Auth") {
-                        gameKitManager.authenticatePlayer()
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.purple.opacity(0.4))
-                    .foregroundColor(.white)
-                    .cornerRadius(4)
-                    .font(.caption2)
                     
                     if gameKitManager.matchState == .connected {
                         Button("🔄 New Game") {
@@ -469,9 +448,9 @@ struct ContentView: View {
                         .foregroundColor(.white)
                         .cornerRadius(8)
                         
-                        Text("Connect to Game Center to play multiplayer")
-                            .font(.caption2)
-                            .foregroundColor(.gray)
+                       // Text("Connect to Game Center to play multiplayer")
+                       //     .font(.caption2)
+                        //    .foregroundColor(.gray)
                     }
                     
                     Spacer()
@@ -483,7 +462,9 @@ struct ContentView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
                         .background(
-                            chessGame.gameState.contains("Checkmate") ? Color.red.opacity(0.8) : Color.clear
+                            chessGame.gameState.contains("Checkmate") ? Color.red.opacity(0.8) : 
+                            chessGame.gameState.contains("White") ? Color.red.opacity(0.6) : 
+                            chessGame.gameState.contains("Black") ? Color.blue.opacity(0.6) : Color.clear
                         )
                         .background(.regularMaterial.opacity(0.3))
                         .cornerRadius(8)
@@ -671,8 +652,12 @@ struct ContentView: View {
             chessGame.setPieceController(pieceController)
             
             // Connect the chess game manager to the GameKit manager for multiplayer
+            print("🎮 ContentView: Setting up Game Center connection...")
             gameKitManager.setChessGameManager(chessGame)
             chessGame.setGameKitManager(gameKitManager)
+            print("🎮 ContentView: Game Center connection setup complete")
+            print("🎮 ContentView: Current match state: \(gameKitManager.matchState)")
+            print("🎮 ContentView: Is authenticated: \(gameKitManager.isAuthenticated)")
             
             // Ensure AI mode is properly reset on app start
             if !chessGame.aiModeActive {

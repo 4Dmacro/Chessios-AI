@@ -60,11 +60,21 @@ class GameKitManager: NSObject, ObservableObject {
             
             // Additional check: ensure we have a valid display name
             if GKLocalPlayer.local.displayName.isEmpty {
-                print("⚠️ GameKit: Authenticated but displayName is empty - forcing re-authentication")
-                // Force re-authentication by clearing the handler and setting it again
-                GKLocalPlayer.local.authenticateHandler = nil
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    self.authenticatePlayer()
+                print("⚠️ GameKit: Authenticated but displayName is empty - waiting for initialization")
+                // Wait a bit longer instead of forcing re-authentication
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    if GKLocalPlayer.local.displayName.isEmpty {
+                        print("❌ GameKit: Still no displayName - this might be a macOS Game Center issue")
+                        print("🔧 GameKit: Try signing out and back into Game Center in System Preferences")
+                        
+                        DispatchQueue.main.async {
+                            self.isAuthenticated = false
+                            self.errorMessage = "Game Center authentication incomplete. Please check System Preferences → Game Center and try again."
+                        }
+                    } else {
+                        print("✅ GameKit: displayName now available: \(GKLocalPlayer.local.displayName)")
+                        self.completeAuthentication()
+                    }
                 }
                 return
             }
@@ -112,34 +122,39 @@ class GameKitManager: NSObject, ObservableObject {
                     print("🔧 3. Ensure Game Center is enabled")
                     print("🔧 4. Restart the chess app")
                     
-                    // Try to force a fresh authentication attempt
-                    print("🔄 GameKit: Attempting to force fresh authentication...")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                        GKLocalPlayer.local.authenticateHandler = nil
-                        self.authenticatePlayer()
+                    DispatchQueue.main.async {
+                        self.isAuthenticated = false
+                        self.errorMessage = "Game Center authentication failed. Please sign in to Game Center in System Preferences first."
                     }
-                }
-                
-                DispatchQueue.main.async {
-                    self.isAuthenticated = false
-                    self.errorMessage = "Game Center authentication failed. Please sign in to Game Center in System Preferences first."
+                } else {
+                    DispatchQueue.main.async {
+                        self.isAuthenticated = false
+                        self.errorMessage = "Game Center authentication failed: \(error?.localizedDescription ?? "Unknown error")"
+                    }
                 }
             } else {
                 print("✅ GameKit: Authentication successful - no view controller needed")
                 
-                // Verify we have a valid authentication state
+                // CRITICAL FIX: Don't get stuck in re-authentication loop
+                // If authentication succeeds but displayName is empty, just wait a bit longer
                 if GKLocalPlayer.local.displayName.isEmpty {
                     print("⚠️ GameKit: Authentication successful but displayName is empty - waiting for full initialization")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
                         if GKLocalPlayer.local.displayName.isEmpty {
-                            print("❌ GameKit: Still no displayName after delay - forcing re-authentication")
-                            GKLocalPlayer.local.authenticateHandler = nil
-                            self.authenticatePlayer()
+                            print("❌ GameKit: Still no displayName after delay - this might be a macOS Game Center issue")
+                            print("🔧 GameKit: Try signing out and back into Game Center in System Preferences")
+                            
+                            DispatchQueue.main.async {
+                                self.isAuthenticated = false
+                                self.errorMessage = "Game Center authentication incomplete. Please check System Preferences → Game Center and try again."
+                            }
                         } else {
+                            print("✅ GameKit: displayName now available: \(GKLocalPlayer.local.displayName)")
                             self.completeAuthentication()
                         }
                     }
                 } else {
+                    print("✅ GameKit: displayName available immediately: \(GKLocalPlayer.local.displayName)")
                     self.completeAuthentication()
                 }
             }
