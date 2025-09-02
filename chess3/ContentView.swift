@@ -334,7 +334,14 @@ struct ContentView: View {
                     // New Game button
                     Button(action: {
                         if chessGame.isInitialLoadingComplete {
+                            // Reset local game first
                             chessGame.resetGame()
+                            
+                            // Send GameKit reset command to connected device
+                            if gameKitManager.matchState == .connected {
+                                gameKitManager.sendGameResetCommand()
+                                print("🔄 New Game: Sent GameKit reset command to connected device")
+                            }
                         } else {
                             print("⚠️ Cannot reset - initial loading not complete")
                         }

@@ -29,7 +29,7 @@ struct MultiplayerView: View {
             .padding(.horizontal)
             
             // Match Status
-            if gameKitManager.matchState != GameKitManager.MatchState.none {
+            if gameKitManager.matchState != .none {
                 HStack {
                     Image(systemName: statusIcon)
                         .foregroundColor(statusColor)
@@ -84,7 +84,7 @@ struct MultiplayerView: View {
                 HStack {
                     Image(systemName: "person.circle.fill")
                         .foregroundColor(gameKitManager.playerColor == .white ? .white : .black)
-                    Text("You are \(gameKitManager.playerColor.rawValue)")
+                    Text(gameKitManager.playerColor == .none ? "Assigning color..." : "You are \(gameKitManager.playerColor.rawValue)")
                         .font(.caption)
                         .foregroundColor(gameKitManager.playerColor == .white ? .white : .black)
                     Spacer()

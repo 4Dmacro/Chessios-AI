@@ -16,6 +16,7 @@ import Foundation
 import SceneKit
 import SwiftUI
 import Combine
+import GameKit
 
 enum GameMode {
     case play
@@ -61,6 +62,8 @@ class ChessGameManager: ObservableObject {
     func setGameKitManager(_ manager: GameKitManager) {
         self.gameKitManager = manager
         print("🎮 ChessGameManager: Connected to GameKitManager")
+        print("🎮 GameKit: Manager reference: \(manager)")
+        print("🎮 GameKit: gameKitManager is now: \(gameKitManager != nil ? "set" : "nil")")
     }
     
     // Function to send pending GameKit move after confirmation timer expires
@@ -69,6 +72,7 @@ class ChessGameManager: ObservableObject {
         print("🎮 GameKit: pendingGameKitMoveString: \(pendingGameKitMoveString ?? "nil")")
         print("🎮 GameKit: isLocalMove: \(isLocalMove)")
         print("🎮 GameKit: isProcessingReceivedMove: \(isProcessingReceivedMove)")
+        print("🎮 GameKit: gameKitManager is nil: \(gameKitManager == nil)")
         
         guard let moveString = pendingGameKitMoveString else {
             print("🎮 GameKit: No pending move to send")
@@ -85,6 +89,7 @@ class ChessGameManager: ObservableObject {
         
         guard let gameKitManager = self.gameKitManager else {
             print("🎮 GameKit: No GameKit manager available")
+            print("🎮 GameKit: Debug - gameKitManager was set to nil or never set")
             return
         }
         
@@ -264,16 +269,72 @@ class ChessGameManager: ObservableObject {
         print("🔄 ChessGameManager: rotateBoardForTurn() called for \(currentTurn.rawValue)'s turn")
         print("🔄 ChessGameManager: Current stack trace: \(Thread.callStackSymbols.prefix(5).joined(separator: "\n"))")
         
-        // Notify the piece controller to handle the rotation
+        // CRITICAL: In GameKit multiplayer mode, don't rotate the board after moves
+        // The board should only rotate once when the player color is assigned
+        if gameKitManager != nil {
+            print("🎮 GameKit: Skipping board rotation - board should stay in assigned player's perspective")
+            return
+        }
+        
+        // Notify the piece controller to handle the rotation (only for local/AI games)
         pieceController?.rotateBoardForTurn(currentTurn: currentTurn)
     }
     
     // MARK: - GameKit Board Rotation
     func rotateBoardForGameKitPlayer(playerColor: PieceColor) {
-        print("🎮 ChessGameManager: rotateBoardForGameKitPlayer() called for \(playerColor.rawValue) player")
+        print("🎮 GameKit: Rotating board for \(playerColor.rawValue) player")
         
-        // Use the existing rotation system but with the GameKit player's color
-        pieceController?.rotateBoardForTurn(currentTurn: playerColor)
+        // Rotate the board so the player sees their pieces at the bottom
+        // White pieces should be at the bottom for white player, top for black player
+        let targetRotation: Float = playerColor == .white ? 0.0 : Float.pi
+        
+        print("🎮 GameKit: Target rotation: \(targetRotation) radians (\(targetRotation * 180 / Float.pi) degrees)")
+        
+        // Apply rotation to the model node (container) - use Y-axis rotation, not X-axis
+        if let modelNode = modelNode {
+            let currentRotation = CGFloat(modelNode.eulerAngles.y)
+            print("🎮 GameKit: Current model rotation: \(currentRotation) radians (\(currentRotation * 180 / CGFloat.pi) degrees)")
+            
+            // Only rotate if the current rotation is different from target
+            if abs(currentRotation - CGFloat(targetRotation)) > 0.01 {
+                modelNode.eulerAngles.y = CGFloat(targetRotation)
+                print("🎮 GameKit: Model rotated to \(playerColor.rawValue) perspective (Y-axis rotation: \(targetRotation))")
+                print("🎮 GameKit: New model rotation: \(modelNode.eulerAngles.y) radians (\(CGFloat(modelNode.eulerAngles.y) * 180 / CGFloat.pi) degrees)")
+            } else {
+                print("🎮 GameKit: Model already at correct rotation, no change needed")
+            }
+        } else {
+            print("❌ GameKit: No model node found for rotation")
+        }
+        
+        // Also notify the piece controller to update piece positions and lists
+        pieceController?.updateBoardRotationForGameKit(playerColor: playerColor)
+        
+        // CRITICAL: Synchronize game state when player colors are assigned
+        synchronizeGameStateForGameKit()
+        
+        // Force update piece lists to reflect the correct player's pieces
+        DispatchQueue.main.async {
+            self.pieceController?.updatePieceLists()
+        }
+    }
+    
+    // MARK: - GameKit Game State Synchronization
+    private func synchronizeGameStateForGameKit() {
+        print("🎮 GameKit: Synchronizing game state for multiplayer")
+        
+        // Ensure both devices start with the same game state
+        // White always goes first in chess
+        gameState = "White's Turn"
+        
+        // Clear any existing selection
+        selectedPiece = nil
+        validMoves = []
+        
+        // Update piece lists to reflect current state
+        pieceController?.updatePieceLists()
+        
+        print("🎮 GameKit: Game state synchronized - turn: White")
     }
     
     // MARK: - GameKit Move Processing
@@ -405,14 +466,16 @@ class ChessGameManager: ObservableObject {
                 return 
             }
             
-            // Check if this is a purple arrow move (vertical plane move - x or y = 0, always has z component)
+            // Check if this is a purple arrow move (vertical plane move - minimal position change, mostly z-level change)
             let purpleFromFile = Int(fromString.first?.asciiValue ?? 0) - Int(Character("a").asciiValue!)
             let purpleFromRank = Int(fromString.last?.asciiValue ?? 0) - Int(Character("1").asciiValue!)
             let purpleToFile = Int(toString.first?.asciiValue ?? 0) - Int(Character("a").asciiValue!)
             let purpleToRank = Int(toString.last?.asciiValue ?? 0) - Int(Character("1").asciiValue!)
             
-            // Purple arrows: either x or y = 0, always has z component
-            let isPurpleArrowMove = (purpleFromFile == 0 || purpleFromRank == 0 || purpleToFile == 0 || purpleToRank == 0)
+            // Purple arrows: either x OR y = 0 (not both), AND position change is minimal
+            // This prevents misidentifying true 2D moves as purple arrows
+            let isPurpleArrowMove = ((purpleFromFile == 0 && purpleToFile == 0 && purpleFromRank != purpleToRank) || 
+                                    (purpleFromRank == 0 && purpleToRank == 0 && purpleFromFile != purpleToFile))
             
             if isPurpleArrowMove {
                 print("🎮 GameKit: Purple arrow move detected - vertical plane move with z-level change to \(zLevel)")
@@ -427,6 +490,11 @@ class ChessGameManager: ObservableObject {
                         let success = tryMove(from: from, to: to)
                         if success {
                             print("✅ GameKit: Purple arrow move executed successfully")
+                            print("🎮 GameKit: Purple arrow move completed - checking if move confirmation timer should start")
+                            
+                            // CRITICAL: Notify piece controller to start move confirmation timer for purple arrow moves
+                            print("🎮 GameKit: Notifying piece controller after purple arrow move")
+                            notifyPieceController()
                         } else {
                             print("❌ GameKit: Failed to execute purple arrow move")
                         }
@@ -441,7 +509,35 @@ class ChessGameManager: ObservableObject {
                 return
             }
             
-            // Standard 2D move (blue arrow - same position, different z)
+            // Check if this is a blue arrow move (same position, z-only change)
+            if fromString == toString {
+                print("🎮 GameKit: Blue arrow move detected - z-only change at same position")
+                // For blue arrow moves, find the piece at the specified file/rank but any z-level
+                var foundPiece = false
+                for (pos, piece) in chessBoard.pieces {
+                    if pos.file == purpleFromFile && pos.rank == purpleFromRank {
+                        print("🎮 GameKit: Found \(piece.color) \(piece.type) at \(pos.stringValue) for blue arrow move")
+                        let from = pos
+                        let to = ChessPosition3D(file: purpleToFile, rank: purpleToRank, z: zLevel)
+                        
+                        let success = tryMove(from: from, to: to)
+                        if success {
+                            print("✅ GameKit: Blue arrow move executed successfully")
+                        } else {
+                            print("❌ GameKit: Failed to execute blue arrow move")
+                        }
+                        foundPiece = true
+                        break
+                    }
+                }
+                
+                if !foundPiece {
+                    print("❌ GameKit: No piece found for blue arrow move at file \(purpleFromFile), rank \(purpleFromRank)")
+                }
+                return
+            }
+            
+            // Standard 2D move (different position, same z)
             guard fromString.count == 2 && toString.count == 2 else { 
                 print("❌ GameKit: Invalid 2D move coordinates format")
                 return 
@@ -461,13 +557,13 @@ class ChessGameManager: ObservableObject {
             let from = ChessPosition3D(file: standardFromFile, rank: standardFromRank, z: zLevel)
             let to = ChessPosition3D(file: standardToFile, rank: standardToRank, z: zLevel)
             
-            print("🎮 GameKit: 2D move coordinates: \(from.stringValue) -> \(to.stringValue) (z=\(zLevel))")
+            print("🎮 GameKit: Standard 2D move coordinates: \(from.stringValue) -> \(to.stringValue) (z=\(zLevel))")
             
             let success = tryMove(from: from, to: to)
             if success {
-                print("✅ GameKit: Received 2D move executed successfully")
+                print("✅ GameKit: Received standard 2D move executed successfully")
             } else {
-                print("❌ GameKit: Failed to execute received 2D move")
+                print("❌ GameKit: Failed to execute received standard 2D move")
             }
         }
     }
@@ -934,27 +1030,36 @@ class ChessGameManager: ObservableObject {
                 print("🎮 GameKit: Move detection debug - isPurpleArrow: \(isPurpleArrow)")
                 
                 if isPurpleArrow {
-                    // Purple arrow: vertical plane move - e2-e4:2 or a1-c1:2
-                    moveString = "\(fromSimple)-\(toSimple):\(to.z)"
+                    // Purple arrow: vertical plane move - e2-e4:1-3 or a1-c1:2-5 (showing z-level change)
+                    moveString = "\(fromSimple)-\(toSimple):\(from.z)-\(to.z)"
                     print("🎮 GameKit: Purple arrow move detected - vertical plane move: \(moveString)")
                 } else if isFileOrRankChange && isZChange {
                     // True 3D move: both position and z-level change
                     moveString = "\(fromSimple)-\(toSimple):\(from.z)-\(to.z)"
                     print("🎮 GameKit: True 3D move detected - storing with z-levels: \(moveString)")
                 } else if isZChange && !isFileOrRankChange {
-                    // Blue arrow move: only z-level changes (same file/rank) - e2-e2:3
-                    moveString = "\(fromSimple)-\(toSimple):\(to.z)"
-                    print("🎮 GameKit: Blue arrow move detected - storing with destination z-level: \(moveString)")
+                    // Blue arrow move: only z-level changes (same file/rank) - e2-e2:1-3 (from z to z)
+                    moveString = "\(fromSimple)-\(toSimple):\(from.z)-\(to.z)"
+                    print("🎮 GameKit: Blue arrow move detected - storing with both z-levels: \(moveString)")
                 } else {
-                    // Standard 2D move: no z-level change
-                    moveString = "\(fromSimple)-\(toSimple):\(from.z)"
-                    print("🎮 GameKit: 2D move detected - storing with z-level: \(moveString)")
+                    // Standard 2D move: no z-level change - show both z-levels for clarity
+                    moveString = "\(fromSimple)-\(toSimple):\(from.z)-\(to.z)"
+                    print("🎮 GameKit: 2D move detected - storing with z-levels: \(moveString)")
                 }
                 
                 // CRITICAL: Store move to be sent after confirmation timer expires
                 // This avoids timing conflicts with the confirmation timer
                 print("🎮 GameKit: Storing move to be sent after confirmation: \(moveString)")
                 pendingGameKitMoveString = moveString
+                
+                // CRITICAL: Start the move confirmation timer for purple arrow moves
+                // This ensures the countdown UI appears and the move is confirmed
+                if let pieceController = pieceController {
+                    print("🎮 GameKit: Starting move confirmation timer for purple arrow move")
+                    pieceController.startMoveConfirmation(from: from, to: to, pieceNode: usdzPiece ?? SCNNode())
+                } else {
+                    print("❌ GameKit: No piece controller available to start move confirmation timer")
+                }
             }
             
             // Move successful
@@ -1139,7 +1244,7 @@ class ChessGameManager: ObservableObject {
             let offset = Float(capturedCount - 1) * 0.9 // Space pieces out
             let finalPosition = SCNVector3(
                 graveyardPosition.x,
-                graveyardPosition.y + CGFloat(offset),
+                graveyardPosition.y + CGFloat(Float(CGFloat(offset))),
                 graveyardPosition.z
             )
             
@@ -2112,10 +2217,14 @@ class ChessGameManager: ObservableObject {
             // Let the pieces inherit the container's transformation naturally
             // since they are children of the board node (which is a child of the container)
             // Just apply a small scale adjustment if needed
-            let pieceScaleMultiplier: CGFloat = 1.0 // Adjust if pieces need to be larger/smaller
-            pieceNode.scale.x *= pieceScaleMultiplier
-            pieceNode.scale.y *= pieceScaleMultiplier
-            pieceNode.scale.z *= pieceScaleMultiplier
+            let pieceScaleMultiplier: Float = 1.0 // Adjust if pieces need to be larger/smaller
+            // Ensure we're working with SCNVector3 scale (Float components)
+            let currentScale = pieceNode.scale
+            pieceNode.scale = SCNVector3(
+                Float(currentScale.x) * pieceScaleMultiplier,
+                Float(currentScale.y) * pieceScaleMultiplier,
+                Float(currentScale.z) * pieceScaleMultiplier
+            )
             
             // Apply color material
             applyColorToPiece(pieceNode, color: piece.color)

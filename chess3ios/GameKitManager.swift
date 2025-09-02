@@ -10,6 +10,15 @@ import GameKit
 import SwiftUI
 import Combine
 
+// MARK: - Match State Enum
+enum MatchState: Equatable {
+    case none
+    case searching
+    case connected
+    case disconnected
+    case error(String)
+}
+
 class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
     @Published var isAuthenticated = false
     @Published var matchState: MatchState = .none
@@ -26,12 +35,7 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
         self.chessGameManager = manager
     }
     
-    enum MatchState: Equatable {
-        case none
-        case searching
-        case connected
-        case disconnected
-    }
+
     
     override init() {
         super.init()
@@ -446,6 +450,7 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
             print("🎮 GameKit: Match players: \(match.players.map { $0.gamePlayerID })")
             print("🎮 GameKit: Host determination - Local ID: \(localPlayerID), Other ID: \(match.players.first?.gamePlayerID ?? "none")")
             print("🎮 GameKit: Color assignment complete - this device is \(self.playerColor.rawValue)")
+            print("🎮 GameKit: UI should now show 'You are \(self.playerColor.rawValue)'")
             
             // Rotate the board to match the player's perspective
             if let chessGameManager = self.chessGameManager {
@@ -459,8 +464,40 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
         guard canFlipBoard else { return }
         
         DispatchQueue.main.async {
+            let oldColor = self.playerColor
             self.playerColor = self.playerColor == .white ? .black : .white
-            print("🔄 GameKit: Board flipped to \(self.playerColor.rawValue) perspective")
+            print("🔄 GameKit: Board flipped from \(oldColor.rawValue) to \(self.playerColor.rawValue) perspective")
+            print("🔄 GameKit: UI should now show 'You are \(self.playerColor.rawValue)'")
+            
+            // Send board flip command to connected device
+            if let match = self.currentMatch {
+                let flipCommand = "FLIP_BOARD:\(self.playerColor.rawValue)"
+                if let data = flipCommand.data(using: .utf8) {
+                    do {
+                        try match.sendData(toAllPlayers: data, with: .reliable)
+                        print("🔄 GameKit: Sent board flip command: \(flipCommand)")
+                    } catch {
+                        print("❌ GameKit: Failed to send board flip command: \(error)")
+                    }
+                }
+            }
+        }
+    }
+    
+    func sendGameResetCommand() {
+        guard let match = currentMatch else {
+            print("❌ GameKit: No current match available for sending reset command")
+            return
+        }
+        
+        let resetCommand = "RESET_GAME"
+        if let data = resetCommand.data(using: .utf8) {
+            do {
+                try match.sendData(toAllPlayers: data, with: .reliable)
+                print("🔄 GameKit: Sent game reset command to all players")
+            } catch {
+                print("❌ GameKit: Failed to send game reset command: \(error)")
+            }
         }
     }
     
@@ -473,20 +510,48 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
     func match(_ match: GKMatch, didReceive data: Data, fromRemotePlayer player: GKPlayer) {
         print("🎮 GameKit: Raw data received from \(player.displayName), size: \(data.count) bytes")
         
-        if let moveString = String(data: data, encoding: .utf8) {
+        if let commandString = String(data: data, encoding: .utf8) {
             DispatchQueue.main.async {
-                // Handle received move
-                print("🎮 GameKit: Received move: \(moveString) from \(player.displayName)")
+                // Handle received commands
+                print("🎮 GameKit: Received command: \(commandString) from \(player.displayName)")
                 
-                // Process the received move in the chess game
-                if let chessGameManager = self.chessGameManager {
-                    chessGameManager.processReceivedMove(moveString)
+                if commandString.hasPrefix("RESET_GAME") {
+                    // Handle game reset command
+                    print("🔄 GameKit: Received game reset command from \(player.displayName)")
+                    if let chessGameManager = self.chessGameManager {
+                        chessGameManager.resetGame()
+                    }
+                } else if commandString.hasPrefix("FLIP_BOARD:") {
+                    // Handle board flip command
+                    let components = commandString.components(separatedBy: ":")
+                    if components.count == 2, let colorString = components.last {
+                        let oldColor = self.playerColor
+                        print("🔄 GameKit: Received board flip command to \(colorString) from \(player.displayName)")
+                        if colorString == "white" {
+                            self.playerColor = .white
+                        } else if colorString == "black" {
+                            self.playerColor = .black
+                        }
+                        print("🔄 GameKit: Color changed from \(oldColor.rawValue) to \(self.playerColor.rawValue)")
+                        print("🔄 GameKit: UI should now show 'You are \(self.playerColor.rawValue)'")
+                        
+                        // Update the board rotation to match the new color
+                        if let chessGameManager = self.chessGameManager {
+                            chessGameManager.rotateBoardForGameKitPlayer(playerColor: self.playerColor)
+                        }
+                    }
                 } else {
-                    print("❌ GameKit: ChessGameManager not available to process move")
+                    // Handle received move (existing logic)
+                    print("🎮 GameKit: Processing as move: \(commandString)")
+                    if let chessGameManager = self.chessGameManager {
+                        chessGameManager.processReceivedMove(commandString)
+                    } else {
+                        print("❌ GameKit: ChessGameManager not available to process move")
+                    }
                 }
             }
         } else {
-            print("❌ GameKit: Could not decode move string from received data")
+            print("❌ GameKit: Could not decode command string from received data")
         }
     }
     

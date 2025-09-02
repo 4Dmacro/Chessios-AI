@@ -2488,6 +2488,26 @@ class ChessPieceController: ObservableObject {
         }
     }
     
+    // MARK: - GameKit Board Rotation
+    func updateBoardRotationForGameKit(playerColor: PieceColor) {
+        print("🎮 GameKit: ChessPieceController rotating board for \(playerColor.rawValue) player")
+        
+        // Update the board rotation state
+        isBoardRotatedForBlack = playerColor == .black
+        
+        // Update the game state display
+        if let chessGame = chessGame {
+            chessGame.gameState = "\(playerColor.rawValue.capitalized)'s Turn"
+        }
+        
+        // Force update piece lists to reflect the correct player's pieces
+        DispatchQueue.main.async {
+            self.updatePieceLists()
+        }
+        
+        print("🎮 GameKit: Board rotation updated - isBoardRotatedForBlack: \(isBoardRotatedForBlack)")
+    }
+    
     // MARK: - Move Confirmation Timer
     
     func startMoveConfirmation(from: ChessPosition3D, to: ChessPosition3D, pieceNode: SCNNode) {

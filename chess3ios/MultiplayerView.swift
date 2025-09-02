@@ -85,8 +85,8 @@ struct MultiplayerView: View {
                         }
                     }
                 } else {
-                    // iPad: Keep horizontal layout with larger buttons
-                    HStack(spacing: 8) {
+                    // iPad: Use vertical layout for consistency
+                    VStack(spacing: 8) {
                         Button("Host Game") {
                             gameKitManager.hostMatch()
                         }
@@ -147,7 +147,7 @@ struct MultiplayerView: View {
                     Image(systemName: "person.circle.fill")
                         .foregroundColor(gameKitManager.playerColor == .white ? .white : .black)
                         .font(isIPhone ? .caption2 : .caption)
-                    Text("You are \(gameKitManager.playerColor.rawValue)")
+                    Text(gameKitManager.playerColor == .none ? "Assigning color..." : "You are \(gameKitManager.playerColor.rawValue)")
                         .font(isIPhone ? .caption2 : .caption)
                         .foregroundColor(gameKitManager.playerColor == .white ? .white : .black)
                 }
@@ -184,6 +184,8 @@ struct MultiplayerView: View {
             return "xmark.circle.fill"
         case .none:
             return "circle"
+        case .error:
+            return "exclamationmark.triangle.fill"
         }
     }
     
@@ -197,6 +199,8 @@ struct MultiplayerView: View {
             return .red
         case .none:
             return .gray
+        case .error:
+            return .red
         }
     }
     
@@ -210,6 +214,8 @@ struct MultiplayerView: View {
             return "Disconnected"
         case .none:
             return "No active match"
+        case .error(let message):
+            return "Error: \(message)"
         }
     }
 }

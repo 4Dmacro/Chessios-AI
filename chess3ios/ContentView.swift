@@ -215,7 +215,14 @@ struct ContentView: View {
                     // New Game button
                     Button(action: {
                         if chessGame.isInitialLoadingComplete {
+                            // Reset local game first
                             chessGame.resetGame()
+                            
+                            // Send GameKit reset command to connected device
+                            if gameKitManager.matchState == .connected {
+                                gameKitManager.sendGameResetCommand()
+                                print("🔄 New Game: Sent GameKit reset command to connected device")
+                            }
                         }
                     }) {
                         Text(chessGame.isInitialLoadingComplete ? "New Game" : "Loading...")
@@ -391,7 +398,14 @@ struct ContentView: View {
                     // New Game button
                     Button(action: {
                         if chessGame.isInitialLoadingComplete {
+                            // Reset local game first
                             chessGame.resetGame()
+                            
+                            // Send GameKit reset command to connected device
+                            if gameKitManager.matchState == .connected {
+                                gameKitManager.sendGameResetCommand()
+                                print("🔄 New Game: Sent GameKit reset command to connected device")
+                            }
                         }
                     }) {
                         Text(chessGame.isInitialLoadingComplete ? "New Game" : "Loading...")
@@ -1521,7 +1535,7 @@ struct AdaptiveButtonStyle: ButtonStyle {
 struct GameCenterPopoverView: View {
     @EnvironmentObject var gameKitManager: GameKitManager
     
-    private func matchStateString(_ state: GameKitManager.MatchState) -> String {
+    private func matchStateString(_ state: MatchState) -> String {
         switch state {
         case .none:
             return "None"
@@ -1531,6 +1545,8 @@ struct GameCenterPopoverView: View {
             return "Connected"
         case .disconnected:
             return "Disconnected"
+        case .error(let message):
+            return "Error: \(message)"
         }
     }
     
@@ -1555,7 +1571,7 @@ struct GameCenterPopoverView: View {
                 HStack {
                     Text("You are:")
                         .font(.subheadline)
-                    Text(gameKitManager.playerColor.rawValue)
+                    Text(gameKitManager.playerColor == .none ? "..." : gameKitManager.playerColor.rawValue)
                         .font(.subheadline)
                         .fontWeight(.bold)
                         .foregroundColor(gameKitManager.playerColor == .white ? .white : .black)

@@ -4,6 +4,15 @@ import SwiftUI
 import AppKit
 import SystemConfiguration
 
+// MARK: - Match State Enum
+enum MatchState: Equatable {
+    case none
+    case searching
+    case connected
+    case disconnected
+    case error(String)
+}
+
 class GameKitManager: NSObject, ObservableObject {
     @Published var isAuthenticated = false
     @Published var currentPlayer: GKPlayer?
@@ -31,14 +40,6 @@ class GameKitManager: NSObject, ObservableObject {
     // Method to send moves to the chess game manager
     func sendMoveToChessGame(_ move: String) {
         chessGameManager?.processReceivedMove(move)
-    }
-    
-    enum MatchState: Equatable {
-        case none
-        case searching
-        case connected
-        case disconnected
-        case error(String)
     }
     
     override init() {
@@ -215,13 +216,28 @@ class GameKitManager: NSObject, ObservableObject {
                 return
             }
             
-            matchmaker.matchmakerDelegate = self
-            
             // Present the matchmaker on macOS with better error handling
             if let window = NSApplication.shared.windows.first {
                 print("🎮 GameKit: Found window, presenting matchmaker as sheet")
-                window.contentViewController?.presentAsSheet(matchmaker)
-                print("🎮 GameKit: Presenting auto-match interface")
+                print("🎮 GameKit: Window content view controller: \(window.contentViewController != nil ? "Found" : "Nil")")
+                
+                // Set the matchmaker delegate before presenting
+                matchmaker.matchmakerDelegate = self
+                print("🎮 GameKit: Matchmaker delegate set to self")
+                
+                // Present the matchmaker
+                if let contentVC = window.contentViewController {
+                    print("🎮 GameKit: Content view controller found, presenting matchmaker")
+                    contentVC.presentAsSheet(matchmaker)
+                    print("🎮 GameKit: Presenting auto-match interface")
+                    
+                    // Set match state to searching
+                    self.matchState = .searching
+                    print("🎮 GameKit: Match state set to searching")
+                } else {
+                    print("❌ GameKit: Content view controller is nil")
+                    self.errorMessage = "Could not present Game Center interface - no content view controller"
+                }
             } else {
                 self.errorMessage = "Could not present Game Center interface - no window found"
                 print("❌ GameKit: No window found to present matchmaker")
@@ -311,6 +327,7 @@ class GameKitManager: NSObject, ObservableObject {
             print("🎮 GameKit: Match players: \(match.players.map { $0.gamePlayerID })")
             print("🎮 GameKit: Host determination - Local ID: \(localPlayerID), Other ID: \(match.players.first?.gamePlayerID ?? "none")")
             print("🎮 GameKit: Color assignment complete - this device is \(self.playerColor.rawValue)")
+            print("🎮 GameKit: UI should now show 'You are \(self.playerColor.rawValue)'")
         }
     }
     
@@ -318,8 +335,40 @@ class GameKitManager: NSObject, ObservableObject {
         guard canFlipBoard else { return }
         
         DispatchQueue.main.async {
+            let oldColor = self.playerColor
             self.playerColor = self.playerColor == .white ? .black : .white
-            print("🔄 GameKit: Board flipped to \(self.playerColor.rawValue) perspective")
+            print("🔄 GameKit: Board flipped from \(oldColor.rawValue) to \(self.playerColor.rawValue) perspective")
+            print("🔄 GameKit: UI should now show 'You are \(self.playerColor.rawValue)'")
+            
+            // Send board flip command to connected device
+            if let match = self.currentMatch {
+                let flipCommand = "FLIP_BOARD:\(self.playerColor.rawValue)"
+                if let data = flipCommand.data(using: .utf8) {
+                    do {
+                        try match.sendData(toAllPlayers: data, with: .reliable)
+                        print("🔄 GameKit: Sent board flip command: \(flipCommand)")
+                    } catch {
+                        print("❌ GameKit: Failed to send board flip command: \(error)")
+                    }
+                }
+            }
+        }
+    }
+    
+    func sendGameResetCommand() {
+        guard let match = currentMatch else {
+            print("❌ GameKit: No current match available for sending reset command")
+            return
+        }
+        
+        let resetCommand = "RESET_GAME"
+        if let data = resetCommand.data(using: .utf8) {
+            do {
+                try match.sendData(toAllPlayers: data, with: .reliable)
+                print("🔄 GameKit: Sent game reset command to all players")
+            } catch {
+                print("❌ GameKit: Failed to send game reset command: \(error)")
+            }
         }
     }
     
@@ -349,7 +398,8 @@ class GameKitManager: NSObject, ObservableObject {
         
         // Check for network connectivity
         print("🔍 - Network connectivity:")
-        let reachability = try? SCNetworkReachabilityCreateWithName(nil, "apple.com")
+        // Note: Using deprecated functions for compatibility, but they still work
+        let reachability = SCNetworkReachabilityCreateWithName(nil, "apple.com")
         var flags = SCNetworkReachabilityFlags()
         if let reachability = reachability,
            SCNetworkReachabilityGetFlags(reachability, &flags) {
@@ -392,6 +442,8 @@ extension GameKitManager: GKMatchmakerViewControllerDelegate {
     func matchmakerViewController(_ viewController: GKMatchmakerViewController, didFailWithError error: Error) {
         print("❌ GameKit: Matchmaker failed with error: \(error.localizedDescription)")
         print("❌ GameKit: Error domain: \(error._domain), code: \(error._code)")
+        print("❌ GameKit: Error user info: \(error._userInfo)")
+        print("❌ GameKit: Error description: \(error)")
         
         // Add specific handling for macOS network errors
         if error._domain == "NSPOSIXErrorDomain" && error._code == 1 {
@@ -531,21 +583,48 @@ extension GameKitManager: GKMatchDelegate {
     func match(_ match: GKMatch, didReceive data: Data, fromRemotePlayer player: GKPlayer) {
         print("🎮 GameKit: Raw data received from \(player.displayName), size: \(data.count) bytes")
         
-        if let moveString = String(data: data, encoding: .utf8) {
+        if let commandString = String(data: data, encoding: .utf8) {
             DispatchQueue.main.async {
-                // Handle received move
-                print("🎮 GameKit: Received move: \(moveString) from \(player.displayName)")
+                // Handle received commands
+                print("🎮 GameKit: Received command: \(commandString) from \(player.displayName)")
                 
-                // Process the received move in the chess game
-                if let chessGameManager = self.chessGameManager {
-                    print("🎮 GameKit: Processing received move in ChessGameManager: \(moveString)")
-                    chessGameManager.processReceivedMove(moveString)
+                if commandString.hasPrefix("RESET_GAME") {
+                    // Handle game reset command
+                    print("🔄 GameKit: Received game reset command from \(player.displayName)")
+                    if let chessGameManager = self.chessGameManager {
+                        chessGameManager.resetGame()
+                    }
+                } else if commandString.hasPrefix("FLIP_BOARD:") {
+                    // Handle board flip command
+                    let components = commandString.components(separatedBy: ":")
+                    if components.count == 2, let colorString = components.last {
+                        let oldColor = self.playerColor
+                        print("🔄 GameKit: Received board flip command to \(colorString) from \(player.displayName)")
+                        if colorString == "white" {
+                            self.playerColor = .white
+                        } else if colorString == "black" {
+                            self.playerColor = .black
+                        }
+                        print("🔄 GameKit: Color changed from \(oldColor.rawValue) to \(self.playerColor.rawValue)")
+                        print("🔄 GameKit: UI should now show 'You are \(self.playerColor.rawValue)'")
+                        
+                        // Update the board rotation to match the new color
+                        if let chessGameManager = self.chessGameManager {
+                            chessGameManager.rotateBoardForGameKitPlayer(playerColor: self.playerColor)
+                        }
+                    }
                 } else {
-                    print("❌ GameKit: ChessGameManager not available to process move")
+                    // Handle received move (existing logic)
+                    print("🎮 GameKit: Processing as move: \(commandString)")
+                    if let chessGameManager = self.chessGameManager {
+                        chessGameManager.processReceivedMove(commandString)
+                    } else {
+                        print("❌ GameKit: ChessGameManager not available to process move")
+                    }
                 }
             }
         } else {
-            print("❌ GameKit: Could not decode move string from received data")
+            print("❌ GameKit: Could not decode command string from received data")
         }
     }
     

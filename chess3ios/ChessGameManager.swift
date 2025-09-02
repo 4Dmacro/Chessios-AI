@@ -16,6 +16,7 @@ import Foundation
 import SceneKit
 import SwiftUI
 import Combine
+import GameKit
 
 enum GameMode {
     case play
@@ -330,17 +331,19 @@ class ChessGameManager: ObservableObject {
                 return 
             }
             
-            // Check if this is a purple arrow move (same file/rank, different z)
+            // Check if this is a purple arrow move (vertical plane move - one coordinate changes, z changes)
             let fromFile = Int(fromString.first?.asciiValue ?? 0) - Int(Character("a").asciiValue!)
             let fromRank = Int(fromString.last?.asciiValue ?? 0) - Int(Character("1").asciiValue!)
             let toFile = Int(toString.first?.asciiValue ?? 0) - Int(Character("a").asciiValue!)
             let toRank = Int(toString.last?.asciiValue ?? 0) - Int(Character("1").asciiValue!)
             
-            let isPurpleArrowMove = (fromFile == toFile) && (fromRank == toRank)
+            // Purple arrows: either file OR rank changes (not both), and z changes
+            // This correctly detects vertical plane moves like d1-b1:5
+            let isPurpleArrowMove = ((fromFile != toFile && fromRank == toRank) || (fromFile == toFile && fromRank != toRank))
             
             if isPurpleArrowMove {
-                print("🎮 GameKit: Purple arrow move detected - same file/rank, z-level change to \(zLevel)")
-                // For purple arrow moves, find the piece at the same file/rank but any z-level
+                print("🎮 GameKit: Purple arrow move detected - vertical plane move to z-level \(zLevel)")
+                // For purple arrow moves, find the piece at the specified file/rank but any z-level
                 var foundPiece = false
                 for (pos, piece) in chessBoard.pieces {
                     if pos.file == fromFile && pos.rank == fromRank {
@@ -1216,18 +1219,28 @@ class ChessGameManager: ObservableObject {
                     let isFileOrRankChange = (from.file != to.file) || (from.rank != to.rank)
                     let isZChange = (from.z != to.z)
                     
-                    if isFileOrRankChange && isZChange {
+                    // Check for purple arrow (vertical plane move - one coordinate changes, z changes)
+                    let isPurpleArrow = isZChange && (
+                        (from.file != to.file && from.rank == to.rank) || // file changes, rank stays
+                        (from.file == to.file && from.rank != to.rank)    // rank changes, file stays
+                    )
+                    
+                    if isPurpleArrow {
+                        // Purple arrow: vertical plane move - e2-e4:1-3 or a1-c1:2-5 (showing z-level change)
+                        moveString = "\(fromSimple)-\(toSimple):\(from.z)-\(to.z)"
+                        print("🎮 GameKit: Purple arrow move detected - vertical plane move: \(moveString)")
+                    } else if isFileOrRankChange && isZChange {
                         // True 3D move: both position and z-level change
                         moveString = "\(fromSimple)-\(toSimple):\(from.z)-\(to.z)"
                         print("🎮 GameKit: True 3D move detected - storing with z-levels: \(moveString)")
                     } else if isZChange && !isFileOrRankChange {
-                        // Purple arrow move: only z-level changes (same file/rank)
-                        moveString = "\(fromSimple)-\(toSimple):\(to.z)"
-                        print("🎮 GameKit: Purple arrow move detected - storing with destination z-level: \(moveString)")
+                        // Blue arrow move: only z-level changes (same file/rank) - e2-e2:1-3 (from z to z)
+                        moveString = "\(fromSimple)-\(toSimple):\(from.z)-\(to.z)"
+                        print("🎮 GameKit: Blue arrow move detected - storing with both z-levels: \(moveString)")
                     } else {
-                        // Standard 2D move: no z-level change
-                        moveString = "\(fromSimple)-\(toSimple):\(from.z)"
-                        print("🎮 GameKit: 2D move detected - storing with z-level: \(moveString)")
+                        // Standard 2D move: no z-level change - show both z-levels for clarity
+                        moveString = "\(fromSimple)-\(toSimple):\(from.z)-\(to.z)"
+                        print("🎮 GameKit: 2D move detected - storing with z-levels: \(moveString)")
                     }
                     
                     // CRITICAL: Store move to be sent after confirmation timer expires
