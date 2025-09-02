@@ -1175,7 +1175,7 @@ class ChessGameManager: ObservableObject {
                     pendingGameKitMoveString = moveString
                     
                     // Store promotion info for later execution
-                    pendingPromotion = (from: from, to: to, piece: piece)
+                pendingPromotion = (from: from, to: to, piece: piece)
                     
                     // CRITICAL: Update UI state on main thread for SwiftUI
                     DispatchQueue.main.async {

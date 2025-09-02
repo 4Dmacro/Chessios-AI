@@ -219,6 +219,8 @@ struct ContentView: View {
                 Spacer()
             }
             
+
+            
             // Move Confirmation UI (overlay when move is pending)
             if pieceController.isMovePending {
                 HStack {
@@ -331,30 +333,6 @@ struct ContentView: View {
             // Top control bar
             VStack {
                 HStack {
-                    // New Game button
-                    Button(action: {
-                        if chessGame.isInitialLoadingComplete {
-                            // Reset local game first
-                            chessGame.resetGame()
-                            
-                            // Send GameKit reset command to connected device
-                            if gameKitManager.matchState == .connected {
-                                gameKitManager.sendGameResetCommand()
-                                print("🔄 New Game: Sent GameKit reset command to connected device")
-                            }
-                        } else {
-                            print("⚠️ Cannot reset - initial loading not complete")
-                        }
-                    }) {
-                        Text(chessGame.isInitialLoadingComplete ? "New Game" : "Loading...")
-                            .foregroundColor(chessGame.isInitialLoadingComplete ? .white : .gray)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(.regularMaterial.opacity(0.3))
-                    .cornerRadius(8)
-                    
                     Spacer()
                     
                     // Game Mode Selector
@@ -420,6 +398,80 @@ struct ContentView: View {
                                 .foregroundColor(.green)
                                 .multilineTextAlignment(.center)
                         }
+                    }
+                    
+                    // New Game Button (Game Center) - Right after AI Controls in same HStack
+                    // Debug: Show current match state
+                    Text("Match State: \(String(describing: gameKitManager.matchState))")
+                        .font(.caption2)
+                        .foregroundColor(.yellow)
+                    
+                    // Debug: Show authentication status
+                    Text("Authenticated: \(gameKitManager.isAuthenticated ? "Yes" : "No")")
+                        .font(.caption2)
+                        .foregroundColor(.yellow)
+                    
+                    // Debug: Force authentication button
+                    Button("🔐 Force Auth") {
+                        gameKitManager.authenticatePlayer()
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.purple.opacity(0.4))
+                    .foregroundColor(.white)
+                    .cornerRadius(4)
+                    .font(.caption2)
+                    
+                    if gameKitManager.matchState == .connected {
+                        Button("🔄 New Game") {
+                            // Reset local game first (like iOS does)
+                            chessGame.resetGame()
+                            
+                            // Send GameKit reset command to connected device
+                            gameKitManager.sendGameResetCommand()
+                            print("🔄 New Game: Sent GameKit reset command to connected device")
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.blue.opacity(0.4))
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.blue, lineWidth: 2)
+                        )
+                        
+                        // Flip Board Button (Game Center)
+                        Button("🔄 Flip Board") {
+                            gameKitManager.flipBoard()
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.orange.opacity(0.4))
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.orange, lineWidth: 2)
+                        )
+                    } else {
+                        // Show buttons for other states too, but with different functionality
+                        Button("🔄 New Game (Local)") {
+                            chessGame.resetGame()
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.gray.opacity(0.4))
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                        
+                        Text("Connect to Game Center to play multiplayer")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
                     }
                     
                     Spacer()

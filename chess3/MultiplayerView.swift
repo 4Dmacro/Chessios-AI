@@ -69,15 +69,7 @@ struct MultiplayerView: View {
                 .padding(.horizontal)
             }
             
-            // Flip Board Button (when connected)
-            if gameKitManager.canFlipBoard && gameKitManager.matchState == .connected {
-                Button("Flip Board") {
-                    gameKitManager.flipBoard()
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.orange)
-                .padding(.horizontal)
-            }
+
             
             // Player Color Display (when connected)
             if gameKitManager.matchState == .connected {
