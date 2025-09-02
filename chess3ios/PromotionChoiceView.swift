@@ -19,6 +19,13 @@ struct PromotionChoiceView: View {
                 .font(.title2)
                 .fontWeight(.bold)
             
+            // DEBUG: Add logging to see if view is being displayed
+            .onAppear {
+                print("🔍 iOS PromotionChoiceView: View appeared")
+                print("🔍 iOS PromotionChoiceView: chessGame.showPromotionChoice = \(chessGame.showPromotionChoice)")
+                print("🔍 iOS PromotionChoiceView: promotionChoices = \(chessGame.promotionChoices)")
+            }
+            
             Text("Select which piece your pawn should promote to:")
                 .font(.body)
                 .foregroundColor(.secondary)
@@ -26,7 +33,10 @@ struct PromotionChoiceView: View {
             HStack(spacing: 20) {
                 ForEach(chessGame.promotionChoices, id: \.self) { pieceType in
                     Button(action: {
+                        print("🔍 iOS PromotionChoiceView: Button tapped for \(pieceType.rawValue)")
+                        print("🔍 iOS PromotionChoiceView: About to call chessGame.selectPromotionPiece(\(pieceType.rawValue))")
                         chessGame.selectPromotionPiece(pieceType)
+                        print("🔍 iOS PromotionChoiceView: selectPromotionPiece call completed")
                     }) {
                         VStack {
                             Text(pieceIcon(for: pieceType))

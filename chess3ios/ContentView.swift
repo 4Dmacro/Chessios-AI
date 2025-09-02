@@ -198,6 +198,9 @@ struct ContentView: View {
                 chessGame.rotateBoardForGameKitPlayer(playerColor: newColor)
             }
         }
+        .sheet(isPresented: $chessGame.showPromotionChoice) {
+            PromotionChoiceView(chessGame: chessGame)
+        }
     }
     
     

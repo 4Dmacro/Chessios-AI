@@ -50,7 +50,7 @@ class ChessGameManager: ObservableObject {
     }
     
     // GameKit manager reference for multiplayer
-    private var gameKitManager: GameKitManager?
+    var gameKitManager: GameKitManager?
     
     // GameKit move processing flags to prevent infinite loops
     private var isProcessingReceivedMove = false
@@ -341,6 +341,21 @@ class ChessGameManager: ObservableObject {
     func processReceivedMove(_ moveString: String) {
         print("🎮 ChessGameManager: Processing received move: \(moveString)")
         
+        // CRITICAL: Check for GameKit commands first (like promotion)
+        if moveString.hasPrefix("PROMOTION:") {
+            let promotionTypeString = String(moveString.dropFirst("PROMOTION:".count))
+            print("🎮 GameKit: Received promotion command: \(promotionTypeString)")
+            
+            // Execute the promotion on the receiving device
+            if let promotionType = PieceType(rawValue: promotionTypeString) {
+                print("🎮 GameKit: Executing received promotion to \(promotionType.rawValue)")
+                executePendingPromotion(to: promotionType)
+            } else {
+                print("❌ GameKit: Invalid promotion type: \(promotionTypeString)")
+            }
+            return
+        }
+        
         // Set flag to prevent sending moves during processing
         isProcessingReceivedMove = true
         isLocalMove = false // Mark this as a received move
@@ -582,6 +597,14 @@ class ChessGameManager: ObservableObject {
     func selectPromotionPiece(_ pieceType: PieceType) {
         print("♕ User selected promotion piece: \(pieceType.rawValue)")
         showPromotionChoice = false
+        
+        // CRITICAL: Send promotion choice via GameKit if in multiplayer mode
+        if let gameKitManager = gameKitManager, gameKitManager.matchState == .connected {
+            let promotionCommand = "PROMOTION:\(pieceType.rawValue)"
+            print("🎮 GameKit: Sending promotion choice via GameKit: \(promotionCommand)")
+            gameKitManager.sendMove(promotionCommand)
+        }
+        
         executePendingPromotion(to: pieceType)
     }
     
@@ -1122,14 +1145,84 @@ class ChessGameManager: ObservableObject {
             // --- PAWN PROMOTION 3D SYNC ---
             // If a pawn was promoted (reached opposite end rank on level i or viii), mark it for promotion but don't execute yet
             // RESTRICTION: Only allow promotion on level i (z = 0) and level viii (z = 7)
+            
+            // DEBUG: Add detailed promotion detection logging
+            print("🔍 macOS Promotion Debug: Checking promotion for \(piece.type.rawValue) at \(to.stringValue)")
+            print("🔍 macOS Promotion Debug: piece.type == .pawn: \(piece.type == .pawn)")
+            print("🔍 macOS Promotion Debug: piece.color == .white && to.rank == 7: \(piece.color == .white && to.rank == 7)")
+            print("🔍 macOS Promotion Debug: piece.color == .black && to.rank == 0: \(piece.color == .black && to.rank == 0)")
+            print("🔍 macOS Promotion Debug: to.z == 0 || to.z == 7: \(to.z == 0 || to.z == 7)")
+            print("🔍 macOS Promotion Debug: isLocalMove: \(isLocalMove)")
+            print("🔍 macOS Promotion Debug: gameKitManager != nil: \(gameKitManager != nil)")
+            
             if piece.type == .pawn && ((piece.color == .white && to.rank == 7) || (piece.color == .black && to.rank == 0)) && (to.z == 0 || to.z == 7) {
                 let levelName = to.z == 0 ? "i" : "viii"
-                print("♕ 3D Pawn promotion detected at \(to.stringValue) on level \(levelName)! Showing promotion choice UI.");
-                // Store promotion info and show selection UI
-                pendingPromotion = (from: from, to: to, piece: piece)
-                showPromotionChoice = true
+                print("♕ 3D Pawn promotion detected at \(to.stringValue) on level \(levelName)!");
+                
+                // CRITICAL: For GameKit multiplayer, we need to:
+                // 1. Store the move string for GameKit sending
+                // 2. Store promotion info for later execution
+                // 3. Trigger move confirmation UI so the move gets sent
+                if isLocalMove && gameKitManager != nil {
+                    print("🎮 GameKit: Local pawn promotion - storing move and showing promotion choice UI on initiating device");
+                    
+                    // Store the move string for GameKit sending (this is the actual pawn move)
+                    let fromSimple = "\(Character(UnicodeScalar(97 + from.file)!))\(from.rank + 1)"
+                    let toSimple = "\(Character(UnicodeScalar(97 + to.file)!))\(to.rank + 1)"
+                    let moveString = "\(fromSimple)-\(toSimple):\(from.z)-\(to.z)"
+                    
+                    print("🎮 GameKit: Storing promotion move string: \(moveString)")
+                    pendingGameKitMoveString = moveString
+                    
+                    // Store promotion info for later execution
+                    pendingPromotion = (from: from, to: to, piece: piece)
+                    
+                    // CRITICAL: Update UI state on main thread for SwiftUI
+                    DispatchQueue.main.async {
+                        print("🎮 GameKit: Setting showPromotionChoice = true on main thread")
+                        self.showPromotionChoice = true
+                    }
+                    
+                    // CRITICAL: Trigger move confirmation UI so the move gets sent via GameKit
+                    // The promotion choice will be sent separately after the move is confirmed
+                    print("🎮 GameKit: Triggering move confirmation for promotion move");
+                    if let pieceController = pieceController {
+                        // Find the piece node for the pawn that's being promoted
+                        // CRITICAL: After the move, the piece is at the destination position (to), not the original position (from)
+                        let pieceNode = usdzPieces[to] ?? pieceNodes[to]
+                        if let pieceNode = pieceNode {
+                            print("🎮 GameKit: Found piece node for promotion move confirmation: \(pieceNode.name ?? "unknown")")
+                            pieceController.startMoveConfirmation(from: from, to: to, pieceNode: pieceNode)
+                        } else {
+                            print("❌ GameKit: Could not find piece node for promotion move confirmation")
+                            print("🔍 macOS Debug: Checking what pieces are available:")
+                            print("🔍 macOS Debug: usdzPieces at \(to.stringValue): \(usdzPieces[to]?.name ?? "nil")")
+                            print("🔍 macOS Debug: pieceNodes at \(to.stringValue): \(pieceNodes[to]?.name ?? "nil")")
+                            print("🔍 macOS Debug: All usdzPieces positions:")
+                            for (pos, node) in usdzPieces {
+                                print("  - \(pos.stringValue): \(node.name ?? "unknown")")
+                            }
+                        }
+                    }
+                    
+                } else if !isLocalMove && gameKitManager != nil {
+                    print("🎮 GameKit: Received pawn promotion - waiting for promotion choice from initiating device");
+                    // Store promotion info but don't show UI - wait for GameKit command
+                    pendingPromotion = (from: from, to: to, piece: piece)
+                    showPromotionChoice = false
+                } else {
+                    print("♕ Local game pawn promotion - showing promotion choice UI");
+                    // Store promotion info and show selection UI for local games
+                    pendingPromotion = (from: from, to: to, piece: piece)
+                    
+                    // CRITICAL: Update UI state on main thread for SwiftUI
+                    DispatchQueue.main.async {
+                        print("♕ Setting showPromotionChoice = true on main thread for local game")
+                        self.showPromotionChoice = true
+                    }
+                }
             } else if piece.type == .pawn && ((piece.color == .white && to.rank == 7) || (piece.color == .black && to.rank == 0)) && to.z != 0 && to.z != 7 {
-                let levelName = to.z == 1 ? "ii" : to.z == 2 ? "iii" : to.z == 3 ? "iv" : to.z == 4 ? "v" : to.z == 5 ? "vi" : "vii"
+                let levelName = to.z == 1 ? "ii" : to.z == 2 ? "iii" : to.z == 3 ? "iv" : to.z == 4 ? "v" : to.z == 5 ? "vi" : to.z == 6 ? "vii" : "unknown"
                 print("🚫 Pawn promotion blocked on level \(levelName) (z=\(to.z)) - promotion only allowed on level i and viii")
             }
             

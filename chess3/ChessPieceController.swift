@@ -2635,9 +2635,13 @@ class ChessPieceController: ObservableObject {
         
         // Check if promotion choice UI should be shown, otherwise execute any pending promotion
         if let chessGame = chessGame {
-            // Only auto-execute promotion if choice UI is not being shown
-            if !chessGame.showPromotionChoice {
+            // CRITICAL: Only auto-execute promotion for LOCAL moves, not for received moves in GameKit mode
+            if !chessGame.showPromotionChoice && chessGame.gameKitManager == nil {
+                print("♕ Auto-executing promotion for local game")
                 chessGame.executePendingPromotion()
+            } else if !chessGame.showPromotionChoice && chessGame.gameKitManager != nil {
+                print("♕ GameKit mode: Waiting for promotion choice from initiating device")
+                // Don't auto-execute promotion - wait for GameKit command
             } else {
                 print("♕ Promotion choice UI is showing - waiting for user selection")
             }
