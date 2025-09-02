@@ -20,6 +20,19 @@ class GameKitManager: NSObject, ObservableObject {
     // Track current invitation for host determination
     private var currentInvitation: GKInvite?
     
+    // Reference to the chess game manager for move processing
+    private var chessGameManager: ChessGameManager?
+    
+    func setChessGameManager(_ manager: ChessGameManager) {
+        self.chessGameManager = manager
+        print("🎮 GameKit: Connected to ChessGameManager")
+    }
+    
+    // Method to send moves to the chess game manager
+    func sendMoveToChessGame(_ move: String) {
+        chessGameManager?.processReceivedMove(move)
+    }
+    
     enum MatchState: Equatable {
         case none
         case searching
@@ -524,9 +537,12 @@ extension GameKitManager: GKMatchDelegate {
                 print("🎮 GameKit: Received move: \(moveString) from \(player.displayName)")
                 
                 // Process the received move in the chess game
-                // This would typically involve calling a method on your ChessGameManager
-                // For now, we'll just log it
-                print("🎮 GameKit: Move received and ready for processing: \(moveString)")
+                if let chessGameManager = self.chessGameManager {
+                    print("🎮 GameKit: Processing received move in ChessGameManager: \(moveString)")
+                    chessGameManager.processReceivedMove(moveString)
+                } else {
+                    print("❌ GameKit: ChessGameManager not available to process move")
+                }
             }
         } else {
             print("❌ GameKit: Could not decode move string from received data")

@@ -611,6 +611,10 @@ struct ContentView: View {
             pieceController.setChessGame(chessGame)
             chessGame.setPieceController(pieceController)
             
+            // Connect the chess game manager to the GameKit manager for multiplayer
+            gameKitManager.setChessGameManager(chessGame)
+            chessGame.setGameKitManager(gameKitManager)
+            
             // Ensure AI mode is properly reset on app start
             if !chessGame.aiModeActive {
                 print("🤖 Ensuring AI mode is inactive on app start")

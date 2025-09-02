@@ -2626,6 +2626,15 @@ class ChessPieceController: ObservableObject {
         // Human move confirmed - AI can now take its turn immediately
         print("⏰ Human move confirmed - AI can now take its turn")
         
+        // Send pending GameKit move after confirmation timer expires
+        print("🎮 GameKit: confirmMove() - about to send pending move")
+        if let chessGame = chessGame {
+            print("🎮 GameKit: confirmMove() - chessGame found, calling sendPendingGameKitMove()")
+            chessGame.sendPendingGameKitMove()
+        } else {
+            print("🎮 GameKit: confirmMove() - chessGame is nil!")
+        }
+        
         // Rotate board for the new turn after a 2-second delay
         if let chessGame = chessGame {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {

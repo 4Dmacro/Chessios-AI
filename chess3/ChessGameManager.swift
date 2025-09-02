@@ -48,6 +48,58 @@ class ChessGameManager: ObservableObject {
         return pieceController
     }
     
+    // GameKit manager reference for multiplayer
+    private var gameKitManager: GameKitManager?
+    
+    // GameKit move processing flags to prevent infinite loops
+    private var isProcessingReceivedMove = false
+    private var isLocalMove = false
+    
+    // Pending GameKit move to be sent after confirmation timer expires
+    private var pendingGameKitMoveString: String?
+    
+    func setGameKitManager(_ manager: GameKitManager) {
+        self.gameKitManager = manager
+        print("🎮 ChessGameManager: Connected to GameKitManager")
+    }
+    
+    // Function to send pending GameKit move after confirmation timer expires
+    func sendPendingGameKitMove() {
+        print("🎮 GameKit: sendPendingGameKitMove() called")
+        print("🎮 GameKit: pendingGameKitMoveString: \(pendingGameKitMoveString ?? "nil")")
+        print("🎮 GameKit: isLocalMove: \(isLocalMove)")
+        print("🎮 GameKit: isProcessingReceivedMove: \(isProcessingReceivedMove)")
+        
+        guard let moveString = pendingGameKitMoveString else {
+            print("🎮 GameKit: No pending move to send")
+            return
+        }
+        
+        // Only send moves for local moves, not received moves
+        if !isLocalMove {
+            print("🎮 GameKit: Skipping move sending - this was a received move")
+            print("🎮 GameKit: Debug - This should not happen for moves initiated locally")
+            pendingGameKitMoveString = nil
+            return
+        }
+        
+        guard let gameKitManager = self.gameKitManager else {
+            print("🎮 GameKit: No GameKit manager available")
+            return
+        }
+        
+        if gameKitManager.matchState == .connected {
+            print("🎮 GameKit: Sending pending move after confirmation: \(moveString)")
+            gameKitManager.sendMove(moveString)
+            
+            // Clear the pending move
+            pendingGameKitMoveString = nil
+        } else {
+            print("🎮 GameKit: Match not connected, clearing pending move")
+            pendingGameKitMoveString = nil
+        }
+    }
+    
     // USDZ piece management
     private var useUSDZPieces: Bool = false
     private var usdzPieces: [ChessPosition3D: SCNNode] = [:]
@@ -222,6 +274,202 @@ class ChessGameManager: ObservableObject {
         
         // Use the existing rotation system but with the GameKit player's color
         pieceController?.rotateBoardForTurn(currentTurn: playerColor)
+    }
+    
+    // MARK: - GameKit Move Processing
+    func processReceivedMove(_ moveString: String) {
+        print("🎮 ChessGameManager: Processing received move: \(moveString)")
+        
+        // Set flag to prevent sending moves during processing
+        isProcessingReceivedMove = true
+        isLocalMove = false // Mark this as a received move
+        print("🎮 GameKit: Set isProcessingReceivedMove = true, isLocalMove = false")
+        defer { 
+            isProcessingReceivedMove = false
+            isLocalMove = true // Reset to true after processing received move
+            print("🎮 GameKit: Set isProcessingReceivedMove = false, isLocalMove = true")
+        }
+        
+        // Parse move string (format: "e2-e4:z" or "e2-e4:z1-z2")
+        // Split only on the FIRST hyphen to avoid splitting z-levels like "0-2"
+        let firstHyphenIndex = moveString.firstIndex(of: "-") ?? moveString.endIndex
+        let fromString = String(moveString[..<firstHyphenIndex])
+        let toAndZString = String(moveString[firstHyphenIndex...].dropFirst()) // dropFirst() removes the "-"
+        
+        print("🎮 GameKit: From: \(fromString), ToAndZ: \(toAndZString)")
+        
+        // Parse the to coordinates and z-level
+        let toAndZComponents = toAndZString.split(separator: ":")
+        print("🎮 GameKit: ToAndZ components: \(toAndZComponents)")
+        guard toAndZComponents.count == 2 else {
+            print("❌ GameKit: Invalid to:z format: \(toAndZString) - expected 'to:z' or 'to:z1-z2'")
+            return
+        }
+        
+        let toString = String(toAndZComponents[0])
+        let zPart = String(toAndZComponents[1])
+        print("🎮 GameKit: To: \(toString), Z: \(zPart)")
+
+        // Check if this is a 3D move (z1-z2 format)
+        if zPart.contains("-") {
+            let zComponents = zPart.split(separator: "-")
+            guard zComponents.count == 2 else { 
+                print("❌ GameKit: Invalid 3D move z-format: \(zPart) - expected 'fromZ-toZ'")
+                return 
+            }
+            
+            let fromZString = String(zComponents[0])
+            let toZString = String(zComponents[1])
+            
+            guard let fromZLevel = Int(fromZString), let toZLevel = Int(toZString) else { 
+                print("❌ GameKit: Invalid z-levels in 3D move: fromZ=\(fromZString), toZ=\(toZString)")
+                return 
+            }
+            
+            print("🎮 GameKit: 3D move detected - from z=\(fromZLevel) to z=\(toZLevel)")
+            
+            // Parse coordinates for 3D move directly
+            guard fromString.count == 2 else { 
+                print("❌ GameKit: Invalid from coordinates format: \(fromString) - expected 2 characters (e.g., 'c1')")
+                return 
+            }
+            let fromChars = Array(fromString.lowercased())
+            guard let fromFileChar = fromChars.first, let fromRankChar = fromChars.last else { 
+                print("❌ GameKit: Could not parse from coordinates: \(fromString)")
+                return 
+            }
+            
+            let fromFile = Int(fromFileChar.asciiValue! - Character("a").asciiValue!)
+            let fromRank = Int(fromRankChar.asciiValue! - Character("1").asciiValue!)
+            
+            guard fromFile >= 0 && fromFile <= 7 && fromRank >= 0 && fromRank <= 7 else { 
+                print("❌ GameKit: Invalid from coordinates: file=\(fromFile), rank=\(fromRank) - must be 0-7")
+                return 
+            }
+            
+            // Create the from position with the provided from z-level
+            let from = ChessPosition3D(file: fromFile, rank: fromRank, z: fromZLevel)
+            
+            // Verify that there's a piece at this position
+            guard let piece = chessBoard.getPiece(at: from) else {
+                print("❌ GameKit: No piece found at from position: \(fromString) at z=\(fromZLevel)")
+                print("🎮 GameKit: Debugging - checking all pieces at file \(fromFile), rank \(fromRank):")
+                for (pos, p) in chessBoard.pieces {
+                    if pos.file == fromFile && pos.rank == fromRank {
+                        print("  - Found \(p.color) \(p.type) at \(pos.stringValue) (z=\(pos.z))")
+                    }
+                }
+                return
+            }
+            
+            print("🎮 GameKit: Found \(piece.color) \(piece.type) at \(from.stringValue) (z=\(fromZLevel))")
+            
+            // Parse the to coordinates
+            guard toString.count == 2 else { 
+                print("❌ GameKit: Invalid to coordinates format: \(toString) - expected 2 characters (e.g., 'a3')")
+                return 
+            }
+            let toChars = Array(toString.lowercased())
+            guard let toFileChar = toChars.first, let toRankChar = toChars.last else { 
+                print("❌ GameKit: Could not parse to coordinates: \(toString)")
+                return 
+            }
+            
+            let toFile = Int(toFileChar.asciiValue! - Character("a").asciiValue!)
+            let toRank = Int(toRankChar.asciiValue! - Character("1").asciiValue!)
+            
+            guard toFile >= 0 && toFile <= 7 && toRank >= 0 && toRank <= 7 else { 
+                print("❌ GameKit: Invalid to coordinates: file=\(toFile), rank=\(toRank) - must be 0-7")
+                return 
+            }
+            
+            // Create the to position with the provided to z-level
+            let finalTo = ChessPosition3D(file: toFile, rank: toRank, z: toZLevel)
+            
+            print("🎮 GameKit: 3D move coordinates: \(from.stringValue) -> \(finalTo.stringValue) (z=\(fromZLevel)->\(toZLevel))")
+            
+            // Execute the received 3D move
+            let success = tryMove(from: from, to: finalTo)
+            
+            if success {
+                print("✅ GameKit: Received 3D move executed successfully")
+            } else {
+                print("❌ GameKit: Failed to execute received 3D move")
+            }
+            
+            return
+        } else {
+            // 2D move (single z-level) - could be standard 2D or purple arrow move
+            guard let zLevel = Int(zPart) else { 
+                print("❌ GameKit: Invalid z-level: \(zPart)")
+                return 
+            }
+            
+            // Check if this is a purple arrow move (vertical plane move - x or y = 0, always has z component)
+            let purpleFromFile = Int(fromString.first?.asciiValue ?? 0) - Int(Character("a").asciiValue!)
+            let purpleFromRank = Int(fromString.last?.asciiValue ?? 0) - Int(Character("1").asciiValue!)
+            let purpleToFile = Int(toString.first?.asciiValue ?? 0) - Int(Character("a").asciiValue!)
+            let purpleToRank = Int(toString.last?.asciiValue ?? 0) - Int(Character("1").asciiValue!)
+            
+            // Purple arrows: either x or y = 0, always has z component
+            let isPurpleArrowMove = (purpleFromFile == 0 || purpleFromRank == 0 || purpleToFile == 0 || purpleToRank == 0)
+            
+            if isPurpleArrowMove {
+                print("🎮 GameKit: Purple arrow move detected - vertical plane move with z-level change to \(zLevel)")
+                // For purple arrow moves, find the piece at the specified file/rank but any z-level
+                var foundPiece = false
+                for (pos, piece) in chessBoard.pieces {
+                    if pos.file == purpleFromFile && pos.rank == purpleFromRank {
+                        print("🎮 GameKit: Found \(piece.color) \(piece.type) at \(pos.stringValue) for purple arrow move")
+                        let from = pos
+                        let to = ChessPosition3D(file: purpleToFile, rank: purpleToRank, z: zLevel)
+                        
+                        let success = tryMove(from: from, to: to)
+                        if success {
+                            print("✅ GameKit: Purple arrow move executed successfully")
+                        } else {
+                            print("❌ GameKit: Failed to execute purple arrow move")
+                        }
+                        foundPiece = true
+                        break
+                    }
+                }
+                
+                if !foundPiece {
+                    print("❌ GameKit: No piece found for purple arrow move at file \(purpleFromFile), rank \(purpleFromRank)")
+                }
+                return
+            }
+            
+            // Standard 2D move (blue arrow - same position, different z)
+            guard fromString.count == 2 && toString.count == 2 else { 
+                print("❌ GameKit: Invalid 2D move coordinates format")
+                return 
+            }
+            
+            let standardFromFile = Int(fromString.first?.asciiValue ?? 0) - Int(Character("a").asciiValue!)
+            let standardFromRank = Int(fromString.last?.asciiValue ?? 0) - Int(Character("1").asciiValue!)
+            let standardToFile = Int(toString.first?.asciiValue ?? 0) - Int(Character("a").asciiValue!)
+            let standardToRank = Int(toString.last?.asciiValue ?? 0) - Int(Character("1").asciiValue!)
+            
+            guard standardFromFile >= 0 && standardFromFile <= 7 && standardFromRank >= 0 && standardFromRank <= 7 &&
+                  standardToFile >= 0 && standardToFile <= 7 && standardToRank >= 0 && standardToRank <= 7 else { 
+                print("❌ GameKit: Invalid 2D move coordinates")
+                return 
+            }
+            
+            let from = ChessPosition3D(file: standardFromFile, rank: standardFromRank, z: zLevel)
+            let to = ChessPosition3D(file: standardToFile, rank: standardToRank, z: zLevel)
+            
+            print("🎮 GameKit: 2D move coordinates: \(from.stringValue) -> \(to.stringValue) (z=\(zLevel))")
+            
+            let success = tryMove(from: from, to: to)
+            if success {
+                print("✅ GameKit: Received 2D move executed successfully")
+            } else {
+                print("❌ GameKit: Failed to execute received 2D move")
+            }
+        }
     }
     
     private var modelNode: SCNNode?
@@ -521,6 +769,8 @@ class ChessGameManager: ObservableObject {
         isInMoveOperation = true
         defer { isInMoveOperation = false }
         
+
+        
         guard let piece = chessBoard.getPiece(at: from) else { 
             print("❌ No piece found at \(from.stringValue)")
             return false
@@ -657,6 +907,55 @@ class ChessGameManager: ObservableObject {
         
         if moveSuccess {
             print("✅ Chess engine move successful")
+            
+            // Store move for GameKit if in multiplayer mode and not processing a received move
+            if let gameKitManager = gameKitManager, gameKitManager.matchState == .connected && !isProcessingReceivedMove {
+                // Mark this as a local move
+                isLocalMove = true
+                print("🎮 GameKit: Marking move as local move")
+                // Use exact same format as iOS: "e2-e4:z" or "e2-e4:z1-z2"
+                let fromSimple = "\(Character(UnicodeScalar(Character("a").asciiValue! + UInt8(from.file))))\(from.rank + 1)"
+                let toSimple = "\(Character(UnicodeScalar(Character("a").asciiValue! + UInt8(to.file))))\(to.rank + 1)"
+                let moveString: String
+                let isFileOrRankChange = (from.file != to.file) || (from.rank != to.rank)
+                let isZChange = (from.z != to.z)
+                
+                // Debug move detection
+                print("🎮 GameKit: Move detection debug - from: \(from.stringValue) (z=\(from.z)), to: \(to.stringValue) (z=\(to.z))")
+                print("🎮 GameKit: Move detection debug - isFileOrRankChange: \(isFileOrRankChange), isZChange: \(isZChange)")
+                print("🎮 GameKit: Move detection debug - from.z: \(from.z), to.z: \(to.z)")
+                
+                // Check for purple arrow (vertical plane move - only x OR y moves, z always moves)
+                // Purple arrows: one coordinate stays at 0, the other doesn't change, z always changes
+                let isPurpleArrow = isZChange && (
+                    (from.file == 0 && to.file == 0 && from.rank != to.rank) || // x=0, y changes
+                    (from.rank == 0 && to.rank == 0 && from.file != to.file)    // y=0, x changes
+                )
+                print("🎮 GameKit: Move detection debug - isPurpleArrow: \(isPurpleArrow)")
+                
+                if isPurpleArrow {
+                    // Purple arrow: vertical plane move - e2-e4:2 or a1-c1:2
+                    moveString = "\(fromSimple)-\(toSimple):\(to.z)"
+                    print("🎮 GameKit: Purple arrow move detected - vertical plane move: \(moveString)")
+                } else if isFileOrRankChange && isZChange {
+                    // True 3D move: both position and z-level change
+                    moveString = "\(fromSimple)-\(toSimple):\(from.z)-\(to.z)"
+                    print("🎮 GameKit: True 3D move detected - storing with z-levels: \(moveString)")
+                } else if isZChange && !isFileOrRankChange {
+                    // Blue arrow move: only z-level changes (same file/rank) - e2-e2:3
+                    moveString = "\(fromSimple)-\(toSimple):\(to.z)"
+                    print("🎮 GameKit: Blue arrow move detected - storing with destination z-level: \(moveString)")
+                } else {
+                    // Standard 2D move: no z-level change
+                    moveString = "\(fromSimple)-\(toSimple):\(from.z)"
+                    print("🎮 GameKit: 2D move detected - storing with z-level: \(moveString)")
+                }
+                
+                // CRITICAL: Store move to be sent after confirmation timer expires
+                // This avoids timing conflicts with the confirmation timer
+                print("🎮 GameKit: Storing move to be sent after confirmation: \(moveString)")
+                pendingGameKitMoveString = moveString
+            }
             
             // Move successful
             // In learn mode, keep the piece selected for continuous moves
