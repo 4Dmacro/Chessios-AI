@@ -31,6 +31,9 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
     private var chessGameManager: ChessGameManager?
     private var currentInvitation: GKInvite? // Track current invitation for host determination
     
+    // Track whether this device initiated the match (for host determination)
+    private var isMatchInitiator: Bool = false
+    
     func setChessGameManager(_ manager: ChessGameManager) {
         self.chessGameManager = manager
     }
@@ -95,7 +98,14 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
             return
         }
         
-        print("🎮 GameKit: Starting host match (auto-match mode)")
+        print("🎮 GameKit: Starting host match (invitation mode)")
+        
+        // Mark this device as the match initiator (host)
+        isMatchInitiator = true
+        print("🎮 GameKit: This device marked as match initiator (will be host/white)")
+        
+        // Try to send invitation to available players
+        print("🎮 GameKit: Attempting to send invitation to available players")
         
         // iPad crash prevention - add delay when not connected to debugger
         if UIDevice.current.userInterfaceIdiom == .pad && !ProcessInfo.processInfo.environment.keys.contains("XPC_SERVICE_NAME") {
@@ -180,6 +190,10 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
         }
         
         print("🎮 GameKit: Starting join match (auto-match mode)")
+        
+        // Mark this device as NOT the match initiator (guest)
+        isMatchInitiator = false
+        print("🎮 GameKit: This device marked as match joiner (will be guest/black)")
         
         // iPad crash prevention - add delay when not connected to debugger
         if UIDevice.current.userInterfaceIdiom == .pad && !ProcessInfo.processInfo.environment.keys.contains("XPC_SERVICE_NAME") {
@@ -311,16 +325,39 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
                 self.currentMatch = match
                 match.delegate = self
                 print("🎮 GameKit: Match delegate set to self (invitation)")
-                self.matchState = .connected
+                
+                // Don't set matchState to connected yet - wait for actual connection
+                // The match delegate will handle the connection state changes
+                print("🎮 GameKit: Waiting for match connection to be established...")
+                
+                // Check connection status after a short delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    self.checkMatchConnectionStatus()
+                }
                 
                 // Wait for connection state to be established before assigning colors
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                     print("🎮 GameKit: Delayed color assignment - Match players: \(match.players.count)")
-                    // Don't clear invitation yet - we need it for color assignment
-                    self.assignPlayerColors()
-                    // Clear invitation after color assignment
-                    self.currentInvitation = nil
-                    print("🎮 GameKit: Invitation cleared after color assignment (accept)")
+                    if match.players.count > 0 {
+                        print("🎮 GameKit: Players connected, proceeding with color assignment")
+                        self.assignPlayerColors()
+                        // Clear invitation after color assignment
+                        self.currentInvitation = nil
+                        print("🎮 GameKit: Invitation cleared after color assignment (accept)")
+                    } else {
+                        print("⚠️ GameKit: No players connected yet, waiting longer...")
+                        // Try again in another second
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                            if match.players.count > 0 {
+                                print("🎮 GameKit: Players now connected, proceeding with color assignment")
+                                self.assignPlayerColors()
+                                self.currentInvitation = nil
+                            } else {
+                                print("❌ GameKit: Still no players connected after delay")
+                                self.errorMessage = "Failed to establish connection with host"
+                            }
+                        }
+                    }
                 }
             }
             }
@@ -402,6 +439,7 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
         
         print("🎮 GameKit: Starting color assignment - Match players: \(match.players.count)")
         print("🎮 GameKit: Current invitation: \(currentInvitation != nil ? "Present" : "None")")
+        print("🎮 GameKit: isMatchInitiator flag: \(isMatchInitiator)")
         
         // Determine if this player is the host
         // Host is the player who initiated the match (usually the one who sent the invitation)
@@ -414,26 +452,26 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
         // The first player to connect becomes the host
         if let invitation = currentInvitation {
             // For invitations, the sender is the host
-            isHost = invitation.sender.gamePlayerID == localPlayerID
-            print("🎮 GameKit: Invitation match - Sender ID: \(invitation.sender.gamePlayerID), Local ID: \(localPlayerID), isHost: \(isHost)")
+            let senderID = invitation.sender.gamePlayerID
+            let localID = localPlayerID
+            isHost = senderID == localID
+            print("🎮 GameKit: Invitation match - Sender ID: \(senderID), Local ID: \(localID), isHost: \(isHost)")
+            print("🎮 GameKit: Sender displayName: \(invitation.sender.displayName)")
+            print("🎮 GameKit: Local displayName: \(GKLocalPlayer.local.displayName)")
+            print("🎮 GameKit: Host determination: senderID == localID = \(senderID == localID)")
         } else if match.players.count >= 1 {
-            // For auto-match, use deterministic method based on player IDs
-            // The player with the lower ID becomes the host
-            if match.players.isEmpty {
-                // This player is the first to connect, so they're the host
-                isHost = true
-                print("🎮 GameKit: Auto-match - First player connected, isHost: \(isHost)")
+            // For auto-match, determine host based on who initiated the match
+            // The device that initiated the match (hostMatch) becomes the host (white)
+            // The device that joined the match (joinMatch) becomes the guest (black)
+            
+            // Use the isMatchInitiator flag to determine host
+            isHost = isMatchInitiator
+            print("🎮 GameKit: Auto-match - isMatchInitiator: \(isMatchInitiator), isHost: \(isHost)")
+            
+            if isHost {
+                print("🎮 GameKit: This device initiated the match - assigned as host (white)")
             } else {
-                // Find the other player (not the local player)
-                let otherPlayer = match.players.first { $0.gamePlayerID != localPlayerID }
-                if let otherPlayer = otherPlayer {
-                    let otherPlayerID = otherPlayer.gamePlayerID
-                    isHost = localPlayerID < otherPlayerID
-                    print("🎮 GameKit: Auto-match with other player - Local ID: \(localPlayerID), Other ID: \(otherPlayerID), isHost: \(isHost)")
-                } else {
-                    print("⚠️ GameKit: Could not find other player in match")
-                    isHost = true
-                }
+                print("🎮 GameKit: This device joined the match - assigned as guest (black)")
             }
         } else {
             // If no players connected yet, this player is the host
@@ -508,6 +546,55 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
         return playerColor
     }
     
+    func disconnectFromMatch() {
+        currentMatch?.disconnect()
+        currentMatch = nil
+        matchState = .none
+        print("Disconnected from match")
+    }
+    
+    func reconnectToGameCenter() {
+        print("🔄 GameKit: Attempting to reconnect to Game Center...")
+        
+        // Clear any existing error messages
+        errorMessage = ""
+        
+        // Reset match state
+        matchState = .none
+        currentMatch = nil
+        
+        // Re-authenticate player
+        authenticatePlayer()
+        
+        print("🔄 GameKit: Reconnection attempt initiated")
+    }
+    
+    func clearErrorMessages() {
+        print("🧹 GameKit: Clearing error messages")
+        errorMessage = ""
+        if case .error = matchState {
+            matchState = .none
+        }
+    }
+    
+    func checkMatchConnectionStatus() {
+        guard let match = currentMatch else {
+            print("🎮 GameKit: No current match to check")
+            return
+        }
+        
+        print("🎮 GameKit: Match connection status check:")
+        print("🎮 GameKit: - Match state: \(matchState)")
+        print("🎮 GameKit: - Players count: \(match.players.count)")
+        print("🎮 GameKit: - Match delegate: \(match.delegate != nil ? "Set" : "Not set")")
+        print("🎮 GameKit: - Current invitation: \(currentInvitation != nil ? "Present" : "None")")
+        
+        if match.players.count == 0 {
+            print("⚠️ GameKit: No players connected - this indicates a connection issue")
+            errorMessage = "Connection not established. Please try again."
+        }
+    }
+    
     // MARK: - GKMatchDelegate
     
     func match(_ match: GKMatch, didReceive data: Data, fromRemotePlayer player: GKPlayer) {
@@ -563,6 +650,8 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
     func match(_ match: GKMatch, player: GKPlayer, didChange state: GKPlayerConnectionState) {
         DispatchQueue.main.async {
             print("🎮 GameKit: Player \(player.displayName) connection state changed to: \(state)")
+            print("🎮 GameKit: Current match state: \(self.matchState)")
+            print("🎮 GameKit: Match players count: \(match.players.count)")
             
             switch state {
             case .connected:
@@ -577,13 +666,29 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
                     match.delegate = self
                 }
                 
-                // For auto-match, we can assign colors when the first player connects
-                print("🎮 GameKit: Player connected, total players: \(match.players.count)")
-                
-                // Since we're using auto-match, assign colors immediately when a player connects
-                print("🎮 GameKit: Auto-match - assigning colors after player connection")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    self.assignPlayerColors()
+                // Check if this is an invitation-based match
+                if self.currentInvitation != nil {
+                    print("🎮 GameKit: Invitation-based match - player connected, proceeding with setup")
+                    // For invitation matches, we can now proceed with color assignment
+                    // But only if we haven't already assigned colors (for hosts)
+                    if self.playerColor == .none {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            self.assignPlayerColors()
+                        }
+                    } else {
+                        print("🎮 GameKit: Colors already assigned (\(self.playerColor.rawValue)), skipping duplicate assignment")
+                    }
+                } else {
+                    // For auto-match, assign colors immediately when a player connects
+                    // But only if we haven't already assigned colors (for hosts)
+                    if self.playerColor == .none {
+                        print("🎮 GameKit: Auto-match - assigning colors after player connection")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            self.assignPlayerColors()
+                        }
+                    } else {
+                        print("🎮 GameKit: Colors already assigned (\(self.playerColor.rawValue)), skipping duplicate assignment")
+                    }
                 }
             case .disconnected:
                 self.matchState = .disconnected
@@ -629,12 +734,34 @@ extension GameKitManager: GKMatchmakerViewControllerDelegate {
         print("🎮 GameKit: Match delegate set to self")
         matchState = .connected
         
-        // Since we're now using auto-match for both host and join, treat all matches as auto-match
-        print("🎮 GameKit: Auto-match detected - proceeding with color assignment")
-        // For auto-match, proceed with color assignment
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: DispatchWorkItem {
-            self.assignPlayerColors()
-        })
+        // Log the current initiator state for debugging
+        print("🎮 GameKit: Current isMatchInitiator flag: \(self.isMatchInitiator)")
+        
+        // Determine if this is an invitation-based match or auto-match
+        // If we initiated the match (host), we should be white
+        // If we joined an existing match (guest), we should be black
+        let isInitiator = self.isMatchInitiator // Use the flag we set in hostMatch/joinMatch
+        
+        if isInitiator {
+            print("🎮 GameKit: Match initiated by this device - treating as host (white)")
+            // For host, assign colors immediately since we're the initiator
+            print("🎮 GameKit: Host device - assigning colors immediately")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.assignPlayerColors()
+            }
+        } else {
+            print("🎮 GameKit: Match joined by this device - treating as guest (black)")
+            // Set up as guest - we'll assign colors when the other player connects
+            // Don't call assignPlayerColors yet - wait for connection
+        }
+        
+        // Color assignment will happen in the connection delegate method for guests
+        // For hosts, it happens immediately above
+        if isInitiator {
+            print("🎮 GameKit: Host device - color assignment scheduled")
+        } else {
+            print("🎮 GameKit: Guest device - waiting for player connection before color assignment")
+        }
     }
     
     func matchmakerViewController(_ viewController: GKMatchmakerViewController, didFailWithError error: Error) {

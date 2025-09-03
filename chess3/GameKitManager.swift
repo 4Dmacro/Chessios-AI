@@ -25,6 +25,7 @@ class GameKitManager: NSObject, ObservableObject {
     @Published var isHost: Bool = false // Whether this player is the host
     @Published var canFlipBoard: Bool = false // Whether board flipping is allowed
     @Published var errorMessage: String = ""
+    @Published var isAuthenticating = false
     
     // Track current invitation for host determination
     private var currentInvitation: GKInvite?
@@ -47,9 +48,35 @@ class GameKitManager: NSObject, ObservableObject {
     }
     
     func authenticatePlayer() {
+        // Prevent multiple authentication attempts - check if we're already in the process
+        if isAuthenticating {
+            print("🎮 GameKit: Authentication already in progress, skipping duplicate call")
+            return
+        }
+        
+        // Prevent authentication if we already have an active invitation or match
+        if currentInvitation != nil || currentMatch != nil {
+            print("🎮 GameKit: Authentication skipped - active invitation (\(currentInvitation != nil)) or match (\(currentMatch != nil)) present")
+            return
+        }
+        
+        // Prevent multiple authentication attempts
+        if isAuthenticated && !GKLocalPlayer.local.displayName.isEmpty {
+            print("🎮 GameKit: Already fully authenticated, skipping authentication")
+            return
+        }
+        
+        isAuthenticating = true
         print("🎮 GameKit: Starting authentication...")
         print("🎮 GameKit: GKLocalPlayer.local.isAuthenticated: \(GKLocalPlayer.local.isAuthenticated)")
         print("🎮 GameKit: GKLocalPlayer.local.displayName: \(GKLocalPlayer.local.displayName)")
+        
+        // Add stack trace to see where this is being called from
+        let stackTrace = Thread.callStackSymbols
+        print("🎮 GameKit: Authentication called from stack trace:")
+        for (index, symbol) in stackTrace.prefix(5).enumerated() {
+            print("🎮 GameKit:   \(index): \(symbol)")
+        }
         
         // Perform network diagnostics
         performNetworkDiagnostics()
@@ -69,6 +96,7 @@ class GameKitManager: NSObject, ObservableObject {
                         
                         DispatchQueue.main.async {
                             self.isAuthenticated = false
+                            self.isAuthenticating = false
                             self.errorMessage = "Game Center authentication incomplete. Please check System Preferences → Game Center and try again."
                         }
                     } else {
@@ -81,6 +109,7 @@ class GameKitManager: NSObject, ObservableObject {
             
             DispatchQueue.main.async {
                 self.isAuthenticated = true
+                self.isAuthenticating = false
                 self.currentPlayer = GKLocalPlayer.local
                 print("🎮 GameKit: Player name: \(GKLocalPlayer.local.displayName)")
                 print("🎮 GameKit: Player ID: \(GKLocalPlayer.local.gamePlayerID)")
@@ -92,6 +121,12 @@ class GameKitManager: NSObject, ObservableObject {
                 // Check for pending invitations
                 self.checkForPendingInvitations()
             }
+            return
+        }
+        
+        // Prevent setting authentication handler multiple times
+        if GKLocalPlayer.local.authenticateHandler != nil {
+            print("🎮 GameKit: Authentication handler already set, skipping duplicate")
             return
         }
         
@@ -124,19 +159,21 @@ class GameKitManager: NSObject, ObservableObject {
                     
                     DispatchQueue.main.async {
                         self.isAuthenticated = false
+                        self.isAuthenticating = false
                         self.errorMessage = "Game Center authentication failed. Please sign in to Game Center in System Preferences first."
                     }
                 } else {
                     DispatchQueue.main.async {
                         self.isAuthenticated = false
+                        self.isAuthenticating = false
                         self.errorMessage = "Game Center authentication failed: \(error?.localizedDescription ?? "Unknown error")"
                     }
                 }
             } else {
                 print("✅ GameKit: Authentication successful - no view controller needed")
                 
-                // CRITICAL FIX: Don't get stuck in re-authentication loop
-                // If authentication succeeds but displayName is empty, just wait a bit longer
+                // CRITICAL FIX: Don't set isAuthenticated until displayName is available
+                // If authentication succeeds but displayName is empty, wait for it to become available
                 if GKLocalPlayer.local.displayName.isEmpty {
                     print("⚠️ GameKit: Authentication successful but displayName is empty - waiting for full initialization")
                     DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
@@ -144,10 +181,11 @@ class GameKitManager: NSObject, ObservableObject {
                             print("❌ GameKit: Still no displayName after delay - this might be a macOS Game Center issue")
                             print("🔧 GameKit: Try signing out and back into Game Center in System Preferences")
                             
-                            DispatchQueue.main.async {
-                                self.isAuthenticated = false
-                                self.errorMessage = "Game Center authentication incomplete. Please check System Preferences → Game Center and try again."
-                            }
+                                                DispatchQueue.main.async {
+                        self.isAuthenticated = false
+                        self.isAuthenticating = false
+                        self.errorMessage = "Game Center authentication incomplete. Please check System Preferences → Game Center and try again."
+                    }
                         } else {
                             print("✅ GameKit: displayName now available: \(GKLocalPlayer.local.displayName)")
                             self.completeAuthentication()
@@ -164,6 +202,7 @@ class GameKitManager: NSObject, ObservableObject {
     private func completeAuthentication() {
         DispatchQueue.main.async {
             self.isAuthenticated = true
+            self.isAuthenticating = false
             self.currentPlayer = GKLocalPlayer.local
             print("✅ GameKit: Authentication successful")
             print("🎮 GameKit: Player name: \(GKLocalPlayer.local.displayName)")
@@ -178,9 +217,13 @@ class GameKitManager: NSObject, ObservableObject {
         }
     }
     
+    private var isFullyAuthenticated: Bool {
+        return isAuthenticated && !GKLocalPlayer.local.displayName.isEmpty
+    }
+    
     func hostMatch() {
-        guard isAuthenticated else {
-            print("❌ GameKit: Player not authenticated")
+        guard isFullyAuthenticated else {
+            print("❌ GameKit: Player not fully authenticated (displayName: \(GKLocalPlayer.local.displayName))")
             return
         }
         
@@ -194,8 +237,8 @@ class GameKitManager: NSObject, ObservableObject {
     }
     
     func joinMatch() {
-        guard isAuthenticated else {
-            print("❌ GameKit: Player not authenticated")
+        guard isFullyAuthenticated else {
+            print("❌ GameKit: Player not fully authenticated (displayName: \(GKLocalPlayer.local.displayName))")
             return
         }
         
@@ -309,20 +352,48 @@ class GameKitManager: NSObject, ObservableObject {
         let localPlayerID = GKLocalPlayer.local.gamePlayerID
         
         if let invitation = currentInvitation {
-            isHost = invitation.sender.gamePlayerID == localPlayerID
-            print("🎮 GameKit: Invitation match - Sender ID: \(invitation.sender.gamePlayerID), Local ID: \(localPlayerID), isHost: \(isHost)")
-        } else if match.players.count >= 1 { // For auto-match, use deterministic method when we have other players
-            if match.players.isEmpty {
-                // This player is the first to connect, so they're the host
-                isHost = true
-                print("🎮 GameKit: Auto-match - First player connected, isHost: \(isHost)")
+            let senderID = invitation.sender.gamePlayerID
+            let localID = localPlayerID
+            isHost = senderID == localID
+            print("🎮 GameKit: Invitation match - Sender ID: \(senderID), Local ID: \(localID), isHost: \(isHost)")
+            print("🎮 GameKit: Sender displayName: \(invitation.sender.displayName)")
+            print("🎮 GameKit: Local displayName: \(GKLocalPlayer.local.displayName)")
+            print("🎮 GameKit: Host determination: senderID == localID = \(senderID == localID)")
+            
+            // Additional debugging for invitation flow
+            if isHost {
+                print("🎮 GameKit: This device is the invitation SENDER (will be host/white)")
             } else {
-                // Find the other player (not the local player)
+                print("🎮 GameKit: This device is the invitation RECEIVER (will be guest/black)")
+            }
+        } else if match.players.count >= 1 { // For auto-match, use deterministic method when we have other players
+            // If we have an invitation, don't use auto-match logic
+            if currentInvitation != nil {
+                print("🎮 GameKit: Auto-match logic skipped - invitation present")
+                return
+            }
+            
+            // For auto-match, determine host based on who initiated the match
+            // Since macOS doesn't have isMatchInitiator, we'll use a different approach
+            // For now, we'll use the invitation logic if available, otherwise fall back to ID-based logic
+            
+            if currentInvitation != nil {
+                // We have an invitation, so we're the receiver (guest/black)
+                isHost = false
+                print("🎮 GameKit: Auto-match with invitation - this device is receiver (guest/black)")
+            } else {
+                // No invitation, use ID-based logic as fallback
                 let otherPlayer = match.players.first { $0.gamePlayerID != localPlayerID }
                 if let otherPlayer = otherPlayer {
                     let otherPlayerID = otherPlayer.gamePlayerID
                     isHost = localPlayerID < otherPlayerID
-                    print("🎮 GameKit: Auto-match with other player - Local ID: \(localPlayerID), Other ID: \(otherPlayerID), isHost: \(isHost)")
+                    print("🎮 GameKit: Auto-match fallback - Local ID: \(localPlayerID), Other ID: \(otherPlayerID), isHost: \(isHost)")
+                    
+                    if isHost {
+                        print("🎮 GameKit: This device is first to connect - assigned as host (white)")
+                    } else {
+                        print("🎮 GameKit: This device is second to connect - assigned as guest (black)")
+                    }
                 } else {
                     print("⚠️ GameKit: Could not find other player in match")
                     isHost = true
@@ -330,8 +401,14 @@ class GameKitManager: NSObject, ObservableObject {
             }
         } else {
             // If no players connected yet, this player is the host
-            print("🎮 GameKit: Auto-match - No other players yet, isHost: true")
-            isHost = true
+            // But only if we don't have an invitation
+            if currentInvitation == nil {
+                print("🎮 GameKit: Auto-match - No other players yet, isHost: true")
+                isHost = true
+            } else {
+                print("🎮 GameKit: Auto-match logic skipped - invitation present")
+                return
+            }
         }
         
         DispatchQueue.main.async {
@@ -399,6 +476,84 @@ class GameKitManager: NSObject, ObservableObject {
         currentMatch = nil
         matchState = .none
         print("Disconnected from match")
+    }
+    
+    func reconnectToGameCenter() {
+        print("🔄 GameKit: Attempting to reconnect to Game Center...")
+        
+        // Clear any existing error messages
+        errorMessage = ""
+        
+        // Reset match state
+        matchState = .none
+        currentMatch = nil
+        
+        // Reset authentication state if displayName is empty
+        if GKLocalPlayer.local.displayName.isEmpty {
+            print("🔄 GameKit: displayName is empty, resetting authentication state")
+            isAuthenticated = false
+            currentPlayer = nil
+        }
+        
+        // Re-authenticate player
+        authenticatePlayer()
+        
+        print("🔄 GameKit: Reconnection attempt initiated")
+    }
+    
+    func clearErrorMessages() {
+        print("🧹 GameKit: Clearing error messages")
+        errorMessage = ""
+        if case .error = matchState {
+            matchState = .none
+        }
+    }
+    
+    func resetInvitationState() {
+        print("🔄 GameKit: Resetting invitation state")
+        currentInvitation = nil
+        if let match = currentMatch, match.players.count == 0 {
+            currentMatch = nil
+            print("🎮 GameKit: Cleared failed match attempt")
+        }
+        errorMessage = ""
+        print("🎮 GameKit: Invitation state reset, ready for new invitation")
+    }
+    
+    func forceReauthentication() {
+        print("🔄 GameKit: Force re-authentication requested")
+        
+        // Reset all authentication state
+        isAuthenticated = false
+        currentPlayer = nil
+        errorMessage = ""
+        
+        // Clear any existing authentication handler
+        GKLocalPlayer.local.authenticateHandler = nil
+        
+        // Wait a moment then re-authenticate
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.authenticatePlayer()
+        }
+    }
+    
+    func checkMatchConnectionStatus() {
+        guard let match = currentMatch else {
+            print("🎮 GameKit: No current match to check")
+            return
+        }
+        
+        print("🎮 GameKit: Match connection status check:")
+        print("🎮 GameKit: - Match state: \(matchState)")
+        print("🎮 GameKit: - Players count: \(match.players.count)")
+        print("🎮 GameKit: - Match delegate: \(match.delegate != nil ? "Set" : "Not set")")
+        print("🎮 GameKit: - Current invitation: \(currentInvitation != nil ? "Present" : "None")")
+        
+        if match.players.count == 0 {
+            print("⚠️ GameKit: No players connected yet - waiting for connection to establish")
+            // Don't set error message yet - this is normal during connection establishment
+            // The error will only be set if no players connect after the full delay
+        }
     }
     
     // MARK: - Network Diagnostics
@@ -537,25 +692,43 @@ extension GameKitManager: GKLocalPlayerListener {
 extension GameKitManager {
     func handleInvitation(_ invite: GKInvite) {
         print("🎮 GameKit: Handling invitation from \(invite.sender.displayName)")
+        
+        // Only prevent duplicate if we have a successful match
+        if currentMatch != nil {
+            print("🎮 GameKit: Already have a match, skipping duplicate invitation")
+            return
+        }
+        
         currentInvitation = invite
         
-        // Present invitation UI
-        let alert = NSAlert()
-        alert.messageText = "Game Invitation"
-        alert.informativeText = "\(invite.sender.displayName) has invited you to play chess!"
-        alert.addButton(withTitle: "Accept")
-        alert.addButton(withTitle: "Decline")
-        
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            acceptInvitation(invite)
-        } else {
-            declineInvitation(invite)
+        // Present invitation UI immediately to avoid conflicts with system notification
+        DispatchQueue.main.async {
+            let alert = NSAlert()
+            alert.messageText = "Game Invitation"
+            alert.informativeText = "\(invite.sender.displayName) has invited you to play chess!"
+            alert.addButton(withTitle: "Accept")
+            alert.addButton(withTitle: "Decline")
+            
+            // Make the alert appear on top of other windows
+            alert.alertStyle = .informational
+            
+            let response = alert.runModal()
+            if response == .alertFirstButtonReturn {
+                self.acceptInvitation(invite)
+            } else {
+                self.declineInvitation(invite)
+            }
         }
     }
     
     func acceptInvitation(_ invite: GKInvite) {
         print("🎮 GameKit: Accepting invitation")
+        
+        // Only prevent if we have a successful match with players
+        if let match = currentMatch, match.players.count > 0 {
+            print("🎮 GameKit: Already have a successful match, skipping duplicate acceptance")
+            return
+        }
         
         GKMatchmaker.shared().match(for: invite) { match, error in
             DispatchQueue.main.async {
@@ -573,16 +746,42 @@ extension GameKitManager {
                     self.currentMatch = match
                     match.delegate = self
                     print("🎮 GameKit: Match delegate set to self (invitation)")
-                    self.matchState = .connected
+                    
+                    // Don't set matchState to connected yet - wait for actual connection
+                    // The match delegate will handle the connection state changes
+                    print("🎮 GameKit: Waiting for match connection to be established...")
+                    
+                    // Check connection status after a short delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        self.checkMatchConnectionStatus()
+                    }
                     
                     // Wait for connection state to be established before assigning colors
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                         print("🎮 GameKit: Delayed color assignment - Match players: \(match.players.count)")
-                        // Don't clear invitation yet - we need it for color assignment
-                        self.assignPlayerColors()
-                        // Clear invitation after color assignment
-                        self.currentInvitation = nil
-                        print("🎮 GameKit: Invitation cleared after color assignment (accept)")
+                        if match.players.count > 0 {
+                            print("🎮 GameKit: Players connected, proceeding with color assignment")
+                            self.assignPlayerColors()
+                            // Clear invitation after color assignment
+                            self.currentInvitation = nil
+                            print("🎮 GameKit: Invitation cleared after color assignment (accept)")
+                        } else {
+                            print("⚠️ GameKit: No players connected yet, waiting longer...")
+                            // Try again in another second
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                if match.players.count > 0 {
+                                    print("🎮 GameKit: Players now connected, proceeding with color assignment")
+                                    self.assignPlayerColors()
+                                    self.currentInvitation = nil
+                                } else {
+                                    print("❌ GameKit: Still no players connected after delay")
+                                    self.errorMessage = "Failed to establish connection with host"
+                                    // Clear the failed invitation so a retry can happen
+                                    self.currentInvitation = nil
+                                    print("🎮 GameKit: Failed invitation cleared, allowing retry")
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -651,6 +850,8 @@ extension GameKitManager: GKMatchDelegate {
     func match(_ match: GKMatch, player: GKPlayer, didChange state: GKPlayerConnectionState) {
         DispatchQueue.main.async {
             print("🎮 GameKit: Player \(player.displayName) connection state changed to: \(state)")
+            print("🎮 GameKit: Current match state: \(self.matchState)")
+            print("🎮 GameKit: Match players count: \(match.players.count)")
             
             switch state {
             case .connected:
@@ -665,10 +866,18 @@ extension GameKitManager: GKMatchDelegate {
                     match.delegate = self
                 }
                 
-                // For auto-match, assign colors immediately when a player connects
-                print("🎮 GameKit: Auto-match - assigning colors after player connection")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    self.assignPlayerColors()
+                // Check if this is an invitation-based match
+                if self.currentInvitation != nil {
+                    print("🎮 GameKit: Invitation-based match - player connected, proceeding with setup")
+                    // For invitation matches, color assignment is handled by the invitation acceptance flow
+                    // Don't call assignPlayerColors here to avoid duplication
+                    print("🎮 GameKit: Skipping color assignment in connection handler (invitation flow)")
+                } else {
+                    // For auto-match, assign colors immediately when a player connects
+                    print("🎮 GameKit: Auto-match - assigning colors after player connection")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self.assignPlayerColors()
+                    }
                 }
             case .disconnected:
                 self.matchState = .disconnected

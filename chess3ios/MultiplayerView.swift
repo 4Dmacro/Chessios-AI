@@ -38,6 +38,19 @@ struct MultiplayerView: View {
                 Text(gameKitManager.isAuthenticated ? "Connected" : "Disconnected")
                     .font(isIPhone ? .caption2 : .caption)
                     .foregroundColor(gameKitManager.isAuthenticated ? .green : .red)
+                
+                // Reconnect Button (show when not authenticated or when there are errors)
+                if !gameKitManager.isAuthenticated || hasError {
+                    Button("🔄 Reconnect") {
+                        gameKitManager.reconnectToGameCenter()
+                    }
+                    .font(isIPhone ? .caption2 : .caption)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.blue)
+                    .cornerRadius(4)
+                }
             }
             .padding(.horizontal, isIPhone ? 2 : 8)
             .padding(.vertical, isIPhone ? 1 : 4)
@@ -127,16 +140,31 @@ struct MultiplayerView: View {
             
             // Match Status
             if gameKitManager.matchState != .none {
-                HStack {
-                    Image(systemName: matchStateIcon)
-                        .foregroundColor(matchStateColor)
-                        .font(isIPhone ? .caption2 : .caption)
-                    Text(matchStateText)
-                        .font(isIPhone ? .caption2 : .caption)
-                        .foregroundColor(matchStateColor)
+                VStack(spacing: 4) {
+                    HStack {
+                        Image(systemName: matchStateIcon)
+                            .foregroundColor(matchStateColor)
+                            .font(isIPhone ? .caption2 : .caption)
+                        Text(matchStateText)
+                            .font(isIPhone ? .caption2 : .caption)
+                            .foregroundColor(matchStateColor)
+                        Spacer()
+                    }
+                    
+                    // Disconnect Button (positioned below the status, not to the far right)
+                    Button("🔌 Disconnect") {
+                        gameKitManager.disconnectFromMatch()
+                    }
+                    .font(isIPhone ? .caption2 : .caption)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.red)
+                    .cornerRadius(4)
                 }
                 .padding(.horizontal, isIPhone ? 4 : 8)
                 .padding(.vertical, isIPhone ? 2 : 4)
+                .frame(maxWidth: 140)
                 .background(Color(.systemGray6).opacity(0.3))
                 .cornerRadius(isIPhone ? 4 : 8)
             }
@@ -150,28 +178,63 @@ struct MultiplayerView: View {
                     Text(gameKitManager.playerColor == .none ? "Assigning color..." : "You are \(gameKitManager.playerColor.rawValue)")
                         .font(isIPhone ? .caption2 : .caption)
                         .foregroundColor(gameKitManager.playerColor == .white ? .white : .black)
+                    Spacer()
                 }
                 .padding(.horizontal, isIPhone ? 4 : 8)
                 .padding(.vertical, isIPhone ? 2 : 4)
+                .frame(maxWidth: 140)
                 .background(gameKitManager.playerColor == .white ? Color.white.opacity(0.3) : Color.black.opacity(0.3))
                 .cornerRadius(isIPhone ? 4 : 8)
             }
             
             // Error Message
             if let errorMessage = gameKitManager.errorMessage {
-                Text(errorMessage)
-                    .font(isIPhone ? .caption2 : .caption)
-                    .foregroundColor(.red)
-                    .padding(.horizontal, isIPhone ? 4 : 8)
-                    .padding(.vertical, isIPhone ? 2 : 4)
-                    .background(Color(.systemRed).opacity(0.1))
-                    .cornerRadius(isIPhone ? 4 : 8)
+                VStack(spacing: 8) {
+                    Text(errorMessage)
+                        .font(isIPhone ? .caption2 : .caption)
+                        .foregroundColor(.red)
+                        .padding(.horizontal, isIPhone ? 4 : 8)
+                        .padding(.vertical, isIPhone ? 2 : 4)
+                        .background(Color(.systemRed).opacity(0.1))
+                        .cornerRadius(isIPhone ? 4 : 8)
+                    
+                    HStack(spacing: 8) {
+                        Button("🔄 Reconnect") {
+                            gameKitManager.reconnectToGameCenter()
+                        }
+                        .font(isIPhone ? .caption2 : .caption)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.blue)
+                        .cornerRadius(6)
+                        
+                        Button("✕ Clear") {
+                            gameKitManager.clearErrorMessages()
+                        }
+                        .font(isIPhone ? .caption2 : .caption)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.gray)
+                        .cornerRadius(6)
+                    }
+                }
+                .frame(maxWidth: 140)
             }
         }
         .padding(isIPhone ? 2 : 12)
-        .background(Color.red.opacity(0.1))
+        .frame(maxWidth: 140) // Constrain width to reasonable size
+        .background(Color(.systemGray6).opacity(0.2))
         .cornerRadius(isIPhone ? 4 : 12)
         .shadow(radius: isIPhone ? 1 : 2)
+    }
+    
+    private var hasError: Bool {
+        if case .error(_) = gameKitManager.matchState {
+            return true
+        }
+        return false
     }
     
     private var matchStateIcon: String {
@@ -184,7 +247,7 @@ struct MultiplayerView: View {
             return "xmark.circle.fill"
         case .none:
             return "circle"
-        case .error:
+        case .error(_):
             return "exclamationmark.triangle.fill"
         }
     }
@@ -199,7 +262,7 @@ struct MultiplayerView: View {
             return .red
         case .none:
             return .gray
-        case .error:
+        case .error(_):
             return .red
         }
     }

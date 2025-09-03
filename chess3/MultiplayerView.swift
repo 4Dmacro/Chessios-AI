@@ -25,6 +25,30 @@ struct MultiplayerView: View {
                 }
                 
                 Spacer()
+                
+                // Reconnect Button (always visible when not connected)
+                if !gameKitManager.isAuthenticated || hasError {
+                    VStack(spacing: 8) {
+                        Button("🔄 Reconnect") {
+                            gameKitManager.reconnectToGameCenter()
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .foregroundColor(.white)
+                        .background(Color.blue)
+                        
+                        // Force re-authentication button for macOS Game Center issues
+                        if gameKitManager.isAuthenticated && GKLocalPlayer.local.displayName.isEmpty {
+                            Button("🔐 Force Re-auth") {
+                                gameKitManager.forceReauthentication()
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .foregroundColor(.white)
+                            .background(Color.orange)
+                        }
+                    }
+                }
             }
             .padding(.horizontal)
             
@@ -111,13 +135,33 @@ struct MultiplayerView: View {
             
             // Error Display
             if case .error(let message) = gameKitManager.matchState {
-                HStack {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.red)
-                    Text(message)
-                        .font(.caption)
-                        .foregroundColor(.red)
-                    Spacer()
+                VStack(spacing: 8) {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.red)
+                        Text(message)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                        Spacer()
+                    }
+                    
+                    // Reconnect Button for error states
+                    Button("🔄 Reconnect to Game Center") {
+                        gameKitManager.reconnectToGameCenter()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .foregroundColor(.white)
+                    .background(Color.blue)
+                    
+                    // Reset Invitation Button for failed invitations
+                    Button("🔄 Reset Invitation") {
+                        gameKitManager.resetInvitationState()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .foregroundColor(.white)
+                    .background(Color.orange)
                 }
                 .padding(.horizontal)
             }
@@ -126,6 +170,13 @@ struct MultiplayerView: View {
         .background(.regularMaterial.opacity(0.2))
         .cornerRadius(10)
         .shadow(radius: 2)
+    }
+    
+    private var hasError: Bool {
+        if case .error(_) = gameKitManager.matchState {
+            return true
+        }
+        return false
     }
     
     private var statusIcon: String {
@@ -138,7 +189,7 @@ struct MultiplayerView: View {
             return "checkmark.circle.fill"
         case .disconnected:
             return "xmark.circle.fill"
-        case .error:
+        case .error(_):
             return "exclamationmark.triangle.fill"
         }
     }
@@ -153,7 +204,7 @@ struct MultiplayerView: View {
             return .green
         case .disconnected:
             return .red
-        case .error:
+        case .error(_):
             return .red
         }
     }

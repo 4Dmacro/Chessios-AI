@@ -211,7 +211,7 @@ struct ContentView: View {
             ZStack {
                 // Left Side Controls
                 VStack(spacing: buttonSpacing) {
-                Spacer(minLength:70) // Push controls lower on iPad
+                Spacer(minLength:30) // Reduced spacing to move Game Center UI up on iPad
                 
                 // Game Controls - Above Camera Controls
                 VStack(spacing: 10) {
@@ -375,14 +375,14 @@ struct ContentView: View {
                     .scaleEffect(uiScale)
                     
                     Spacer(minLength: 20)
+                    
+                    // Multiplayer Controls
+                    MultiplayerView()
+                        .scaleEffect(uiScale)
                 }
-                
-                // Multiplayer Controls
-                MultiplayerView()
-                    .scaleEffect(uiScale)
             }
             .padding(.leading, 5)
-            .position(x: 100, y: geometry.size.height / 2) // Position left controls
+            .position(x: 100, y: geometry.size.height / 2 - 120) // Position left controls higher up for iPad
             
             // Right Side Controls - Movement Controls
             ChessPieceControllerView(controller: pieceController)

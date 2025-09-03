@@ -487,16 +487,40 @@ struct ContentView: View {
                     
                     // Game Center Error Message Display
                     if !gameKitManager.errorMessage.isEmpty {
-                        Text(gameKitManager.errorMessage)
-                            .font(.caption)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.red.opacity(0.8))
-                            .background(.ultraThinMaterial)
-                            .cornerRadius(8)
-                            .multilineTextAlignment(.center)
-                            .animation(.easeInOut(duration: 0.6), value: gameKitManager.errorMessage)
+                        VStack(spacing: 8) {
+                            Text(gameKitManager.errorMessage)
+                                .font(.caption)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color.red.opacity(0.8))
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(8)
+                                .multilineTextAlignment(.center)
+                                .animation(.easeInOut(duration: 0.6), value: gameKitManager.errorMessage)
+                            
+                            HStack(spacing: 12) {
+                                Button("🔄 Reconnect") {
+                                    gameKitManager.reconnectToGameCenter()
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.blue.opacity(0.6))
+                                .foregroundColor(.white)
+                                .cornerRadius(6)
+                                
+                                Button("✕ Clear") {
+                                    gameKitManager.clearErrorMessages()
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.gray.opacity(0.6))
+                                .foregroundColor(.white)
+                                .cornerRadius(6)
+                            }
+                        }
                     }
                     
                     // Reset View button

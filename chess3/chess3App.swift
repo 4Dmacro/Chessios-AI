@@ -17,7 +17,11 @@ struct chess3App: App {
             ContentView()
                 .environmentObject(gameKitManager)
                 .onAppear {
-                    gameKitManager.authenticatePlayer()
+                    // Only authenticate once when the app first appears
+                    // Don't re-authenticate on every screen interaction
+                    if !gameKitManager.isAuthenticated {
+                        gameKitManager.authenticatePlayer()
+                    }
                 }
         }
     }
