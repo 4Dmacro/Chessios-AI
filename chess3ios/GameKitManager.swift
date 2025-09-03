@@ -29,7 +29,7 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
     @Published var canFlipBoard: Bool = false // Whether board flipping is allowed
     
     private var chessGameManager: ChessGameManager?
-    private var currentInvitation: GKInvite? // Track current invitation for host determination
+    @Published var currentInvitation: GKInvite? // Track current invitation for host determination
     
     // Track whether this device initiated the match (for host determination)
     private var isMatchInitiator: Bool = false
@@ -335,30 +335,9 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
                     self.checkMatchConnectionStatus()
                 }
                 
-                // Wait for connection state to be established before assigning colors
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    print("🎮 GameKit: Delayed color assignment - Match players: \(match.players.count)")
-                    if match.players.count > 0 {
-                        print("🎮 GameKit: Players connected, proceeding with color assignment")
-                        self.assignPlayerColors()
-                        // Clear invitation after color assignment
-                        self.currentInvitation = nil
-                        print("🎮 GameKit: Invitation cleared after color assignment (accept)")
-                    } else {
-                        print("⚠️ GameKit: No players connected yet, waiting longer...")
-                        // Try again in another second
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                            if match.players.count > 0 {
-                                print("🎮 GameKit: Players now connected, proceeding with color assignment")
-                                self.assignPlayerColors()
-                                self.currentInvitation = nil
-                            } else {
-                                print("❌ GameKit: Still no players connected after delay")
-                                self.errorMessage = "Failed to establish connection with host"
-                            }
-                        }
-                    }
-                }
+                // Don't assign colors here - let the connection delegate handle it
+                // The connection delegate will call assignPlayerColors when the player connects
+                print("🎮 GameKit: Waiting for player connection - color assignment will happen in delegate")
             }
             }
         }
@@ -577,6 +556,56 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
         }
     }
     
+    func resetInvitationState() {
+        print("🔄 GameKit: Resetting invitation state")
+        currentInvitation = nil
+        if let match = currentMatch, match.players.count == 0 {
+            currentMatch = nil
+            print("🎮 GameKit: Cleared failed match attempt")
+        }
+        errorMessage = ""
+        print("🎮 GameKit: Invitation state reset, ready for new invitation")
+    }
+    
+    // MARK: - Invitation Recall System
+    
+    private var pendingInvitations: [GKInvite] = [] // Store pending invitations for recall
+    
+    func storeInvitation(_ invite: GKInvite) {
+        print("🎮 GameKit: Storing invitation from \(invite.sender.displayName) for potential recall")
+        // Store invitation if not already stored
+        if !pendingInvitations.contains(where: { $0.sender.gamePlayerID == invite.sender.gamePlayerID }) {
+            pendingInvitations.append(invite)
+            print("🎮 GameKit: Invitation stored. Total pending: \(pendingInvitations.count)")
+        } else {
+            print("🎮 GameKit: Invitation already stored from this sender")
+        }
+    }
+    
+    func recallStoredInvitation(from sender: GKPlayer) -> GKInvite? {
+        print("🎮 GameKit: Attempting to recall stored invitation from \(sender.displayName)")
+        if let index = pendingInvitations.firstIndex(where: { $0.sender.gamePlayerID == sender.gamePlayerID }) {
+            let invite = pendingInvitations.remove(at: index)
+            print("🎮 GameKit: Successfully recalled invitation from \(sender.displayName)")
+            return invite
+        }
+        print("🎮 GameKit: No stored invitation found from \(sender.displayName)")
+        return nil
+    }
+    
+    func listStoredInvitations() -> [GKInvite] {
+        print("🎮 GameKit: Listing stored invitations: \(pendingInvitations.count) total")
+        for (index, invite) in pendingInvitations.enumerated() {
+            print("🎮 GameKit: \(index + 1). From: \(invite.sender.displayName)")
+        }
+        return pendingInvitations
+    }
+    
+    func clearStoredInvitations() {
+        print("🎮 GameKit: Clearing all stored invitations")
+        pendingInvitations.removeAll()
+    }
+    
     func checkMatchConnectionStatus() {
         guard let match = currentMatch else {
             print("🎮 GameKit: No current match to check")
@@ -674,9 +703,15 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
                     if self.playerColor == .none {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             self.assignPlayerColors()
+                            // Clear invitation after color assignment
+                            self.currentInvitation = nil
+                            print("🎮 GameKit: Invitation cleared after color assignment (delegate)")
                         }
                     } else {
                         print("🎮 GameKit: Colors already assigned (\(self.playerColor.rawValue)), skipping duplicate assignment")
+                        // Clear invitation even if colors are already assigned
+                        self.currentInvitation = nil
+                        print("🎮 GameKit: Invitation cleared (colors already assigned)")
                     }
                 } else {
                     // For auto-match, assign colors immediately when a player connects
@@ -705,6 +740,8 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
 extension GameKitManager: GKLocalPlayerListener {
     func player(_ player: GKPlayer, didAccept invite: GKInvite) {
         print("🎮 GameKit: Player accepted invitation")
+        // Store the invitation for potential recall
+        storeInvitation(invite)
         handleInvitation(invite)
     }
     

@@ -29,6 +29,7 @@ class GameKitManager: NSObject, ObservableObject {
     
     // Track current invitation for host determination
     private var currentInvitation: GKInvite?
+    private var pendingInvitations: [GKInvite] = [] // Store pending invitations for recall
     
     // Reference to the chess game manager for move processing
     private var chessGameManager: ChessGameManager?
@@ -307,6 +308,14 @@ class GameKitManager: NSObject, ObservableObject {
         // Check for any pending invitations
         print("🎮 GameKit: Checking for pending invitations...")
         print("🎮 GameKit: Local player: \(GKLocalPlayer.local.displayName) (ID: \(GKLocalPlayer.local.gamePlayerID))")
+        
+        // Check if we have any stored pending invitations to recall
+        if !pendingInvitations.isEmpty {
+            print("🎮 GameKit: Found \(pendingInvitations.count) stored pending invitations")
+            for (index, invite) in pendingInvitations.enumerated() {
+                print("🎮 GameKit: Stored invitation \(index + 1): from \(invite.sender.displayName)")
+            }
+        }
     }
     
     // MARK: - Move Sending
@@ -680,6 +689,8 @@ extension GameKitManager: GKMatchmakerViewControllerDelegate {
 extension GameKitManager: GKLocalPlayerListener {
     func player(_ player: GKPlayer, didAccept invite: GKInvite) {
         print("🎮 GameKit: Player accepted invitation")
+        // Store the invitation for potential recall
+        storeInvitation(invite)
         handleInvitation(invite)
     }
     
@@ -701,11 +712,17 @@ extension GameKitManager {
         
         currentInvitation = invite
         
+        // Also store for potential recall
+        storeInvitation(invite)
+        
         // Present invitation UI immediately to avoid conflicts with system notification
         DispatchQueue.main.async {
             let alert = NSAlert()
             alert.messageText = "Game Invitation"
-            alert.informativeText = "\(invite.sender.displayName) has invited you to play chess!"
+            
+            // Handle empty or null display names
+            let senderName = invite.sender.displayName.isEmpty ? "Unknown Player" : invite.sender.displayName
+            alert.informativeText = "\(senderName) has invited you to play chess!"
             alert.addButton(withTitle: "Accept")
             alert.addButton(withTitle: "Decline")
             
@@ -792,6 +809,43 @@ extension GameKitManager {
         print("🎮 GameKit: Declining invitation")
         currentInvitation = nil
         // Note: Modern GameKit handles invitation decline automatically
+    }
+    
+    // MARK: - Invitation Recall System
+    
+    func storeInvitation(_ invite: GKInvite) {
+        print("🎮 GameKit: Storing invitation from \(invite.sender.displayName) for potential recall")
+        // Store invitation if not already stored
+        if !pendingInvitations.contains(where: { $0.sender.gamePlayerID == invite.sender.gamePlayerID }) {
+            pendingInvitations.append(invite)
+            print("🎮 GameKit: Invitation stored. Total pending: \(pendingInvitations.count)")
+        } else {
+            print("🎮 GameKit: Invitation already stored from this sender")
+        }
+    }
+    
+    func recallStoredInvitation(from sender: GKPlayer) -> GKInvite? {
+        print("🎮 GameKit: Attempting to recall stored invitation from \(sender.displayName)")
+        if let index = pendingInvitations.firstIndex(where: { $0.sender.gamePlayerID == sender.gamePlayerID }) {
+            let invite = pendingInvitations.remove(at: index)
+            print("🎮 GameKit: Successfully recalled invitation from \(sender.displayName)")
+            return invite
+        }
+        print("🎮 GameKit: No stored invitation found from \(sender.displayName)")
+        return nil
+    }
+    
+    func listStoredInvitations() -> [GKInvite] {
+        print("🎮 GameKit: Listing stored invitations: \(pendingInvitations.count) total")
+        for (index, invite) in pendingInvitations.enumerated() {
+            print("🎮 GameKit: \(index + 1). From: \(invite.sender.displayName)")
+        }
+        return pendingInvitations
+    }
+    
+    func clearStoredInvitations() {
+        print("🎮 GameKit: Clearing all stored invitations")
+        pendingInvitations.removeAll()
     }
 }
 

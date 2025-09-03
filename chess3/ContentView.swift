@@ -30,6 +30,7 @@ struct ContentView: View {
     @State private var cancellables = Set<AnyCancellable>()
     @State private var showAIStats = false
     @State private var showAIWarning = false // For AI warning message
+    @State private var showingInvitationRecallMenu = false // For invitation recall menu
     // Add this property to ContentView
     @EnvironmentObject var gameKitManager: GameKitManager
     
@@ -211,8 +212,8 @@ struct ContentView: View {
                     .cornerRadius(12)
                     
                     // Multiplayer Controls
-                    MultiplayerView()
-                        .frame(width: 120)
+                    MultiplayerView(showingInvitationRecallMenu: $showingInvitationRecallMenu)
+                        .frame(width: 200)
                       
                 }
                 
@@ -635,6 +636,9 @@ struct ContentView: View {
                     .frame(width: 400, height: 450)
                 }
             }
+        }
+        .sheet(isPresented: $showingInvitationRecallMenu) {
+            InvitationRecallMenuView(gameKitManager: gameKitManager)
         }
         .overlay(
             // AI Warning Message

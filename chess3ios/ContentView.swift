@@ -9,6 +9,7 @@ import SwiftUI
 import SceneKit
 import UniformTypeIdentifiers
 import Combine
+import GameKit
 
 struct ContentView: View {
     @State private var sceneView = SCNView()
@@ -1537,6 +1538,7 @@ struct AdaptiveButtonStyle: ButtonStyle {
 // MARK: - Game Center Popover View
 struct GameCenterPopoverView: View {
     @EnvironmentObject var gameKitManager: GameKitManager
+    @State private var showingInvitationRecallMenu = false
     
     private func matchStateString(_ state: MatchState) -> String {
         switch state {
@@ -1629,9 +1631,174 @@ struct GameCenterPopoverView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+            
+            // Game Center Management Buttons
+            VStack(spacing: 8) {
+                // Disconnect Button (when connected)
+                if gameKitManager.matchState == .connected {
+                    Button("🔌 Disconnect") {
+                        gameKitManager.disconnectFromMatch()
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.red)
+                    .cornerRadius(8)
+                }
+                
+                // Reset Invitation Button (when invitation present)
+                if gameKitManager.currentInvitation != nil {
+                    Button("🔄 Reset Invitation") {
+                        gameKitManager.resetInvitationState()
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.orange)
+                    .cornerRadius(8)
+                }
+                
+                // Reconnect Button (when not authenticated or has errors)
+                if !gameKitManager.isAuthenticated || gameKitManager.errorMessage != nil {
+                    Button("🔄 Reconnect") {
+                        gameKitManager.reconnectToGameCenter()
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.blue)
+                    .cornerRadius(8)
+                }
+                
+                // Clear Error Button (when error present)
+                if gameKitManager.errorMessage != nil {
+                    Button("✕ Clear Error") {
+                        gameKitManager.clearErrorMessages()
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.gray)
+                    .cornerRadius(8)
+                }
+                
+                // Recall Invitations Button (when stored invitations exist)
+                if !gameKitManager.listStoredInvitations().isEmpty {
+                    Button("📨 Recall Invitations") {
+                        showInvitationRecallMenu()
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.purple)
+                    .cornerRadius(8)
+                }
+            }
         }
         .padding()
         .background(Color(.systemBackground))
+        .sheet(isPresented: $showingInvitationRecallMenu) {
+            InvitationRecallMenuView(gameKitManager: gameKitManager)
+        }
+    }
+    
+    private func showInvitationRecallMenu() {
+        showingInvitationRecallMenu = true
+    }
+}
+
+// MARK: - Invitation Recall Menu
+struct InvitationRecallMenuView: View {
+    @ObservedObject var gameKitManager: GameKitManager
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                let storedInvitations = gameKitManager.listStoredInvitations()
+                
+                if storedInvitations.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "envelope")
+                            .font(.system(size: 50))
+                            .foregroundColor(.secondary)
+                        Text("No Stored Invitations")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                        Text("All invitations have been processed or cleared")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                } else {
+                    List {
+                        ForEach(storedInvitations, id: \.sender.gamePlayerID) { invite in
+                            InvitationRowView(invite: invite, gameKitManager: gameKitManager, dismiss: dismiss)
+                        }
+                    }
+                }
+                
+                HStack(spacing: 15) {
+                    Button("Clear All") {
+                        gameKitManager.clearStoredInvitations()
+                    }
+                    .buttonStyle(.bordered)
+                    .foregroundColor(.red)
+                    
+                    Button("Close") {
+                        dismiss()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .padding()
+            }
+            .navigationTitle("Stored Invitations")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Invitation Row View
+struct InvitationRowView: View {
+    let invite: GKInvite
+    let gameKitManager: GameKitManager
+    let dismiss: DismissAction
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("From: \(invite.sender.displayName)")
+                    .font(.headline)
+                Text("ID: \(invite.sender.gamePlayerID)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+                                            Button("Accept") {
+                                    // For iOS, invitations are handled automatically by GameKit
+                                    // Just clear the stored invitation and dismiss
+                                    _ = gameKitManager.recallStoredInvitation(from: invite.sender)
+                                    dismiss()
+                                }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+        }
+        .padding(.vertical, 4)
     }
 }
 

@@ -161,6 +161,19 @@ struct MultiplayerView: View {
                     .padding(.vertical, 2)
                     .background(Color.red)
                     .cornerRadius(4)
+                    
+                    // Reset Invitation Button (for invitation-based matches)
+                    if gameKitManager.currentInvitation != nil {
+                        Button("🔄 Reset Invitation") {
+                            gameKitManager.resetInvitationState()
+                        }
+                        .font(isIPhone ? .caption2 : .caption)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.orange)
+                        .cornerRadius(4)
+                    }
                 }
                 .padding(.horizontal, isIPhone ? 4 : 8)
                 .padding(.vertical, isIPhone ? 2 : 4)
@@ -177,7 +190,7 @@ struct MultiplayerView: View {
                         .font(isIPhone ? .caption2 : .caption)
                     Text(gameKitManager.playerColor == .none ? "Assigning color..." : "You are \(gameKitManager.playerColor.rawValue)")
                         .font(isIPhone ? .caption2 : .caption)
-                        .foregroundColor(gameKitManager.playerColor == .white ? .white : .black)
+                        .foregroundColor(gameKitManager.playerColor == .white ? .white : .gray)
                     Spacer()
                 }
                 .padding(.horizontal, isIPhone ? 4 : 8)
