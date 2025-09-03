@@ -2545,7 +2545,11 @@ class ChessPieceController: ObservableObject {
             guard self.isMovePending else { return }
             // CRITICAL: Check if timer is still valid before proceeding
             guard self.moveConfirmationTimer != nil else { return }
-            self.updateMoveConfirmationTimer()
+            
+            // CRITICAL FIX: Dispatch timer updates to main queue to prevent priority inversion
+            DispatchQueue.main.async {
+                self.updateMoveConfirmationTimer()
+            }
         }
     }
     
@@ -2580,6 +2584,38 @@ class ChessPieceController: ObservableObject {
                 self.confirmMove()
             }
         }
+        
+        // CRITICAL FIX: Ensure timer is properly managed to prevent hanging
+        if moveConfirmationTimeRemaining < 0 {
+            print("⏰ Timer expired, cleaning up to prevent hanging")
+            DispatchQueue.main.async {
+                self.cleanupMoveConfirmationTimer()
+            }
+        }
+    }
+    
+    // MARK: - Timer Cleanup
+    
+    private func cleanupMoveConfirmationTimer() {
+        // CRITICAL: Ensure timer is properly invalidated and cleaned up
+        if let timer = moveConfirmationTimer {
+            timer.invalidate()
+            print("⏰ Timer invalidated and cleaned up")
+        }
+        moveConfirmationTimer = nil
+        
+        // Reset timer state
+        isMovePending = false
+        moveConfirmationTimeRemaining = 0
+        pendingMoveFrom = nil
+        pendingMoveTo = nil
+        pendingPieceNode = nil
+    }
+    
+    // Public method to cleanup timer when needed
+    func cleanupTimer() {
+        cleanupMoveConfirmationTimer()
+        print("⏰ Timer cleanup requested externally")
     }
     
     func confirmMove() {
@@ -2589,11 +2625,7 @@ class ChessPieceController: ObservableObject {
         isMovePending = false
         
         // Stop timer with proper cleanup
-        if let timer = moveConfirmationTimer {
-            timer.invalidate()
-            print("⏰ Timer invalidated and stopped")
-        }
-        moveConfirmationTimer = nil
+        cleanupMoveConfirmationTimer()
         
         // Execute the pending move
         if let from = pendingMoveFrom,
@@ -2710,11 +2742,7 @@ class ChessPieceController: ObservableObject {
         isMovePending = false
         
         // Stop timer with proper cleanup
-        if let timer = moveConfirmationTimer {
-            timer.invalidate()
-            print("⏰ Timer invalidated and stopped")
-        }
-        moveConfirmationTimer = nil
+        cleanupMoveConfirmationTimer()
         
         // Reset piece to original position
         if let pieceNode = pendingPieceNode,
@@ -3862,7 +3890,9 @@ struct ChessPieceControllerView: View {
         }
     }
     
-    // MARK: - Move Modifiers
+}
+
+// MARK: - Move Modifiers
     
     struct MoveUpModifier: ViewModifier {
         let controller: ChessPieceController
@@ -4248,6 +4278,6 @@ struct CompactPieceRowView: View {
             blackSymbols[piece.type] ?? "?"
     }
     }
-}
+
 
 // ChessPieceController class ends here
