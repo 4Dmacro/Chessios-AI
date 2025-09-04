@@ -593,6 +593,7 @@ class ChessAI {
         
         // Safety check for board corruption
         let pieces = board.getPieces(of: color)
+        
         if pieces.isEmpty && color == .black {
             print("⚠️ AI warning: No pieces found for \(color.rawValue), this might indicate board corruption")
             return []

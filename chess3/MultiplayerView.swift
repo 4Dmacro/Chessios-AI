@@ -4,11 +4,7 @@ import GameKit
 struct MultiplayerView: View {
     @EnvironmentObject var gameKitManager: GameKitManager
     @State private var showingMultiplayerMenu = false
-    @Binding var showingInvitationRecallMenu: Bool
-    
-    init(showingInvitationRecallMenu: Binding<Bool> = .constant(false)) {
-        self._showingInvitationRecallMenu = showingInvitationRecallMenu
-    }
+    @State private var showingInvitationRecallMenu = false
     
     var body: some View {
         VStack(spacing: 20) {
@@ -89,25 +85,29 @@ struct MultiplayerView: View {
                         gameKitManager.hostMatch()
                     }
                     .buttonStyle(.borderedProminent)
+                    .background(Color.green .opacity(0.4))
+                    .cornerRadius(6)
                     .disabled(gameKitManager.isHosting)
                     
                     Button("Join Game") {
                         gameKitManager.joinMatch()
                     }
                     .buttonStyle(.bordered)
+                    .background(Color.green .opacity(0.4))
+                    .cornerRadius(6)
                     .disabled(gameKitManager.isJoining)
                     
                     // Invitation Recall Button - Always visible
-                    Button("📨 Check Invitations\(gameKitManager.listStoredInvitations().isEmpty ? "" : " (\(gameKitManager.listStoredInvitations().count))")") {
+                    Button("📨 Check Invitations\(gameKitManager.hasStoredInvitations ? " (\(gameKitManager.pendingInvitations.count))" : "")") {
                         showInvitationRecallMenu()
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .foregroundColor(.white)
-                    .background(gameKitManager.listStoredInvitations().isEmpty ? Color.purple.opacity(0.6) : Color.purple)
+                    .background(gameKitManager.hasStoredInvitations ? Color.purple : Color.purple.opacity(0.6))
                     .overlay(
                         RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.purple, lineWidth: gameKitManager.listStoredInvitations().isEmpty ? 1 : 2)
+                            .stroke(Color.purple, lineWidth: gameKitManager.hasStoredInvitations ? 2 : 1)
                     )
                 }
                 .padding(.horizontal)

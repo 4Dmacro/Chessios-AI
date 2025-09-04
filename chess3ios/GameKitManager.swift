@@ -542,10 +542,21 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
         matchState = .none
         currentMatch = nil
         
-        // Re-authenticate player
-        authenticatePlayer()
+        // Reset all authentication state completely
+        print("🔄 GameKit: Resetting all authentication state")
+        isAuthenticated = false
         
-        print("🔄 GameKit: Reconnection attempt initiated")
+        // Clear any existing authentication handler to prevent conflicts
+        GKLocalPlayer.local.authenticateHandler = nil
+        print("🔄 GameKit: Cleared existing authentication handler")
+        
+        // Wait a moment to ensure cleanup is complete, then re-authenticate
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            print("🔄 GameKit: Starting fresh authentication after cleanup")
+            self.authenticatePlayer()
+        }
+        
+        print("🔄 GameKit: Reconnection attempt initiated with complete state reset")
     }
     
     func clearErrorMessages() {
@@ -553,6 +564,24 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
         errorMessage = ""
         if case .error = matchState {
             matchState = .none
+        }
+    }
+    
+    func forceReauthentication() {
+        print("🔄 GameKit: Force re-authentication requested")
+        
+        // Reset all authentication state completely
+        isAuthenticated = false
+        errorMessage = ""
+        
+        // Clear any existing authentication handler
+        GKLocalPlayer.local.authenticateHandler = nil
+        print("🔄 GameKit: Cleared authentication handler for force re-auth")
+        
+        // Wait a moment then re-authenticate
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            print("🔄 GameKit: Starting force re-authentication")
+            self.authenticatePlayer()
         }
     }
     

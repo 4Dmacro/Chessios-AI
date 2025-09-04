@@ -24,7 +24,7 @@ struct MultiplayerView: View {
     }
     
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: isIPad ? 4 : 8) {
             // Game Center Status
             VStack(spacing: isIPhone ? 1 : 2) {
                 HStack {
@@ -99,15 +99,15 @@ struct MultiplayerView: View {
                     }
                 } else {
                     // iPad: Use vertical layout for consistency
-                    VStack(spacing: 8) {
+                    VStack(spacing: 4) {
                         Button("Host Game") {
                             gameKitManager.hostMatch()
                         }
                         .font(.caption)
                         .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(gameKitManager.isAuthenticated ? Color.blue : Color.gray)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(gameKitManager.isAuthenticated ? Color.green.opacity(0.4) : Color.gray)
                         .cornerRadius(8)
                         .disabled(!gameKitManager.isAuthenticated)
                         
@@ -116,9 +116,9 @@ struct MultiplayerView: View {
                         }
                         .font(.caption)
                         .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(gameKitManager.isAuthenticated ? Color.blue : Color.gray)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(gameKitManager.isAuthenticated ? Color.green.opacity(0.4) : Color.gray)
                         .cornerRadius(8)
                         .disabled(!gameKitManager.isAuthenticated)
                         
@@ -129,9 +129,9 @@ struct MultiplayerView: View {
                             }
                             .font(.caption)
                             .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.orange)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.orange .opacity(0.6))
                             .cornerRadius(8)
                         }
                     }
@@ -178,7 +178,7 @@ struct MultiplayerView: View {
                 .padding(.horizontal, isIPhone ? 4 : 8)
                 .padding(.vertical, isIPhone ? 2 : 4)
                 .frame(maxWidth: 140)
-                .background(Color(.systemGray6).opacity(0.3))
+                .background(Color(.systemGray6).opacity(0.2))
                 .cornerRadius(isIPhone ? 4 : 8)
             }
             
@@ -196,7 +196,7 @@ struct MultiplayerView: View {
                 .padding(.horizontal, isIPhone ? 4 : 8)
                 .padding(.vertical, isIPhone ? 2 : 4)
                 .frame(maxWidth: 140)
-                .background(gameKitManager.playerColor == .white ? Color.white.opacity(0.3) : Color.black.opacity(0.3))
+                .background(gameKitManager.playerColor == .white ? Color.white.opacity(0.3) : Color.black.opacity(0.2))
                 .cornerRadius(isIPhone ? 4 : 8)
             }
             
@@ -211,14 +211,14 @@ struct MultiplayerView: View {
                         .background(Color(.systemRed).opacity(0.1))
                         .cornerRadius(isIPhone ? 4 : 8)
                     
-                    HStack(spacing: 8) {
+                    HStack(spacing: 4) {
                         Button("🔄 Reconnect") {
                             gameKitManager.reconnectToGameCenter()
                         }
                         .font(isIPhone ? .caption2 : .caption)
                         .foregroundColor(.white)
                         .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
+                        .padding(.vertical, 2)
                         .background(Color.blue)
                         .cornerRadius(6)
                         
@@ -236,11 +236,13 @@ struct MultiplayerView: View {
                 .frame(maxWidth: 140)
             }
         }
-        .padding(isIPhone ? 2 : 12)
+        .padding(isIPhone ? 2 : (isIPad ? 4 : 8))
         .frame(maxWidth: 140) // Constrain width to reasonable size
-        .background(Color(.systemGray6).opacity(0.2))
-        .cornerRadius(isIPhone ? 4 : 12)
+        .background(Color(.systemGray6).opacity(0.1))
+        .cornerRadius(isIPhone ? 4 : (isIPad ? 6 : 8))
         .shadow(radius: isIPhone ? 1 : 2)
+       
+        Spacer(minLength: 5)
     }
     
     private var hasError: Bool {

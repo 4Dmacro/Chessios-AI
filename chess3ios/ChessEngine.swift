@@ -428,8 +428,22 @@ class ChessBoard3D {
     
     // Safe dictionary access wrapper
     private func safeDictionaryAccess<T>(_ operation: () -> T?) -> T? {
+        // CRITICAL FIX: Add type safety check for pieces dictionary
+        guard pieces is [ChessPosition3D: ChessPiece3D] else {
+            print("❌ CRITICAL ERROR: pieces dictionary has wrong type - resetting")
+            pieces = [:]
+            return nil
+        }
+        
         // Only do basic validation - be very lenient to prevent crashes
-        let pieceCount = pieces.count
+        let pieceCount: Int
+        do {
+            pieceCount = pieces.count
+        } catch {
+            print("❌ CRITICAL ERROR: Failed to get pieces count - resetting")
+            pieces = [:]
+            return nil
+        }
         
         // Only reset if count is clearly invalid (negative or extremely large)
         if pieceCount < 0 {

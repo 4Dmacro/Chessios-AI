@@ -30,7 +30,6 @@ struct ContentView: View {
     @State private var cancellables = Set<AnyCancellable>()
     @State private var showAIStats = false
     @State private var showAIWarning = false // For AI warning message
-    @State private var showingInvitationRecallMenu = false // For invitation recall menu
     // Add this property to ContentView
     @EnvironmentObject var gameKitManager: GameKitManager
     
@@ -212,7 +211,7 @@ struct ContentView: View {
                     .cornerRadius(12)
                     
                     // Multiplayer Controls
-                    MultiplayerView(showingInvitationRecallMenu: $showingInvitationRecallMenu)
+                    MultiplayerView()
                         .frame(width: 200)
                       
                 }
@@ -500,27 +499,27 @@ struct ContentView: View {
                                 .multilineTextAlignment(.center)
                                 .animation(.easeInOut(duration: 0.6), value: gameKitManager.errorMessage)
                             
-                            HStack(spacing: 12) {
-                                Button("🔄 Reconnect") {
-                                    gameKitManager.reconnectToGameCenter()
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color.blue.opacity(0.6))
-                                .foregroundColor(.white)
-                                .cornerRadius(6)
+                           // HStack(spacing: 12) {
+                             //   Button("🔄 Reconnect") {
+                             //       gameKitManager.reconnectToGameCenter()
+                             //   }
+                             //   .buttonStyle(PlainButtonStyle())
+                             //   .padding(.horizontal, 12)
+                             //   .padding(.vertical, 6)
+                             //   .background(Color.blue.opacity(0.6))
+                             //   .foregroundColor(.white)
+                             //   .cornerRadius(6)
                                 
-                                Button("✕ Clear") {
-                                    gameKitManager.clearErrorMessages()
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color.gray.opacity(0.6))
-                                .foregroundColor(.white)
-                                .cornerRadius(6)
-                            }
+                             //   Button("✕ Clear") {
+                              //      gameKitManager.clearErrorMessages()
+                              //  }
+                              //  .buttonStyle(PlainButtonStyle())
+                              //  .padding(.horizontal, 12)
+                              //  .padding(.vertical, 6)
+                              //  .background(Color.gray.opacity(0.6))
+                              //  .foregroundColor(.white)
+                              //  .cornerRadius(6)
+                          //  }
                         }
                     }
                     
@@ -637,9 +636,7 @@ struct ContentView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingInvitationRecallMenu) {
-            InvitationRecallMenuView(gameKitManager: gameKitManager)
-        }
+
         .overlay(
             // AI Warning Message
             Group {

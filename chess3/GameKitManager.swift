@@ -29,7 +29,7 @@ class GameKitManager: NSObject, ObservableObject {
     
     // Track current invitation for host determination
     private var currentInvitation: GKInvite?
-    private var pendingInvitations: [GKInvite] = [] // Store pending invitations for recall
+    @Published var pendingInvitations: [GKInvite] = [] // Store pending invitations for recall
     
     // Reference to the chess game manager for move processing
     private var chessGameManager: ChessGameManager?
@@ -88,17 +88,23 @@ class GameKitManager: NSObject, ObservableObject {
             
             // Additional check: ensure we have a valid display name
             if GKLocalPlayer.local.displayName.isEmpty {
-                print("⚠️ GameKit: Authenticated but displayName is empty - waiting for initialization")
+                print("⚠️ GameKit: Authenticated but displayName is empty - this is a known macOS Game Center issue")
+                print("🔧 GameKit: macOS Game Center troubleshooting steps:")
+                print("🔧 1. Open System Preferences → Game Center")
+                print("🔧 2. Sign out of Game Center")
+                print("🔧 3. Sign back in with your Apple ID")
+                print("🔧 4. Restart the chess app")
+                print("🔧 5. Try the reconnect button again")
+                
                 // Wait a bit longer instead of forcing re-authentication
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
                     if GKLocalPlayer.local.displayName.isEmpty {
-                        print("❌ GameKit: Still no displayName - this might be a macOS Game Center issue")
-                        print("🔧 GameKit: Try signing out and back into Game Center in System Preferences")
+                        print("❌ GameKit: Still no displayName after delay - macOS Game Center needs manual intervention")
                         
                         DispatchQueue.main.async {
                             self.isAuthenticated = false
                             self.isAuthenticating = false
-                            self.errorMessage = "Game Center authentication incomplete. Please check System Preferences → Game Center and try again."
+                            self.errorMessage = "Game Center authentication incomplete. Please sign out and back into Game Center in System Preferences, then try reconnecting."
                         }
                     } else {
                         print("✅ GameKit: displayName now available: \(GKLocalPlayer.local.displayName)")
@@ -176,17 +182,23 @@ class GameKitManager: NSObject, ObservableObject {
                 // CRITICAL FIX: Don't set isAuthenticated until displayName is available
                 // If authentication succeeds but displayName is empty, wait for it to become available
                 if GKLocalPlayer.local.displayName.isEmpty {
-                    print("⚠️ GameKit: Authentication successful but displayName is empty - waiting for full initialization")
+                    print("⚠️ GameKit: Authentication successful but displayName is empty - this is a known macOS Game Center issue")
+                    print("🔧 GameKit: macOS Game Center troubleshooting steps:")
+                    print("🔧 1. Open System Preferences → Game Center")
+                    print("🔧 2. Sign out of Game Center")
+                    print("🔧 3. Sign back in with your Apple ID")
+                    print("🔧 4. Restart the chess app")
+                    print("🔧 5. Try the reconnect button again")
+                    
                     DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
                         if GKLocalPlayer.local.displayName.isEmpty {
-                            print("❌ GameKit: Still no displayName after delay - this might be a macOS Game Center issue")
-                            print("🔧 GameKit: Try signing out and back into Game Center in System Preferences")
+                            print("❌ GameKit: Still no displayName after delay - macOS Game Center needs manual intervention")
                             
-                                                DispatchQueue.main.async {
-                        self.isAuthenticated = false
-                        self.isAuthenticating = false
-                        self.errorMessage = "Game Center authentication incomplete. Please check System Preferences → Game Center and try again."
-                    }
+                            DispatchQueue.main.async {
+                                self.isAuthenticated = false
+                                self.isAuthenticating = false
+                                self.errorMessage = "Game Center authentication incomplete. Please sign out and back into Game Center in System Preferences, then try reconnecting."
+                            }
                         } else {
                             print("✅ GameKit: displayName now available: \(GKLocalPlayer.local.displayName)")
                             self.completeAuthentication()
@@ -497,17 +509,23 @@ class GameKitManager: NSObject, ObservableObject {
         matchState = .none
         currentMatch = nil
         
-        // Reset authentication state if displayName is empty
-        if GKLocalPlayer.local.displayName.isEmpty {
-            print("🔄 GameKit: displayName is empty, resetting authentication state")
-            isAuthenticated = false
-            currentPlayer = nil
+        // Reset all authentication state completely
+        print("🔄 GameKit: Resetting all authentication state")
+        isAuthenticated = false
+        isAuthenticating = false
+        currentPlayer = nil
+        
+        // Clear any existing authentication handler to prevent conflicts
+        GKLocalPlayer.local.authenticateHandler = nil
+        print("🔄 GameKit: Cleared existing authentication handler")
+        
+        // Wait a moment to ensure cleanup is complete, then re-authenticate
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            print("🔄 GameKit: Starting fresh authentication after cleanup")
+            self.authenticatePlayer()
         }
         
-        // Re-authenticate player
-        authenticatePlayer()
-        
-        print("🔄 GameKit: Reconnection attempt initiated")
+        print("🔄 GameKit: Reconnection attempt initiated with complete state reset")
     }
     
     func clearErrorMessages() {
@@ -532,16 +550,19 @@ class GameKitManager: NSObject, ObservableObject {
     func forceReauthentication() {
         print("🔄 GameKit: Force re-authentication requested")
         
-        // Reset all authentication state
+        // Reset all authentication state completely
         isAuthenticated = false
+        isAuthenticating = false
         currentPlayer = nil
         errorMessage = ""
         
         // Clear any existing authentication handler
         GKLocalPlayer.local.authenticateHandler = nil
+        print("🔄 GameKit: Cleared authentication handler for force re-auth")
         
         // Wait a moment then re-authenticate
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            print("🔄 GameKit: Starting force re-authentication")
             self.authenticatePlayer()
         }
     }
@@ -841,6 +862,11 @@ extension GameKitManager {
             print("🎮 GameKit: \(index + 1). From: \(invite.sender.displayName)")
         }
         return pendingInvitations
+    }
+    
+    // Computed property for SwiftUI binding
+    var hasStoredInvitations: Bool {
+        return !pendingInvitations.isEmpty
     }
     
     func clearStoredInvitations() {

@@ -114,16 +114,16 @@ struct ContentView: View {
                 // AI Warning Message
                 if showAIWarning {
                     VStack {
-                        Text("⚠️ AI Play Mode Warning")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.red.opacity(0.9))
-                            .cornerRadius(8)
+                       // Text("⚠️ AI Play Mode Warning")
+                       //     .font(.headline)
+                       //     .fontWeight(.bold)
+                       //     .foregroundColor(.white)
+                        //    .padding(.horizontal, 16)
+                        //    .padding(.vertical, 8)
+                        //    .background(Color.red.opacity(0.9))
+                        //    .cornerRadius(8)
                         
-                        Text("AI play mode is still in development, the exponential number of move possibilities makes it prone to crash, especially when in check")
+                        Text("AI play mode is still in development, the exponential number of move possibilities makes it prone to crash, especially when in check. It is still useful to learn from.")
                             .font(.caption)
                             .foregroundColor(.white)
                             .multilineTextAlignment(.center)
@@ -375,7 +375,7 @@ struct ContentView: View {
                     .font(.caption)
                     .scaleEffect(uiScale)
                     
-                    Spacer(minLength: 20)
+                    Spacer(minLength: 10)
                     
                     // Multiplayer Controls
                     MultiplayerView()
@@ -383,7 +383,7 @@ struct ContentView: View {
                 }
             }
             .padding(.leading, 5)
-            .position(x: 100, y: geometry.size.height / 2 - 120) // Position left controls higher up for iPad
+            .position(x: 100, y: geometry.size.height / 2 - 5) // Position left controls higher up for iPad
             
             // Right Side Controls - Movement Controls
             ChessPieceControllerView(controller: pieceController)

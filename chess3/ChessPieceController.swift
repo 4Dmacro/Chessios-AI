@@ -1042,7 +1042,7 @@ class ChessPieceController: ObservableObject {
     }
     
     // Get symbol for a piece
-    private func getPieceSymbol(_ piece: ChessPiece3D) -> String {
+    func getPieceSymbol(_ piece: ChessPiece3D) -> String {
         let whiteSymbols: [PieceType: String] = [
             .king: "♔", .queen: "♕", .rook: "♖", 
             .bishop: "♗", .knight: "♘", .pawn: "♙"
@@ -3017,11 +3017,11 @@ struct ChessPieceControllerView: View {
             pieceSelection
         }
         .padding()
-        .frame(width: 290)
+        .frame(width: 250)
         .frame(maxHeight: .infinity)
         .background(.regularMaterial.opacity(0.2))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.white.opacity(0.02), lineWidth: 1)
         )
         .cornerRadius(12)
@@ -3046,7 +3046,7 @@ struct ChessPieceControllerView: View {
     }
     
     private var selectedPieceInfo: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 4) {
             // Game mode selector
 
             
@@ -3174,7 +3174,7 @@ struct ChessPieceControllerView: View {
             }
             
             // Movement controls with distance selector on the left
-            HStack(spacing: 16) {
+            HStack(spacing: 8) {
                 // Distance selector (vertical stack on the left)
                 VStack(spacing: 2) {
                     Text("Distance:")
@@ -3822,20 +3822,20 @@ struct ChessPieceControllerView: View {
             if let pos = controller.selectedPiecePosition,
                let chessGame = controller.chessGame,
                let piece = chessGame.getPieceAtPosition(pos) {
-                Text("\(piece.color.rawValue.capitalized) \(piece.type.rawValue.capitalized) \(pos.stringValue)")
+                Text("\(controller.getPieceSymbol(piece)) \(pos.stringValue)")
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
                     .padding(.horizontal)
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 1)
                     .background(Color.yellow.opacity(0.7))
                     .cornerRadius(6)
             }
             // Piece list
             ScrollView {
-            HStack(alignment: .top, spacing: 5) {
+            HStack(alignment: .top, spacing: 1) {
                 // Pawns column
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text("Pawns")
                         .font(.caption2)
                         .fontWeight(.semibold)
@@ -3845,7 +3845,7 @@ struct ChessPieceControllerView: View {
                     }
                 }
                 // Other pieces column
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text("Pieces")
                         .font(.caption2)
                         .fontWeight(.semibold)
@@ -3858,7 +3858,7 @@ struct ChessPieceControllerView: View {
             .padding(.horizontal, 1)
             .padding(.vertical, 4)
             }
-            .cornerRadius(8)
+            .cornerRadius(3)
         }
     }
     
@@ -4241,12 +4241,6 @@ struct CompactPieceRowView: View {
                     .frame(width: 12)
                     .foregroundColor(.white)
             
-               
-                Text(controller.getPieceName(piece))
-                    .font(.caption)
-                    .lineLimit(1)
-                    .foregroundColor(.white)
-                
                 Spacer()
                 
                 Text(piece.position.stringValue)
