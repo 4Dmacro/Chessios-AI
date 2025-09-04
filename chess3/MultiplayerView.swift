@@ -163,6 +163,19 @@ struct MultiplayerView: View {
                         RoundedRectangle(cornerRadius: 4)
                             .stroke(Color.purple, lineWidth: gameKitManager.hasStoredInvitations ? 2 : 1)
                     )
+                    
+                    // Manual Invitation Check Button
+                    Button("🔍 Check System") {
+                        gameKitManager.manuallyCheckForInvitations()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .foregroundColor(.white)
+                    .background(Color.blue.opacity(0.6))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.blue, lineWidth: 1)
+                    )
                 }
                 .padding(.horizontal)
             }
@@ -245,6 +258,15 @@ struct MultiplayerView: View {
                     .controlSize(.small)
                     .foregroundColor(.white)
                     .background(gameKitManager.listStoredInvitations().isEmpty ? Color.purple.opacity(0.6) : Color.purple)
+                    
+                    // Manual System Check Button (also visible in error states)
+                    Button("🔍 Check System") {
+                        gameKitManager.manuallyCheckForInvitations()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .foregroundColor(.white)
+                    .background(Color.blue)
                 }
                 .padding(.horizontal)
             }

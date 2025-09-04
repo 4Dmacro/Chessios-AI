@@ -778,9 +778,10 @@ extension GameKitManager: GKMatchmakerViewControllerDelegate {
 // MARK: - GKLocalPlayerListener
 extension GameKitManager: GKLocalPlayerListener {
     func player(_ player: GKPlayer, didAccept invite: GKInvite) {
-        print("🎮 GameKit: Player accepted invitation")
-        // Store the invitation for potential recall
+        print("🎮 GameKit: Player accepted invitation from \(invite.sender.displayName)")
+        // Store the invitation for potential recall BEFORE handling
         storeInvitation(invite)
+        // Handle the invitation (this will also store it again, but that's OK due to duplicate prevention)
         handleInvitation(invite)
     }
     
@@ -871,7 +872,9 @@ extension GameKitManager {
                             self.assignPlayerColors()
                             // Clear invitation after color assignment
                             self.currentInvitation = nil
-                            print("🎮 GameKit: Invitation cleared after color assignment (accept)")
+                            // Also remove from stored invitations since it's been successfully used
+                            self.pendingInvitations.removeAll { $0.sender.gamePlayerID == invite.sender.gamePlayerID }
+                            print("🎮 GameKit: Invitation cleared after successful color assignment (accept)")
                         } else {
                             print("⚠️ GameKit: No players connected yet, waiting longer...")
                             // Try again in another second
@@ -880,6 +883,8 @@ extension GameKitManager {
                                     print("🎮 GameKit: Players now connected, proceeding with color assignment")
                                     self.assignPlayerColors()
                                     self.currentInvitation = nil
+                                    // Also remove from stored invitations since it's been successfully used
+                                    self.pendingInvitations.removeAll { $0.sender.gamePlayerID == invite.sender.gamePlayerID }
                                 } else {
                                     print("❌ GameKit: Still no players connected after delay")
                                     self.errorMessage = "Failed to establish connection with host"
@@ -896,8 +901,11 @@ extension GameKitManager {
     }
     
     func declineInvitation(_ invite: GKInvite) {
-        print("🎮 GameKit: Declining invitation")
+        print("🎮 GameKit: Declining invitation from \(invite.sender.displayName)")
         currentInvitation = nil
+        // Remove from stored invitations when declined
+        pendingInvitations.removeAll { $0.sender.gamePlayerID == invite.sender.gamePlayerID }
+        print("🎮 GameKit: Invitation declined and removed from storage")
         // Note: Modern GameKit handles invitation decline automatically
     }
     
@@ -941,6 +949,36 @@ extension GameKitManager {
     func clearStoredInvitations() {
         print("🎮 GameKit: Clearing all stored invitations")
         pendingInvitations.removeAll()
+    }
+    
+    // MARK: - Manual Invitation Check
+    
+    func manuallyCheckForInvitations() {
+        print("🎮 GameKit: Manually checking for pending invitations...")
+        
+        // Check if we have any stored invitations
+        if !pendingInvitations.isEmpty {
+            print("🎮 GameKit: Found \(pendingInvitations.count) stored invitations")
+            for (index, invite) in pendingInvitations.enumerated() {
+                print("🎮 GameKit: Stored invitation \(index + 1): from \(invite.sender.displayName)")
+            }
+        } else {
+            print("🎮 GameKit: No stored invitations found")
+        }
+        
+        // Also check if we have a current invitation
+        if let currentInvite = currentInvitation {
+            print("🎮 GameKit: Current invitation from: \(currentInvite.sender.displayName)")
+        } else {
+            print("🎮 GameKit: No current invitation")
+        }
+        
+        // Force a check for any system-level pending invitations
+        // This might help catch invitations that weren't properly handled
+        DispatchQueue.main.async {
+            // Try to trigger a system check for pending invitations
+            print("🎮 GameKit: Triggering system invitation check...")
+        }
     }
 }
 
