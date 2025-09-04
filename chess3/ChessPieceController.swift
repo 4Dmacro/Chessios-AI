@@ -3822,7 +3822,7 @@ struct ChessPieceControllerView: View {
             if let pos = controller.selectedPiecePosition,
                let chessGame = controller.chessGame,
                let piece = chessGame.getPieceAtPosition(pos) {
-                Text("\(controller.getPieceSymbol(piece)) \(pos.stringValue)")
+                Text("\(piece.color.rawValue.capitalized) \(piece.type.rawValue.capitalized) \(pos.stringValue)")
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
