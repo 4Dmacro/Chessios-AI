@@ -349,7 +349,26 @@ class ChessGameManager: ObservableObject {
             
             if success {
                 print("✅ GameKit: Received 3D move executed successfully")
-                // ... rest of success handling
+                
+                // CRITICAL: Synchronize game state after receiving a 3D move
+                DispatchQueue.main.async {
+                    // Update game state to reflect the new turn
+                    let currentTurn = self.chessBoard.getCurrentTurn()
+                    self.gameState = "\(currentTurn.rawValue.capitalized)'s Turn"
+                    print("🎮 GameKit: Synchronized game state after received 3D move: \(self.gameState)")
+                    
+                    // Clear selection and valid moves since it's now the other player's turn
+                    self.selectedPiece = nil
+                    self.validMoves = []
+                    
+                    // Update piece lists to reflect the new turn
+                    self.pieceController?.updatePieceLists()
+                    
+                    // Highlight the piece that was moved by the opponent
+                    self.pieceController?.temporarilyHighlightPiece(at: coordinates.to, duration: 2.0)
+                    
+                    print("🎮 GameKit: 3D move game state fully synchronized - turn: \(currentTurn.rawValue)")
+                }
             } else {
                 print("❌ GameKit: Failed to execute received 3D move")
             }
@@ -393,6 +412,10 @@ class ChessGameManager: ObservableObject {
                                 self.selectedPiece = nil
                                 self.validMoves = []
                                 self.pieceController?.updatePieceLists()
+                                
+                                // Highlight the piece that was moved by the opponent
+                                self.pieceController?.temporarilyHighlightPiece(at: to, duration: 2.0)
+                                
                                 print("🎮 GameKit: Game state synchronized after purple arrow move")
                             }
                         } else {
@@ -436,6 +459,9 @@ class ChessGameManager: ObservableObject {
                     // Update piece lists to reflect the new turn
                     self.pieceController?.updatePieceLists()
                     
+                    // Highlight the piece that was moved by the opponent
+                    self.pieceController?.temporarilyHighlightPiece(at: coordinates.to, duration: 2.0)
+                    
                     print("🎮 GameKit: Game state fully synchronized - turn: \(currentTurn.rawValue)")
                 }
             } else {
@@ -447,25 +473,30 @@ class ChessGameManager: ObservableObject {
     func rotateBoardForGameKitPlayer(playerColor: PieceColor) {
         print("🎮 GameKit: Rotating board for \(playerColor.rawValue) player")
         
-        // Rotate the board so the player sees their pieces at the bottom
-        // White pieces should be at the bottom for white player, top for black player
-        let targetRotation: Float = playerColor == .white ? 0.0 : Float.pi
-        
-        print("🎮 GameKit: Target rotation: \(targetRotation) radians (\(targetRotation * 180 / Float.pi) degrees)")
-        
-        // Apply rotation to the model node (container) - use Y-axis rotation, not X-axis
+        // Use the same rotation logic as the standard iOS board rotation
+        // This ensures consistent behavior between Game Center and local play
         if let modelNode = modelNode {
-            let currentRotation = modelNode.eulerAngles.y
-            print("🎮 GameKit: Current model rotation: \(currentRotation) radians (\(currentRotation * 180 / Float.pi) degrees)")
+            let targetRotation: SCNVector3
             
-            // Only rotate if the current rotation is different from target
-            if abs(currentRotation - targetRotation) > 0.01 {
-                modelNode.eulerAngles.y = targetRotation
-                print("🎮 GameKit: Model rotated to \(playerColor.rawValue) perspective (Y-axis rotation: \(targetRotation))")
-                print("🎮 GameKit: New model rotation: \(modelNode.eulerAngles.y) radians (\(modelNode.eulerAngles.y * 180 / Float.pi) degrees)")
+            if playerColor == .black {
+                // For black player: rotate to black's position (180° Y-axis from white default)
+                targetRotation = SCNVector3(-Float.pi * 5/12 - Float.pi * 1/12, Float.pi + Float.pi * 1/7, 0)
+                print("🎮 GameKit: Target rotation for black player: \(targetRotation)")
             } else {
-                print("🎮 GameKit: Model already at correct rotation, no change needed")
+                // For white player: rotate to white's default position
+                targetRotation = SCNVector3(-Float.pi * 6/12, Float.pi * 1/7, 0)
+                print("🎮 GameKit: Target rotation for white player: \(targetRotation)")
             }
+            
+            // Apply the rotation using SCNAction for smooth animation
+            let rotationAction = SCNAction.rotateTo(x: CGFloat(targetRotation.x),
+                                                   y: CGFloat(targetRotation.y),
+                                                   z: CGFloat(targetRotation.z),
+                                                   duration: 0.8)
+            modelNode.runAction(rotationAction)
+            
+            print("🎮 GameKit: Model rotated to \(playerColor.rawValue) perspective")
+            print("🎮 GameKit: New model rotation: \(modelNode.eulerAngles) radians")
         } else {
             print("❌ GameKit: No model node found for rotation")
         }
@@ -473,8 +504,9 @@ class ChessGameManager: ObservableObject {
         // Also notify the piece controller to update piece positions and lists
         pieceController?.updateBoardRotationForGameKit(playerColor: playerColor)
         
-        // CRITICAL: Synchronize game state when player colors are assigned
-        synchronizeGameStateForGameKit()
+        // DON'T synchronize game state here - it should only be done during initialization
+        // The game state should reflect the current turn, not be reset to "White's Turn"
+        print("🎮 GameKit: NOT calling synchronizeGameStateForGameKit() - preserving current game state")
         
         // Force update piece lists to reflect the correct player's pieces
         DispatchQueue.main.async {
@@ -1323,8 +1355,27 @@ class ChessGameManager: ObservableObject {
             
             // Update game state
             // CRITICAL: Use human-specific game state for human players
+            print("🎯 GameKit: About to update game state - isLocalMove: \(isLocalMove), gameMode: \(gameMode)")
+            if let gameKitManager = gameKitManager {
+                print("🎯 GameKit: gameKitManager exists, matchState: \(gameKitManager.matchState)")
+            } else {
+                print("🎯 GameKit: No gameKitManager")
+            }
+            
             if gameMode == .play {
-                gameState = chessBoard.getGameStateForHuman()
+                // In Game Center mode, show the opponent's turn after making a local move
+                if let gameKitManager = gameKitManager, gameKitManager.matchState == .connected && isLocalMove {
+                    // For Game Center local moves, we need to show the opponent's turn
+                    // The chess board's current turn is now the opponent's turn after the move
+                    let currentTurn = chessBoard.getCurrentTurn()
+                    gameState = "\(currentTurn.rawValue.capitalized)'s Turn"
+                    print("🎮 GameKit: Local move made - showing current turn (opponent's): \(gameState)")
+                    print("🎮 GameKit: Chess board current turn: \(currentTurn.rawValue)")
+                    print("🎮 GameKit: Debug - isLocalMove: \(isLocalMove), matchState: \(gameKitManager.matchState)")
+                } else {
+                    gameState = chessBoard.getGameStateForHuman()
+                    print("🎮 GameKit: Using standard game state: \(gameState)")
+                }
             } else {
                 gameState = chessBoard.getGameState()
             }

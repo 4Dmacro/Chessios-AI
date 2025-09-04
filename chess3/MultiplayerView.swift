@@ -70,7 +70,7 @@ struct MultiplayerView: View {
                     }
                     .padding(.horizontal)
                     
-                    // Disconnect/Reconnect Buttons
+                    // Disconnect/Reconnect/Cancel Buttons
                     if gameKitManager.matchState == .connected {
                         Button("Disconnect") {
                             gameKitManager.disconnectFromMatch()
@@ -85,6 +85,14 @@ struct MultiplayerView: View {
                         .controlSize(.small)
                         .foregroundColor(.white)
                         .background(Color.blue)
+                    } else if gameKitManager.matchState == .searching {
+                        Button("Cancel Search") {
+                            gameKitManager.cancelMatchmaking()
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .foregroundColor(.white)
+                        .background(Color.red)
                     }
                 }
             }

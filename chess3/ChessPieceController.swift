@@ -749,6 +749,57 @@ class ChessPieceController: ObservableObject {
         }
     }
     
+    // Temporarily highlight a piece at a specific position (for Game Center moves)
+    func temporarilyHighlightPiece(at position: ChessPosition3D, duration: TimeInterval = 2.0) {
+        guard let chessGame = chessGame else {
+            print("⚠️ ChessPieceController: No chess game available for temporary highlight")
+            return
+        }
+        
+        print("🎮 GameKit: Temporarily highlighting piece at \(position.stringValue)")
+        
+        // Find the piece node at the specified position
+        if let pieceNode = chessGame.getPieceNode(at: position) {
+            print("🎮 GameKit: Found piece node for temporary highlight: \(pieceNode.name ?? "unknown")")
+            
+            // Create a temporary highlight (different from selection highlight)
+            let highlightMaterial = SCNMaterial()
+            highlightMaterial.diffuse.contents = NSColor.yellow
+            highlightMaterial.emission.contents = NSColor.yellow
+            highlightMaterial.transparency = 0.4
+            
+            // Determine highlight size based on piece type
+            var highlightRadius: CGFloat = 0.5  // Default size for pawns
+            
+            if let piece = chessGame.getPieceAtPosition(position) {
+                // Use larger highlight for non-pawn pieces
+                if piece.type != .pawn {
+                    highlightRadius = 0.4  // Larger size for major pieces
+                }
+            }
+            
+            let highlightGeometry = SCNSphere(radius: highlightRadius)
+            highlightGeometry.materials = [highlightMaterial]
+            
+            let highlightNode = SCNNode(geometry: highlightGeometry)
+            highlightNode.position = SCNVector3(0, 0, 0.3)  // Local offset above the piece
+            highlightNode.name = "TemporaryHighlight"
+            
+            // Add as child of the piece so it moves with the piece and board
+            pieceNode.addChildNode(highlightNode)
+            
+            print("🎮 GameKit: Added temporary highlight to piece at \(position.stringValue)")
+            
+            // Remove the highlight after the specified duration
+            DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+                highlightNode.removeFromParentNode()
+                print("🎮 GameKit: Removed temporary highlight from piece at \(position.stringValue)")
+            }
+        } else {
+            print("⚠️ ChessPieceController: No piece node found at \(position.stringValue) for temporary highlight")
+        }
+    }
+    
     // Move the selected piece in the specified direction
     func moveSelectedPiece(direction: MoveDirection, distance: Int = 1) {
         // Handle knight movement differently
@@ -2518,17 +2569,15 @@ class ChessPieceController: ObservableObject {
         // Update the board rotation state
         isBoardRotatedForBlack = playerColor == .black
         
-        // Update the game state display
-        if let chessGame = chessGame {
-            chessGame.gameState = "\(playerColor.rawValue.capitalized)'s Turn"
-        }
+        // DON'T override the game state here - let the ChessGameManager handle it
+        // The game state should reflect the current turn, not the player's assigned color
+        print("🎮 GameKit: Board rotation updated - isBoardRotatedForBlack: \(isBoardRotatedForBlack)")
+        print("🎮 GameKit: NOT updating game state here - letting ChessGameManager handle it")
         
         // Force update piece lists to reflect the correct player's pieces
         DispatchQueue.main.async {
             self.updatePieceLists()
         }
-        
-        print("🎮 GameKit: Board rotation updated - isBoardRotatedForBlack: \(isBoardRotatedForBlack)")
     }
     
     // MARK: - Move Confirmation Timer

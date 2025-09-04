@@ -281,6 +281,14 @@ class GameKitManager: NSObject, ObservableObject {
             request.maxPlayers = 2
             print("🎮 GameKit: Auto-match request - minPlayers: \(request.minPlayers), maxPlayers: \(request.maxPlayers)")
             
+            // Add additional debugging for macOS Game Center
+            print("🔍 GameKit: Additional macOS diagnostics:")
+            print("🔍 - Game Center enabled: \(GKLocalPlayer.local.isAuthenticated)")
+            print("🔍 - Player authenticated: \(GKLocalPlayer.local.isAuthenticated)")
+            print("🔍 - Player name: '\(GKLocalPlayer.local.displayName)'")
+            print("🔍 - Player ID: \(GKLocalPlayer.local.gamePlayerID)")
+            print("🔍 - Matchmaking available: \(GKLocalPlayer.local.isAuthenticated)")
+            
             guard let matchmaker = GKMatchmakerViewController(matchRequest: request) else {
                 self.errorMessage = "Could not create Game Center match request"
                 print("❌ GameKit: Failed to create matchmaker view controller")
@@ -305,6 +313,23 @@ class GameKitManager: NSObject, ObservableObject {
                     // Set match state to searching
                     self.matchState = .searching
                     print("🎮 GameKit: Match state set to searching")
+                    
+                    // Add timeout for matchmaking to prevent infinite searching
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) { [weak matchmaker] in
+                        if self.matchState == .searching {
+                            print("⏰ GameKit: Matchmaking timeout after 30 seconds")
+                            matchmaker?.dismiss(nil)
+                            self.matchState = .none
+                            self.errorMessage = "Matchmaking timed out. No other players found. Make sure both devices are searching at the same time."
+                            
+                            // Show timeout alert
+                            let alert = NSAlert()
+                            alert.messageText = "Matchmaking Timeout"
+                            alert.informativeText = "No other players found after 30 seconds. Make sure both devices are searching for a match at the same time."
+                            alert.addButton(withTitle: "OK")
+                            alert.runModal()
+                        }
+                    }
                 } else {
                     print("❌ GameKit: Content view controller is nil")
                     self.errorMessage = "Could not present Game Center interface - no content view controller"
@@ -616,6 +641,17 @@ class GameKitManager: NSObject, ObservableObject {
             print("⚠️ GameKit: No players connected yet - waiting for connection to establish")
             // Don't set error message yet - this is normal during connection establishment
             // The error will only be set if no players connect after the full delay
+        }
+    }
+    
+    // MARK: - Manual Matchmaking Control
+    
+    func cancelMatchmaking() {
+        print("🛑 GameKit: Manually cancelling matchmaking")
+        if matchState == .searching {
+            matchState = .none
+            errorMessage = "Matchmaking cancelled by user"
+            print("🛑 GameKit: Matchmaking cancelled")
         }
     }
     
