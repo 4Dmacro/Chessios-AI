@@ -87,7 +87,7 @@ struct ContentView: View {
                         .font(.caption2)
                         .padding(.horizontal, 4)
                         .padding(.vertical, 6)
-                        .background(.ultraThinMaterial)
+                        .background(.ultraThinMaterial.opacity(0.3))
                         .foregroundColor(.white)
                         .cornerRadius(8)
                         
@@ -99,7 +99,7 @@ struct ContentView: View {
                         .font(.caption2)
                         .padding(.horizontal, 4)
                         .padding(.vertical, 6)
-                        .background(.ultraThinMaterial)
+                        .background(.ultraThinMaterial.opacity(0.3))
                         .foregroundColor(.white)
                         .cornerRadius(8)
                         
@@ -117,7 +117,7 @@ struct ContentView: View {
                         .font(.caption2)
                         .padding(.horizontal, 4)
                         .padding(.vertical, 6)
-                        .background(.ultraThinMaterial)
+                        .background(.ultraThinMaterial.opacity(0.3))
                         .foregroundColor(.white)
                         .cornerRadius(8)
                         
@@ -135,7 +135,7 @@ struct ContentView: View {
                         .font(.caption2)
                         .padding(.horizontal, 4)
                         .padding(.vertical, 6)
-                        .background(.ultraThinMaterial)
+                        .background(.ultraThinMaterial.opacity(0.3))
                         .foregroundColor(.white)
                         .cornerRadius(8)
                         
@@ -147,9 +147,9 @@ struct ContentView: View {
                                 .foregroundColor(.white)
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(.regularMaterial.opacity(0.3))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 4)
+                        .background(.ultraThinMaterial.opacity(0.3))
                         .cornerRadius(8)
                         
                     
@@ -292,6 +292,7 @@ struct ContentView: View {
                     .cornerRadius(8)
                     .frame(width: 120)
                     .padding(.trailing, 320) // Position timer outside movement controls area
+                    
                 }
                 .padding(.top, 10)
             }

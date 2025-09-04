@@ -233,7 +233,7 @@ struct ContentView: View {
                             .font(.caption)
                             .foregroundColor(chessGame.isInitialLoadingComplete ? .white : .gray)
                     }
-                    .buttonStyle(AdaptiveButtonStyle())
+                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.4))
                     .scaleEffect(uiScale)
                     
                    
@@ -251,7 +251,7 @@ struct ContentView: View {
                         Button("Learn") {
                             chessGame.gameMode = .learn
                         }
-                        .buttonStyle(AdaptiveButtonStyle())
+                        .buttonStyle(AdaptiveButtonStyle(opacity: 0.4))
                         .font(.caption)
                         .scaleEffect(uiScale)
                         .background(chessGame.gameMode == .learn ? Color.blue.opacity(0.6) : Color.clear)
@@ -335,29 +335,33 @@ struct ContentView: View {
                     Button("↑ Boards Up") {
                         lowerCamera()
                     }
-                    .buttonStyle(AdaptiveButtonStyle())
-                                .font(.caption)
+                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.3))
+                    .font(.caption)
+                    .foregroundColor(.white)
                     .scaleEffect(uiScale)
                     
                     Button("↓ Boards Down") {
                         raiseCamera()
                     }
-                    .buttonStyle(AdaptiveButtonStyle())
+                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.3))
                     .font(.caption)
+                    .foregroundColor(.white)
                     .scaleEffect(uiScale)
                     
                     Button("🔍 Zoom In") {
                         zoomIn()
                     }
-                    .buttonStyle(AdaptiveButtonStyle())
+                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.3))
                     .font(.caption)
+                    .foregroundColor(.white)
                     .scaleEffect(uiScale)
                     
                     Button("🔍 Zoom Out") {
                         zoomOut()
                     }
-                    .buttonStyle(AdaptiveButtonStyle())
-                        .font(.caption)
+                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.3))
+                    .font(.caption)
+                    .foregroundColor(.white)
                     .scaleEffect(uiScale)
                 }
                 
@@ -371,7 +375,7 @@ struct ContentView: View {
                         resetCamera()
                     }
                     .padding(.vertical, 10)
-                    .buttonStyle(AdaptiveButtonStyle())
+                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.3))
                     .font(.caption)
                     .scaleEffect(uiScale)
                     
@@ -435,10 +439,10 @@ struct ContentView: View {
                     .font(.caption)
                 }
                                     .padding(12)
-                    .background(Color.red.opacity(0.9)) // Temporary bright background for debugging
+                    .background(Color.red.opacity(0.2)) // Temporary bright background for debugging
                     .cornerRadius(8)
                                         .frame(width: 120)
-                    .position(x: geometry.size.width - 100, y: geometry.size.height / 2 - 150) // Position above piece controller
+                    .position(x: geometry.size.width - 100, y: geometry.size.height / 2 - 420) // Position above piece controller
                     .zIndex(1000) // Ensure timer is on top
             }
         }
@@ -1628,11 +1632,13 @@ struct ContentView: View {
  }
 
 struct AdaptiveButtonStyle: ButtonStyle {
+    var opacity: Double = 1.0
+    
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
-            .background(.ultraThinMaterial)
+            .background(.ultraThinMaterial.opacity(opacity))
             .foregroundColor(.white)
             .cornerRadius(8)
             .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
