@@ -655,8 +655,8 @@ class ChessGameManager: ObservableObject {
         // CRITICAL: Complete scene reset - clear everything and rebuild from scratch
         performCompleteSceneReset()
         
-        // Clear the selected piece in the piece controller
-        notifyPieceController(clearSelectedPiece: true)
+        // Clear the selected piece in the piece controller and reset move counter
+        notifyPieceController(clearSelectedPiece: true, resetMoveCounter: true)
         
         // Reset board rotation to match the new game state (white's turn)
         rotateBoardForTurn()
@@ -2788,13 +2788,16 @@ class ChessGameManager: ObservableObject {
     // MARK: - Piece Movement System
     
     // Notify the piece controller when a piece is moved
-    func notifyPieceController(clearSelectedPiece: Bool = false, updateSelectedPiecePosition: ChessPosition3D? = nil) {
+    func notifyPieceController(clearSelectedPiece: Bool = false, updateSelectedPiecePosition: ChessPosition3D? = nil, resetMoveCounter: Bool = false) {
         pieceController?.updatePieceLists()
         if clearSelectedPiece {
             pieceController?.clearSelectedPiece()
         }
         if let newPosition = updateSelectedPiecePosition {
             pieceController?.updateSelectedPiecePosition(to: newPosition)
+        }
+        if resetMoveCounter {
+            pieceController?.resetMoveCounter()
         }
     }
     

@@ -7,7 +7,7 @@ struct MultiplayerView: View {
     @State private var showingInvitationRecallMenu = false
     
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 10) {
             // Game Center Status
             HStack {
                 Image(systemName: gameKitManager.isAuthenticated ? "person.circle.fill" : "person.circle")
@@ -57,30 +57,76 @@ struct MultiplayerView: View {
             
             // Match Status
             if gameKitManager.matchState != .none {
-                HStack {
-                    Image(systemName: statusIcon)
-                        .foregroundColor(statusColor)
+                VStack(spacing: 8) {
+                    HStack {
+                        Image(systemName: statusIcon)
+                            .foregroundColor(statusColor)
+                        
+                        Text(statusText)
+                            .font(.caption)
+                            .foregroundColor(statusColor)
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal)
                     
-                    Text(statusText)
-                        .font(.caption)
-                        .foregroundColor(statusColor)
-                    
-                    Spacer()
-                    
+                    // Disconnect/Reconnect Buttons
                     if gameKitManager.matchState == .connected {
                         Button("Disconnect") {
                             gameKitManager.disconnectFromMatch()
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
+                    } else if gameKitManager.matchState == .disconnected {
+                        Button("Reconnect to Match") {
+                            gameKitManager.reconnectToMatch()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .foregroundColor(.white)
+                        .background(Color.blue)
                     }
                 }
-                .padding(.horizontal)
             }
             
             // Multiplayer Buttons
-            if gameKitManager.isAuthenticated && gameKitManager.matchState == .none {
-                VStack(spacing: 10) {
+            if gameKitManager.isAuthenticated && (gameKitManager.matchState == .none || gameKitManager.matchState == .disconnected) {
+                VStack(spacing: 4) {
+                    // Show reconnection info when disconnected
+                    if gameKitManager.matchState == .disconnected {
+                        VStack(spacing: 4) {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.orange)
+                                Text("Connection lost. You can try to reconnect or start a new game.")
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                            }
+                            
+                            HStack(spacing: 4) {
+                                Button("🔄 Reset Match") {
+                                    gameKitManager.resetMatch()
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .foregroundColor(.white)
+                                .background(Color.orange)
+                                
+                                Button("🔄 Reconnect to Match") {
+                                    gameKitManager.reconnectToMatch()
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.small)
+                                .foregroundColor(.white)
+                                .background(Color.blue)
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.vertical, 4)
+                        .background(Color.orange.opacity(0.2))
+                        .cornerRadius(6)
+                    }
+                    
                     Button("Host Game") {
                         gameKitManager.hostMatch()
                     }
@@ -325,7 +371,7 @@ struct InvitationRecallMenuView: View {
             }
         }
         .padding()
-        .frame(minWidth: 400, minHeight: 300)
+        .frame(maxWidth:300, minHeight: 300)
     }
 }
 

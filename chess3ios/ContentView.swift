@@ -389,6 +389,58 @@ struct ContentView: View {
             ChessPieceControllerView(controller: pieceController)
                 .scaleEffect(uiScale)
                 .position(x: geometry.size.width - 100, y: geometry.size.height / 2) // Move 15mm (about 30px) to the right
+            
+            // Move Confirmation UI (overlay when move is pending)
+            if pieceController.isMovePending {
+                // Debug: Log timer UI visibility
+                let _ = print("🔍 Timer UI Debug: iPad - isMovePending=\(pieceController.isMovePending), timeRemaining=\(pieceController.moveConfirmationTimeRemaining)")
+                // Move confirmation panel positioned above piece controller
+                VStack(spacing: 8) {
+                    // Countdown timer
+                    HStack {
+                        Text("Confirm")
+                            .font(.caption)
+                            .foregroundColor(.white)
+                        
+                        Spacer()
+                        
+                        Text("\(Int(pieceController.moveConfirmationTimeRemaining))s")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                            .monospacedDigit()
+                    }
+                    
+                    // Progress bar
+                    ProgressView(value: pieceController.moveConfirmationTimeRemaining, total: 5.0)
+                        .progressViewStyle(LinearProgressViewStyle(tint: .red))
+                        .scaleEffect(y: 1.5)
+                    
+                    // Move details
+                    if let from = pieceController.pendingMoveFrom,
+                       let to = pieceController.pendingMoveTo {
+                        Text("\(from.stringValue) → \(to.stringValue)")
+                            .font(.caption2)
+                            .foregroundColor(.white)
+                    }
+                    
+                    // Cancel button
+                    Button("Cancel") {
+                        pieceController.cancelMove()
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                    .background(Color.red)
+                    .foregroundColor(.white)
+                    .cornerRadius(6)
+                    .font(.caption)
+                }
+                                    .padding(12)
+                    .background(Color.red.opacity(0.9)) // Temporary bright background for debugging
+                    .cornerRadius(8)
+                                        .frame(width: 120)
+                    .position(x: geometry.size.width - 100, y: geometry.size.height / 2 - 150) // Position above piece controller
+                    .zIndex(1000) // Ensure timer is on top
+            }
         }
         }
     }
@@ -626,6 +678,58 @@ struct ContentView: View {
                 ChessPieceControllerView(controller: pieceController)
                     .scaleEffect(uiScale)
                     .position(x: geometry.size.width - 115, y: geometry.size.height / 2.3) // Move further left to bring fully on screen
+                
+                // Move Confirmation UI (overlay when move is pending)
+                if pieceController.isMovePending {
+                    // Debug: Log timer UI visibility
+                    let _ = print("🔍 Timer UI Debug: iPhone - isMovePending=\(pieceController.isMovePending), timeRemaining=\(pieceController.moveConfirmationTimeRemaining)")
+                    // Move confirmation panel positioned above piece controller
+                    VStack(spacing: 8) {
+                        // Countdown timer
+                        HStack {
+                            Text("Confirm")
+                                .font(.caption)
+                                .foregroundColor(.white)
+                            
+                            Spacer()
+                            
+                            Text("\(Int(pieceController.moveConfirmationTimeRemaining))s")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                                .monospacedDigit()
+                        }
+                        
+                        // Progress bar
+                        ProgressView(value: pieceController.moveConfirmationTimeRemaining, total: 5.0)
+                            .progressViewStyle(LinearProgressViewStyle(tint: .red))
+                            .scaleEffect(y: 1.5)
+                        
+                        // Move details
+                        if let from = pieceController.pendingMoveFrom,
+                           let to = pieceController.pendingMoveTo {
+                            Text("\(from.stringValue) → \(to.stringValue)")
+                                .font(.caption2)
+                                .foregroundColor(.white)
+                        }
+                        
+                        // Cancel button
+                        Button("Cancel") {
+                            pieceController.cancelMove()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 4)
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(6)
+                        .font(.caption)
+                    }
+                    .padding(12)
+                    .background(Color.red.opacity(0.9)) // Temporary bright background for debugging
+                    .cornerRadius(8)
+                    .frame(width: 120)
+                    .position(x: geometry.size.width - 115, y: geometry.size.height / 2.3 - 150) // Position above piece controller
+                    .zIndex(1000) // Ensure timer is on top
+                }
             }
             
             .ignoresSafeArea()

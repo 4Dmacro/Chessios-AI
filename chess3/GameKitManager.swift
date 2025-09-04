@@ -495,8 +495,41 @@ class GameKitManager: NSObject, ObservableObject {
     func disconnectFromMatch() {
         currentMatch?.disconnect()
         currentMatch = nil
-        matchState = .none
+        matchState = .disconnected
         print("Disconnected from match")
+    }
+    
+    func reconnectToMatch() {
+        print("🔄 GameKit: Attempting to reconnect to match...")
+        
+        // Reset match state to allow reconnection
+        matchState = .none
+        currentMatch = nil
+        
+        // Clear any error messages
+        errorMessage = ""
+        
+        // Try to reconnect using the same method as before
+        if isHost {
+            print("🔄 GameKit: Reconnecting as host...")
+            hostMatch()
+        } else {
+            print("🔄 GameKit: Reconnecting as guest...")
+            joinMatch()
+        }
+    }
+    
+    func resetMatch() {
+        print("🔄 GameKit: Resetting match state completely")
+        currentMatch = nil
+        matchState = .none
+        playerColor = .none
+        isHost = false
+        isHosting = false
+        isJoining = false
+        currentInvitation = nil
+        errorMessage = ""
+        print("🎮 GameKit: Match state completely reset")
     }
     
     func reconnectToGameCenter() {
@@ -973,6 +1006,17 @@ extension GameKitManager: GKMatchDelegate {
         DispatchQueue.main.async {
             self.matchState = .error(error?.localizedDescription ?? "Unknown error")
             print("❌ GameKit: Match failed: \(error?.localizedDescription ?? "Unknown error")")
+        }
+    }
+    
+    func match(_ match: GKMatch, didReceiveDisconnectFrom player: GKPlayer) {
+        DispatchQueue.main.async {
+            print("🎮 GameKit: Player \(player.displayName) disconnected from match")
+            self.matchState = .disconnected
+            self.currentMatch = nil
+            self.playerColor = .none
+            self.isHost = false
+            print("🎮 GameKit: Match state reset to disconnected")
         }
     }
 }

@@ -296,6 +296,7 @@ class ChessPieceController: ObservableObject {
     // Move history
     @Published var moveHistory: [String] = []
     @Published var showMoveHistory: Bool = false
+    @Published var totalGameMoves: Int = 0 // Total moves in the current game
     
     // Reference to the chess game manager
     // private var chessGame: ChessGameManager? // This line is removed
@@ -995,7 +996,7 @@ class ChessPieceController: ObservableObject {
                 
                 // Check if we should use confirmation timer based on game mode
                 // Use the turn we captured BEFORE tryMove
-                let shouldUseTimer = chessGame.gameMode == .play &&
+                let shouldUseTimer = (chessGame.gameMode == .play || chessGame.gameKitManager != nil) &&
                                    piece.color == currentTurnBeforeMove
                 
                 print("🔍 Timer Debug: gameMode=\(chessGame.gameMode), isAITurn=\(chessGame.isAITurn()), piece.color=\(piece.color), currentTurn=\(currentTurnBeforeMove), shouldUseTimer=\(shouldUseTimer)")
@@ -1057,10 +1058,19 @@ class ChessPieceController: ObservableObject {
         let moveText = "\(pieceSymbol) \(from.stringValue) → \(to.stringValue)"
         moveHistory.append(moveText)
         
+        // Increment total game moves counter
+        totalGameMoves += 1
+        
         // Keep only the last 10 moves
         if moveHistory.count > 10 {
             moveHistory.removeFirst()
         }
+    }
+    
+    // Reset move counter for new game
+    func resetMoveCounter() {
+        totalGameMoves = 0
+        moveHistory.removeAll()
     }
     
     // Get symbol for a piece
@@ -2057,7 +2067,7 @@ class ChessPieceController: ObservableObject {
                 
                 // Check if we should use confirmation timer based on game mode
                 // Use the turn we captured BEFORE tryMove
-                let shouldUseTimer = chessGame.gameMode == .play &&
+                let shouldUseTimer = (chessGame.gameMode == .play || chessGame.gameKitManager != nil) &&
                                    piece.color == currentTurnBeforeMove
                 
                 print("🔍 Timer Debug: gameMode=\(chessGame.gameMode), isAITurn=\(chessGame.isAITurn()), piece.color=\(piece.color), currentTurn=\(currentTurnBeforeMove), shouldUseTimer=\(shouldUseTimer)")
@@ -2202,7 +2212,7 @@ class ChessPieceController: ObservableObject {
                         
                         // Check if we should use confirmation timer based on game mode
                         // Use the turn we captured BEFORE tryMove
-                        let shouldUseTimer = chessGame.gameMode == .play &&
+                        let shouldUseTimer = (chessGame.gameMode == .play || chessGame.gameKitManager != nil) &&
                                            piece.color == currentTurnBeforeMove
                         
                         print("🔍 Timer Debug: gameMode=\(chessGame.gameMode), isAITurn=\(chessGame.isAITurn()), piece.color=\(piece.color), currentTurn=\(currentTurnBeforeMove), shouldUseTimer=\(shouldUseTimer)")
@@ -2317,7 +2327,7 @@ class ChessPieceController: ObservableObject {
             
             // Check if we should use confirmation timer based on game mode
             // Use the turn we captured BEFORE tryMove
-            let shouldUseTimer = chessGame.gameMode == .play &&
+            let shouldUseTimer = (chessGame.gameMode == .play || chessGame.gameKitManager != nil) &&
                                piece.color == currentTurnBeforeMove
             
             print("🔍 Timer Debug: gameMode=\(chessGame.gameMode), isAITurn=\(chessGame.isAITurn()), piece.color=\(piece.color), currentTurn=\(currentTurnBeforeMove), shouldUseTimer=\(shouldUseTimer)")
@@ -3104,6 +3114,15 @@ struct ChessPieceControllerView: View {
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundColor(.white)
+            
+            // Move Counter
+            Text("Moves: \(controller.totalGameMoves)")
+                .font(.caption2)
+                .foregroundColor(.white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                .background(Color.black)
+                .cornerRadius(4)
             
             // Castling buttons (only show when king is selected and not in check)
             if controller.isSelectedPieceKing() && !controller.isKingInCheck() {

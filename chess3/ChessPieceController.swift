@@ -295,6 +295,7 @@ class ChessPieceController: ObservableObject {
     // Move history
     @Published var moveHistory: [String] = []
     @Published var showMoveHistory: Bool = false
+    @Published var totalGameMoves: Int = 0 // Total moves in the current game
     
     // Reference to the chess game manager
     // private var chessGame: ChessGameManager? // This line is removed
@@ -973,7 +974,7 @@ class ChessPieceController: ObservableObject {
                 
                 // Check if we should use confirmation timer based on game mode
                 // Use the turn we captured BEFORE tryMove
-                let shouldUseTimer = chessGame.gameMode == .play && 
+                let shouldUseTimer = (chessGame.gameMode == .play || chessGame.gameKitManager != nil) && 
                                    piece.color == currentTurnBeforeMove
                 
                 print("🔍 Timer Debug: gameMode=\(chessGame.gameMode), isAITurn=\(chessGame.isAITurn()), piece.color=\(piece.color), currentTurn=\(currentTurnBeforeMove), shouldUseTimer=\(shouldUseTimer)")
@@ -983,12 +984,14 @@ class ChessPieceController: ObservableObject {
                 if shouldUseTimer {
                     // Use confirmation timer for human moves in play mode
                     print("⏰ Using confirmation timer for human move")
+                    print("📊 macOS Move Counter: Timer path - will call startMoveConfirmation")
                     // Execute visual move only, then start confirmation timer
                     executeMoveVisualOnly(from: currentPosition, to: newPosition, pieceNode: currentPiece)
                     startMoveConfirmation(from: currentPosition, to: newPosition, pieceNode: currentPiece)
                 } else {
                     // Execute move immediately for AI moves or learn mode
                     print("⚡ Executing move immediately (AI or learn mode)")
+                    print("📊 macOS Move Counter: Immediate path - will call executeMove")
                     executeMove(from: currentPosition, to: newPosition, pieceNode: currentPiece)
                     
                     // Update our selected piece position
@@ -1035,10 +1038,21 @@ class ChessPieceController: ObservableObject {
         let moveText = "\(pieceSymbol) \(from.stringValue) → \(to.stringValue)"
         moveHistory.append(moveText)
         
+        // Increment total game moves counter
+        totalGameMoves += 1
+        print("📊 macOS Move Counter: Incremented to \(totalGameMoves) for move: \(moveText)")
+        
         // Keep only the last 10 moves
         if moveHistory.count > 10 {
             moveHistory.removeFirst()
         }
+    }
+    
+    // Reset move counter for new game
+    func resetMoveCounter() {
+        print("📊 macOS Move Counter: Resetting from \(totalGameMoves) to 0")
+        totalGameMoves = 0
+        moveHistory.removeAll()
     }
     
     // Get symbol for a piece
@@ -2036,7 +2050,7 @@ class ChessPieceController: ObservableObject {
                 
                 // Check if we should use confirmation timer based on game mode
                 // Use the turn we captured BEFORE tryMove
-                let shouldUseTimer = chessGame.gameMode == .play && 
+                let shouldUseTimer = (chessGame.gameMode == .play || chessGame.gameKitManager != nil) && 
                                    piece.color == currentTurnBeforeMove
                 
                 print("🔍 Timer Debug: gameMode=\(chessGame.gameMode), isAITurn=\(chessGame.isAITurn()), piece.color=\(piece.color), currentTurn=\(currentTurnBeforeMove), shouldUseTimer=\(shouldUseTimer)")
@@ -2181,7 +2195,7 @@ class ChessPieceController: ObservableObject {
                         
                         // Check if we should use confirmation timer based on game mode
                         // Use the turn we captured BEFORE tryMove
-                        let shouldUseTimer = chessGame.gameMode == .play && 
+                        let shouldUseTimer = (chessGame.gameMode == .play || chessGame.gameKitManager != nil) && 
                                            piece.color == currentTurnBeforeMove
                         
                         print("🔍 Timer Debug: gameMode=\(chessGame.gameMode), isAITurn=\(chessGame.isAITurn()), piece.color=\(piece.color), currentTurn=\(currentTurnBeforeMove), shouldUseTimer=\(shouldUseTimer)")
@@ -2296,7 +2310,7 @@ class ChessPieceController: ObservableObject {
             
             // Check if we should use confirmation timer based on game mode
             // Use the turn we captured BEFORE tryMove
-            let shouldUseTimer = chessGame.gameMode == .play && 
+            let shouldUseTimer = (chessGame.gameMode == .play || chessGame.gameKitManager != nil) && 
                                piece.color == currentTurnBeforeMove
             
             print("🔍 Timer Debug: gameMode=\(chessGame.gameMode), isAITurn=\(chessGame.isAITurn()), piece.color=\(piece.color), currentTurn=\(currentTurnBeforeMove), shouldUseTimer=\(shouldUseTimer)")
@@ -2358,6 +2372,7 @@ class ChessPieceController: ObservableObject {
     
     func executeMove(from: ChessPosition3D, to: ChessPosition3D, pieceNode: SCNNode) {
         print("✅ Executing move immediately: \(from.stringValue) -> \(to.stringValue)")
+        print("📊 macOS Move Counter: executeMove() called - current count: \(totalGameMoves)")
         
         // Execute the move in the chess engine FIRST
         if let chessGame = chessGame {
@@ -2520,6 +2535,7 @@ class ChessPieceController: ObservableObject {
     
     func startMoveConfirmation(from: ChessPosition3D, to: ChessPosition3D, pieceNode: SCNNode) {
         print("⏰ Starting move confirmation timer: \(from.stringValue) -> \(to.stringValue)")
+        print("📊 macOS Move Counter: startMoveConfirmation() called - current count: \(totalGameMoves)")
         
         // Safety check: Ensure we have a chess game reference
         guard chessGame != nil else {
@@ -2551,9 +2567,13 @@ class ChessPieceController: ObservableObject {
                 self.updateMoveConfirmationTimer()
             }
         }
+        
+        print("📊 macOS Move Counter: Timer created and started - moveConfirmationTimer=\(moveConfirmationTimer != nil)")
     }
     
     private func updateMoveConfirmationTimer() {
+        print("📊 macOS Move Counter: updateMoveConfirmationTimer() called - timeRemaining=\(moveConfirmationTimeRemaining)")
+        
         // CRITICAL: Check if move is still pending before proceeding
         guard isMovePending else {
             print("⏰ Timer update called but move is no longer pending - stopping")
@@ -2580,6 +2600,7 @@ class ChessPieceController: ObservableObject {
         }
         
         if moveConfirmationTimeRemaining <= 0 {
+            print("📊 macOS Move Counter: Timer expired, calling confirmMove()")
             DispatchQueue.main.async {
                 self.confirmMove()
             }
@@ -2620,23 +2641,29 @@ class ChessPieceController: ObservableObject {
     
     func confirmMove() {
         print("✅ Move confirmed: \(pendingMoveFrom?.stringValue ?? "unknown") -> \(pendingMoveTo?.stringValue ?? "unknown")")
+        print("📊 macOS Move Counter: confirmMove() called - current count: \(totalGameMoves)")
         
         // CRITICAL: Set flag first to prevent timer callbacks from executing
         isMovePending = false
         
-        // Stop timer with proper cleanup
-        cleanupMoveConfirmationTimer()
+        // Execute the pending move (BEFORE cleaning up timer to preserve pending details)
+        print("📊 macOS Move Counter: confirmMove() - checking pending move details")
+        print("📊 macOS Move Counter: pendingMoveFrom=\(pendingMoveFrom?.stringValue ?? "nil")")
+        print("📊 macOS Move Counter: pendingMoveTo=\(pendingMoveTo?.stringValue ?? "nil")")
+        print("📊 macOS Move Counter: pendingPieceNode=\(pendingPieceNode != nil)")
+        print("📊 macOS Move Counter: chessGame=\(chessGame != nil)")
         
-        // Execute the pending move
         if let from = pendingMoveFrom,
            let to = pendingMoveTo,
            let pieceNode = pendingPieceNode,
            let chessGame = chessGame {
+            print("📊 macOS Move Counter: All pending move details are valid, proceeding with move execution")
             
             // Check if the piece is already at the destination in the chess engine
             // This can happen if the chess engine move was already executed during the countdown
             if chessGame.getPieceAtPosition(to) != nil {
                 print("✅ Piece already at destination in chess engine - no need to move")
+                print("📊 macOS Move Counter: Taking PATH 1 - piece already at destination")
                 // The piece is already at the destination, so we just need to update tracking
                 selectedPiecePosition = to
                 
@@ -2648,7 +2675,10 @@ class ChessPieceController: ObservableObject {
                 
                 // Add move to history
                 if let piece = chessGame.getPieceAtPosition(to) {
+                    print("📊 macOS Move Counter: Adding move to history - piece found at destination")
                     addMoveToHistory(piece: piece, from: from, to: to)
+                } else {
+                    print("📊 macOS Move Counter: ERROR - No piece found at destination \(to.stringValue) for history")
                 }
                 
                 // Clear move indicators
@@ -2657,6 +2687,7 @@ class ChessPieceController: ObservableObject {
                 // Update piece lists
                 updatePieceLists()
             } else {
+                print("📊 macOS Move Counter: Taking PATH 2 - piece needs to be moved")
                 // The piece was already moved visually during the countdown
                 // Now we just need to execute the chess engine move WITHOUT moving the visual piece again
                 // We'll call a special function that only updates the chess engine state
@@ -2681,7 +2712,10 @@ class ChessPieceController: ObservableObject {
                     
                     // Add move to history
                     if let piece = chessGame.getPieceAtPosition(to) {
+                        print("📊 macOS Move Counter: Adding move to history (path 2) - piece found at destination")
                         addMoveToHistory(piece: piece, from: from, to: to)
+                    } else {
+                        print("📊 macOS Move Counter: ERROR (path 2) - No piece found at destination \(to.stringValue) for history")
                     }
                     
                     // Clear move indicators
@@ -2691,14 +2725,17 @@ class ChessPieceController: ObservableObject {
                     updatePieceLists()
                 }
             }
+        } else {
+            print("📊 macOS Move Counter: ERROR - Some pending move details are missing!")
+            print("📊 macOS Move Counter: from=\(pendingMoveFrom?.stringValue ?? "nil"), to=\(pendingMoveTo?.stringValue ?? "nil"), pieceNode=\(pendingPieceNode != nil), chessGame=\(chessGame != nil)")
         }
+        
+        // Stop timer with proper cleanup (AFTER using pending move details)
+        cleanupMoveConfirmationTimer()
         
         // Clear pending state
         isMovePending = false
         moveConfirmationTimeRemaining = 5.0
-        pendingMoveFrom = nil
-        pendingMoveTo = nil
-        pendingPieceNode = nil
         
         // Check if promotion choice UI should be shown, otherwise execute any pending promotion
         if let chessGame = chessGame {
@@ -3015,11 +3052,13 @@ struct ChessPieceControllerView: View {
             selectedPieceInfo
             movementControls
             pieceSelection
+            
+          
         }
         .padding()
-        .frame(width: 250)
+        .frame(width: 230)
         .frame(maxHeight: .infinity)
-        .background(.regularMaterial.opacity(0.2))
+        .background(.regularMaterial.opacity(0.1))
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.white.opacity(0.02), lineWidth: 1)
@@ -3119,11 +3158,22 @@ struct ChessPieceControllerView: View {
     }
     
     private var movementControls: some View {
-        VStack(spacing: 5) {
+        
+        VStack(spacing: 2) {
+            Spacer(minLength: 5)
             Text(controller.knightMode ? "Knight Movement (2-step)" : "Movement Controls")
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundColor(.white)
+            
+            // Move Counter
+            Text("Moves: \(controller.totalGameMoves)")
+                .font(.caption2)
+                .foregroundColor(.white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                .background(Color.black)
+                .cornerRadius(4)
             
             // Castling buttons (only show when king is selected and not in check)
             if controller.isSelectedPieceKing() && !controller.isKingInCheck() {
@@ -3174,7 +3224,7 @@ struct ChessPieceControllerView: View {
             }
             
             // Movement controls with distance selector on the left
-            HStack(spacing: 8) {
+            HStack(spacing: 4) {
                 // Distance selector (vertical stack on the left)
                 VStack(spacing: 2) {
                     Text("Distance:")
@@ -3198,12 +3248,12 @@ struct ChessPieceControllerView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 8)
+                .padding(.horizontal, 2)
                 
                 // Movement controls on the right
-                VStack(spacing: 8) {
+                VStack(spacing: 2) {
                     // 3D Diagonal movement controls with instructions
-            VStack(spacing: 8) {
+            VStack(spacing: 2) {
                 // Instructions for 3D diagonal moves
                 if let chessGame = controller.chessGame,
                    let selectedPos = controller.selectedPiecePosition,
@@ -3220,12 +3270,12 @@ struct ChessPieceControllerView: View {
                 }
                 
                 // 3D Diagonal buttons - reorganized to save vertical space
-                HStack(spacing: 16) {
+                HStack(spacing: 8) {
                     // Left column: Top two rows
-                    VStack(spacing: 8) {
+                    VStack(spacing: 4) {
                         // Top row: up/forward + left/right
-                        VStack(spacing: 4) {
-            HStack(spacing: 8) {
+                        VStack(spacing: 2) {
+            HStack(spacing: 4) {
                                 Button(action: { controller.moveUpZLeft = true }) {
                                     Image(systemName: "arrow.up.left.circle.fill")
                                         .font(.title3)
@@ -3244,10 +3294,10 @@ struct ChessPieceControllerView: View {
                         
                         // Second row: down/back + left/right
                         VStack(spacing: 4) {
-                            Text("3D Up")
+                            Text("3D  Up")
                                 .font(.caption2)
                                 .foregroundColor(.orange)
-                            HStack(spacing: 8) {
+                            HStack(spacing: 4) {
                                 Button(action: { controller.moveUpZBackLeft = true }) {
                                     Image(systemName: "arrow.down.left.circle.fill")
                                         .font(.title3)
@@ -3266,10 +3316,10 @@ struct ChessPieceControllerView: View {
                     }
                     
                     // Right column: Bottom two rows
-                    VStack(spacing: 8) {
+                    VStack(spacing: 4) {
                         // Third row: up/forward + back (left/right) - grey fill
                         VStack(spacing: 4) {
-                            HStack(spacing: 8) {
+                            HStack(spacing: 4) {
                                 Button(action: { controller.moveDownZForwardLeft = true }) {
                                     Image(systemName: "arrow.up.left.circle")
                                         .font(.title3)
@@ -3291,7 +3341,7 @@ struct ChessPieceControllerView: View {
                             Text("3D Down")
                                 .font(.caption2)
                                 .foregroundColor(.orange)
-                            HStack(spacing: 8) {
+                            HStack(spacing: 4) {
                                 Button(action: { controller.moveDownZLeft = true }) {
                                     Image(systemName: "arrow.down.left.circle")
                                         .font(.title3)
@@ -3823,7 +3873,7 @@ struct ChessPieceControllerView: View {
                let chessGame = controller.chessGame,
                let piece = chessGame.getPieceAtPosition(pos) {
                 Text("\(piece.color.rawValue.capitalized) \(piece.type.rawValue.capitalized) \(pos.stringValue)")
-                    .font(.subheadline)
+                    .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
                     .padding(.horizontal)

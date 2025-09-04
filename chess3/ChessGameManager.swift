@@ -212,8 +212,8 @@ class ChessGameManager: ObservableObject {
         // CRITICAL: Complete scene reset - clear everything and rebuild from scratch
         performCompleteSceneReset()
         
-        // Clear the selected piece in the piece controller
-        notifyPieceController(clearSelectedPiece: true)
+        // Clear the selected piece in the piece controller and reset move counter
+        notifyPieceController(clearSelectedPiece: true, resetMoveCounter: true)
         
         // Reset board rotation to match the new game state (white's turn)
         rotateBoardForTurn()
@@ -269,15 +269,16 @@ class ChessGameManager: ObservableObject {
         print("🔄 ChessGameManager: rotateBoardForTurn() called for \(currentTurn.rawValue)'s turn")
         print("🔄 ChessGameManager: Current stack trace: \(Thread.callStackSymbols.prefix(5).joined(separator: "\n"))")
         
-        // CRITICAL: In GameKit multiplayer mode, don't rotate the board after moves
-        // The board should only rotate once when the player color is assigned
-        if gameKitManager != nil {
-            print("🎮 GameKit: Skipping board rotation - board should stay in assigned player's perspective")
-            return
+        // CRITICAL: Check if this is a GameKit match and handle rotation accordingly
+        if let gameKitManager = self.gameKitManager, gameKitManager.matchState == .connected {
+            print("🔄 ChessGameManager: GameKit match detected - using GameKit rotation logic")
+            // For GameKit matches, use the player's assigned color for rotation
+            rotateBoardForGameKitPlayer(playerColor: gameKitManager.playerColor)
+        } else {
+            print("🔄 ChessGameManager: No GameKit match - using standard rotation logic")
+            // Notify the piece controller to handle the rotation
+            pieceController?.rotateBoardForTurn(currentTurn: currentTurn)
         }
-        
-        // Notify the piece controller to handle the rotation (only for local/AI games)
-        pieceController?.rotateBoardForTurn(currentTurn: currentTurn)
     }
     
     // MARK: - GameKit Board Rotation
@@ -2569,13 +2570,16 @@ class ChessGameManager: ObservableObject {
     // MARK: - Piece Movement System
     
     // Notify the piece controller when a piece is moved
-    func notifyPieceController(clearSelectedPiece: Bool = false, updateSelectedPiecePosition: ChessPosition3D? = nil) {
+    func notifyPieceController(clearSelectedPiece: Bool = false, updateSelectedPiecePosition: ChessPosition3D? = nil, resetMoveCounter: Bool = false) {
         pieceController?.updatePieceLists()
         if clearSelectedPiece {
             pieceController?.clearSelectedPiece()
         }
         if let newPosition = updateSelectedPiecePosition {
             pieceController?.updateSelectedPiecePosition(to: newPosition)
+        }
+        if resetMoveCounter {
+            pieceController?.resetMoveCounter()
         }
     }
     

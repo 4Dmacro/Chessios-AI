@@ -67,7 +67,11 @@ struct ContentView: View {
             
             // Left Side Controls (Camera Controls + Captured Pieces)
             HStack {
-                VStack(spacing: 12) {
+                
+                
+                VStack(spacing: 10) {
+                    
+                    Spacer(minLength: 5)
                     // Camera Controls
                     VStack(spacing: 8) {
                         Text("Camera Controls")
@@ -134,6 +138,21 @@ struct ContentView: View {
                         .background(.ultraThinMaterial)
                         .foregroundColor(.white)
                         .cornerRadius(8)
+                        
+                        // Reset View button
+                        Button(action: {
+                            resetCamera()
+                        }) {
+                            Text("Reset View")
+                                .foregroundColor(.white)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(.regularMaterial.opacity(0.3))
+                        .cornerRadius(8)
+                        
+                    
                     }
                     .padding()
                     .background(.regularMaterial.opacity(0.3))
@@ -210,13 +229,15 @@ struct ContentView: View {
                     )
                     .cornerRadius(12)
                     
+                    Spacer()
+                    
                     // Multiplayer Controls
                     MultiplayerView()
-                        .frame(width: 200)
+                        .frame(width: 150)
                       
                 }
                 
-                Spacer()
+                Spacer(minLength: 10)
             }
             
 
@@ -224,8 +245,8 @@ struct ContentView: View {
             // Move Confirmation UI (overlay when move is pending)
             if pieceController.isMovePending {
                 HStack {
-                    Spacer()
                     
+                    Spacer()
                     // Move confirmation panel (positioned outside movement controls)
                     VStack(spacing: 8) {
                         // Countdown timer
@@ -524,17 +545,17 @@ struct ContentView: View {
                     }
                     
                     // Reset View button
-                    Button(action: {
-                        resetCamera()
-                    }) {
-                        Text("Reset View")
-                            .foregroundColor(.white)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(.regularMaterial.opacity(0.3))
-                    .cornerRadius(8)
+                  //  Button(action: {
+                 //       resetCamera()
+                 //   }) {
+                 //       Text("Reset View")
+                 //           .foregroundColor(.white)
+                 //   }
+                 //   .buttonStyle(PlainButtonStyle())
+                 //   .padding(.horizontal, 16)
+                 //   .padding(.vertical, 8)
+                 //   .background(.regularMaterial.opacity(0.3))
+                 //   .cornerRadius(8)
                     
                     Spacer()
                     

@@ -326,6 +326,9 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
                 match.delegate = self
                 print("🎮 GameKit: Match delegate set to self (invitation)")
                 
+                // Clear any error messages when invitation is accepted
+                self.errorMessage = nil
+                
                 // Don't set matchState to connected yet - wait for actual connection
                 // The match delegate will handle the connection state changes
                 print("🎮 GameKit: Waiting for match connection to be established...")
@@ -648,8 +651,19 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
         print("🎮 GameKit: - Current invitation: \(currentInvitation != nil ? "Present" : "None")")
         
         if match.players.count == 0 {
-            print("⚠️ GameKit: No players connected - this indicates a connection issue")
-            errorMessage = "Connection not established. Please try again."
+            // Don't set error message if we're in an invitation-based match and invitation is still present
+            // This is normal during the connection establishment phase
+            if currentInvitation != nil {
+                print("🎮 GameKit: No players connected yet, but invitation is present - this is normal during connection establishment")
+                // Clear any existing error message since this is expected
+                errorMessage = nil
+            } else {
+                print("⚠️ GameKit: No players connected - this indicates a connection issue")
+                errorMessage = "Connection not established. Please try again."
+            }
+        } else {
+            // Players are connected, clear any error messages
+            errorMessage = nil
         }
     }
     
@@ -714,6 +728,7 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
             switch state {
             case .connected:
                 self.matchState = .connected
+                self.errorMessage = nil // Clear any error messages when connected
                 print("🎮 GameKit: Player connected, total players: \(match.players.count)")
                 print("🎮 GameKit: Match delegate status: \(match.delegate != nil ? "Set" : "Not set")")
                 print("🎮 GameKit: Connected player: \(player.displayName) (ID: \(player.gamePlayerID))")
@@ -799,6 +814,7 @@ extension GameKitManager: GKMatchmakerViewControllerDelegate {
         match.delegate = self
         print("🎮 GameKit: Match delegate set to self")
         matchState = .connected
+        errorMessage = nil // Clear any error messages when match is found
         
         // Log the current initiator state for debugging
         print("🎮 GameKit: Current isMatchInitiator flag: \(self.isMatchInitiator)")
