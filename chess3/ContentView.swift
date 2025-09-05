@@ -781,7 +781,7 @@ struct ContentView: View {
         let ambientLight = SCNNode()
         ambientLight.light = SCNLight()
         ambientLight.light?.type = .ambient
-        ambientLight.light?.intensity = 300  // Reduced from 600
+        ambientLight.light?.intensity = 100  // Reduced from 600
         ambientLight.light?.color = NSColor(red: 0.9, green: 0.9, blue: 1.0, alpha: 1.0)  // Slightly cool tint
         scene.rootNode.addChildNode(ambientLight)
         
@@ -789,7 +789,7 @@ struct ContentView: View {
         let mainLight = SCNNode()
         mainLight.light = SCNLight()
         mainLight.light?.type = .directional
-        mainLight.light?.intensity = 800
+        mainLight.light?.intensity = 700
         mainLight.light?.color = NSColor.white
         mainLight.position = SCNVector3(5, 8, 5)
         mainLight.eulerAngles = SCNVector3(-Float.pi/4, Float.pi/4, 0)  // 45-degree angle
@@ -799,7 +799,7 @@ struct ContentView: View {
         let fillLight = SCNNode()
         fillLight.light = SCNLight()
         fillLight.light?.type = .directional
-        fillLight.light?.intensity = 300
+        fillLight.light?.intensity = 400
         fillLight.light?.color = NSColor(red: 0.95, green: 0.95, blue: 1.0, alpha: 1.0)
         fillLight.position = SCNVector3(-3, 6, -3)
         fillLight.eulerAngles = SCNVector3(-Float.pi/6, -Float.pi/6, 0)

@@ -755,34 +755,35 @@ struct ContentView: View {
     private func setupScene() {
         // Create camera
         cameraNode.camera = SCNCamera()
-        cameraNode.position = SCNVector3(0, 6, 14)
+        cameraNode.camera?.fieldOfView = 60  // Set field of view for better perspective
+        cameraNode.position = SCNVector3(0, 8, 16)  // Match macOS positioning for better lighting
         scene.rootNode.addChildNode(cameraNode)
         
         print("📷 Camera positioned at: \(cameraNode.position)")
        
-        // Add ambient light for base illumination
+        // Add ambient light for base illumination (enhanced for iOS)
         let ambientLight = SCNNode()
         ambientLight.light = SCNLight()
         ambientLight.light?.type = .ambient
-        ambientLight.light?.intensity = 300
+        ambientLight.light?.intensity = 100  // Increased from 300 for better iOS lighting
         ambientLight.light?.color = UIColor(red: 0.9, green: 0.9, blue: 1.0, alpha: 1.0)
         scene.rootNode.addChildNode(ambientLight)
         
-        // Add main directional light for chess pieces
+        // Add main directional light for chess pieces (enhanced for iOS)
         let mainLight = SCNNode()
         mainLight.light = SCNLight()
         mainLight.light?.type = .directional
-        mainLight.light?.intensity = 800
+        mainLight.light?.intensity = 700  // Increased from 800 for better iOS lighting
         mainLight.light?.color = UIColor.white
         mainLight.position = SCNVector3(5, 8, 5)
         mainLight.eulerAngles = SCNVector3(-Float.pi/4, Float.pi/4, 0)
         scene.rootNode.addChildNode(mainLight)
         
-        // Add fill light for softer shadows
+        // Add fill light for softer shadows (enhanced for iOS)
         let fillLight = SCNNode()
         fillLight.light = SCNLight()
         fillLight.light?.type = .directional
-        fillLight.light?.intensity = 300
+        fillLight.light?.intensity = 400  // Increased from 300 for better iOS lighting
         fillLight.light?.color = UIColor(red: 0.95, green: 0.95, blue: 1.0, alpha: 1.0)
         fillLight.position = SCNVector3(-3, 6, -3)
         fillLight.eulerAngles = SCNVector3(-Float.pi/6, -Float.pi/6, 0)
@@ -802,13 +803,13 @@ struct ContentView: View {
         let omniLight = SCNNode()
         omniLight.light = SCNLight()
         omniLight.light?.type = .omni
-        omniLight.light?.intensity = 30
+        omniLight.light?.intensity = 40
         omniLight.position = SCNVector3(-3, 20, 3)
         scene.rootNode.addChildNode(omniLight)
         
-        // Set up scene environment for better reflections
+        // Set up scene environment for better reflections (enhanced for iOS)
         scene.lightingEnvironment.contents = UIColor(red: 0.8, green: 0.8, blue: 0.9, alpha: 1.0)
-        scene.lightingEnvironment.intensity = 0.6
+        scene.lightingEnvironment.intensity = 0.8  // Increased from 0.6 for better iOS reflections
         
         // Set up scene view
         sceneView.scene = scene
@@ -1004,17 +1005,27 @@ struct ContentView: View {
         guard let modelNode = modelNode else { return }
         
         // Reset model scale
-        modelNode.scale = SCNVector3(1.6, 1.6, 1.6)
+        modelNode.scale = SCNVector3(1.0, 1.0, 1.0)
         
         // Reset to the appropriate player's default position based on current turn
         let currentTurn = chessGame.getCurrentTurn()
         if currentTurn == .black {
             // Black's default rotation
-            modelNode.eulerAngles = SCNVector3(-Float.pi * 6/12, Float.pi * 1/7, 0)
+            modelNode.eulerAngles = SCNVector3(-Float.pi * 5/12 - Float.pi * 1/12, Float.pi + Float.pi * 1/7, 0)
         } else {
             // White's default rotation (with 15 degree Y-axis rotation)
             modelNode.eulerAngles = SCNVector3(-Float.pi * 6/12, Float.pi * 1/7, 0)
         }
+        
+        // Reset camera position to match macOS
+        cameraNode.position = SCNVector3(0, 3.5, 6)
+        cameraNode.eulerAngles = SCNVector3(0, 0, 0)
+        
+        // Reset camera position and model scale variables
+        cameraYPosition = 3.8
+        modelScale = 0.9
+        cameraNode.position.y = Float(CGFloat(cameraYPosition))
+        modelNode.scale = SCNVector3(CGFloat(modelScale), CGFloat(modelScale), CGFloat(modelScale))
         
         print("🔄 Camera reset to default position")
     }
