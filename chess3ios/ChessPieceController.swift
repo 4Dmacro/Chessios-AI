@@ -507,16 +507,18 @@ class ChessPieceController: ObservableObject {
         let capturedWhitePiecesCount = chessGame.getCapturedPiecesCount(for: .white)
         let capturedBlackPiecesCount = chessGame.getCapturedPiecesCount(for: .black)
         
-        let expectedWhitePieces = 44 - capturedWhitePiecesCount // 32 pawns (8 original + 16 extended + 8 aerial) + 12 others (8 original + 4 aerial)
+        let expectedWhitePieces = 44 - capturedWhitePiecesCount // 44 pieces initially - captured pieces
         let expectedBlackPieces = 44 - capturedBlackPiecesCount
         
         // Only show piece count warnings if not in knight mode to reduce interference
         if !knightMode {
-        if whitePieces.count != expectedWhitePieces {
-                print("⚠️ WARNING: Expected \(expectedWhitePieces) white pieces (32 - \(capturedWhitePiecesCount) captured), but got \(whitePieces.count)")
-        }
-        if blackPieces.count != expectedBlackPieces {
-                print("⚠️ WARNING: Expected \(expectedBlackPieces) black pieces (32 - \(capturedBlackPiecesCount) captured), but got \(blackPieces.count)")
+            if whitePieces.count != expectedWhitePieces {
+                print("⚠️ WARNING: Expected \(expectedWhitePieces) white pieces (44 - \(capturedWhitePiecesCount) captured), but got \(whitePieces.count)")
+                print("🔍 Debug: Captured white pieces: \(capturedWhitePiecesCount), On board: \(whitePieces.count), Total: \(capturedWhitePiecesCount + whitePieces.count)")
+            }
+            if blackPieces.count != expectedBlackPieces {
+                print("⚠️ WARNING: Expected \(expectedBlackPieces) black pieces (44 - \(capturedBlackPiecesCount) captured), but got \(blackPieces.count)")
+                print("🔍 Debug: Captured black pieces: \(capturedBlackPiecesCount), On board: \(blackPieces.count), Total: \(capturedBlackPiecesCount + blackPieces.count)")
             }
         }
         
@@ -528,25 +530,70 @@ class ChessPieceController: ObservableObject {
         let capturedWhitePiecesByType = chessGame.getCapturedPieces().filter { $0.color == .white }.map { $0.type }
         let capturedBlackPiecesByType = chessGame.getCapturedPieces().filter { $0.color == .black }.map { $0.type }
         
-        let expectedWhiteTypes: [PieceType] = Array(repeating: .pawn, count: 32) + [.rook, .knight, .bishop, .queen, .king, .bishop, .knight, .rook, .bishop, .rook, .knight, .bishop]
-        let expectedBlackTypes: [PieceType] = Array(repeating: .pawn, count: 32) + [.rook, .knight, .bishop, .queen, .king, .bishop, .knight, .rook, .bishop, .rook, .knight, .bishop]
+        // Define expected piece counts for 3D chess (44 pieces per side initially)
+        let expectedWhitePawns = 32 - capturedWhitePiecesByType.filter { $0 == .pawn }.count
+        let expectedBlackPawns = 32 - capturedBlackPiecesByType.filter { $0 == .pawn }.count
+        let expectedWhiteRooks = 3 - capturedWhitePiecesByType.filter { $0 == .rook }.count
+        let expectedBlackRooks = 3 - capturedBlackPiecesByType.filter { $0 == .rook }.count
+        let expectedWhiteKnights = 3 - capturedWhitePiecesByType.filter { $0 == .knight }.count
+        let expectedBlackKnights = 3 - capturedBlackPiecesByType.filter { $0 == .knight }.count
+        let expectedWhiteBishops = 3 - capturedWhitePiecesByType.filter { $0 == .bishop }.count
+        let expectedBlackBishops = 3 - capturedBlackPiecesByType.filter { $0 == .bishop }.count
+        let expectedWhiteQueens = 1 - capturedWhitePiecesByType.filter { $0 == .queen }.count
+        let expectedBlackQueens = 1 - capturedBlackPiecesByType.filter { $0 == .queen }.count
+        let expectedWhiteKings = 1 - capturedWhitePiecesByType.filter { $0 == .king }.count
+        let expectedBlackKings = 1 - capturedBlackPiecesByType.filter { $0 == .king }.count
         
-        for pieceType in expectedWhiteTypes {
-            let count = whitePieceTypes.filter { $0 == pieceType }.count
-            let captured = capturedWhitePiecesByType.filter { $0 == pieceType }.count
-            let expected = expectedWhiteTypes.filter { $0 == pieceType }.count - captured
-            if count != expected {
-                print("⚠️ WARNING: White \(pieceType) - expected \(expected) (original \(expectedWhiteTypes.filter { $0 == pieceType }.count) - \(captured) captured), got \(count)")
-            }
+        // Check actual counts vs expected
+        let actualWhitePawns = whitePieceTypes.filter { $0 == .pawn }.count
+        let actualBlackPawns = blackPieceTypes.filter { $0 == .pawn }.count
+        let actualWhiteRooks = whitePieceTypes.filter { $0 == .rook }.count
+        let actualBlackRooks = blackPieceTypes.filter { $0 == .rook }.count
+        let actualWhiteKnights = whitePieceTypes.filter { $0 == .knight }.count
+        let actualBlackKnights = blackPieceTypes.filter { $0 == .knight }.count
+        let actualWhiteBishops = whitePieceTypes.filter { $0 == .bishop }.count
+        let actualBlackBishops = blackPieceTypes.filter { $0 == .bishop }.count
+        let actualWhiteQueens = whitePieceTypes.filter { $0 == .queen }.count
+        let actualBlackQueens = blackPieceTypes.filter { $0 == .queen }.count
+        let actualWhiteKings = whitePieceTypes.filter { $0 == .king }.count
+        let actualBlackKings = blackPieceTypes.filter { $0 == .king }.count
+        
+        // Only show warnings if counts don't match
+        if actualWhitePawns != expectedWhitePawns {
+            print("⚠️ WARNING: White pawn - expected \(expectedWhitePawns) (original 32 - \(capturedWhitePiecesByType.filter { $0 == .pawn }.count) captured), got \(actualWhitePawns)")
         }
-        
-        for pieceType in expectedBlackTypes {
-            let count = blackPieceTypes.filter { $0 == pieceType }.count
-            let captured = capturedBlackPiecesByType.filter { $0 == pieceType }.count
-            let expected = expectedBlackTypes.filter { $0 == pieceType }.count - captured
-            if count != expected {
-                print("⚠️ WARNING: Black \(pieceType) - expected \(expected) (original \(expectedBlackTypes.filter { $0 == pieceType }.count) - \(captured) captured), got \(count)")
-            }
+        if actualBlackPawns != expectedBlackPawns {
+            print("⚠️ WARNING: Black pawn - expected \(expectedBlackPawns) (original 32 - \(capturedBlackPiecesByType.filter { $0 == .pawn }.count) captured), got \(actualBlackPawns)")
+        }
+        if actualWhiteRooks != expectedWhiteRooks {
+            print("⚠️ WARNING: White rook - expected \(expectedWhiteRooks) (original 3 - \(capturedWhitePiecesByType.filter { $0 == .rook }.count) captured), got \(actualWhiteRooks)")
+        }
+        if actualBlackRooks != expectedBlackRooks {
+            print("⚠️ WARNING: Black rook - expected \(expectedBlackRooks) (original 3 - \(capturedBlackPiecesByType.filter { $0 == .rook }.count) captured), got \(actualBlackRooks)")
+        }
+        if actualWhiteKnights != expectedWhiteKnights {
+            print("⚠️ WARNING: White knight - expected \(expectedWhiteKnights) (original 3 - \(capturedWhitePiecesByType.filter { $0 == .knight }.count) captured), got \(actualWhiteKnights)")
+        }
+        if actualBlackKnights != expectedBlackKnights {
+            print("⚠️ WARNING: Black knight - expected \(expectedBlackKnights) (original 3 - \(capturedBlackPiecesByType.filter { $0 == .knight }.count) captured), got \(actualBlackKnights)")
+        }
+        if actualWhiteBishops != expectedWhiteBishops {
+            print("⚠️ WARNING: White bishop - expected \(expectedWhiteBishops) (original 3 - \(capturedWhitePiecesByType.filter { $0 == .bishop }.count) captured), got \(actualWhiteBishops)")
+        }
+        if actualBlackBishops != expectedBlackBishops {
+            print("⚠️ WARNING: Black bishop - expected \(expectedBlackBishops) (original 3 - \(capturedBlackPiecesByType.filter { $0 == .bishop }.count) captured), got \(actualBlackBishops)")
+        }
+        if actualWhiteQueens != expectedWhiteQueens {
+            print("⚠️ WARNING: White queen - expected \(expectedWhiteQueens) (original 1 - \(capturedWhitePiecesByType.filter { $0 == .queen }.count) captured), got \(actualWhiteQueens)")
+        }
+        if actualBlackQueens != expectedBlackQueens {
+            print("⚠️ WARNING: Black queen - expected \(expectedBlackQueens) (original 1 - \(capturedBlackPiecesByType.filter { $0 == .queen }.count) captured), got \(actualBlackQueens)")
+        }
+        if actualWhiteKings != expectedWhiteKings {
+            print("⚠️ WARNING: White king - expected \(expectedWhiteKings) (original 1 - \(capturedWhitePiecesByType.filter { $0 == .king }.count) captured), got \(actualWhiteKings)")
+        }
+        if actualBlackKings != expectedBlackKings {
+            print("⚠️ WARNING: Black king - expected \(expectedBlackKings) (original 1 - \(capturedBlackPiecesByType.filter { $0 == .king }.count) captured), got \(actualBlackKings)")
         }
     }
     

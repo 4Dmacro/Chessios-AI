@@ -1016,6 +1016,7 @@ class ChessGameManager: ObservableObject {
         print("🎯 Current turn: \(chessBoard.getCurrentTurn().rawValue)")
         print("🎯 Game mode: \(gameMode)")
         print("🎯 Current selectedPiece: \(selectedPiece?.color.rawValue ?? "none") \(selectedPiece?.type.rawValue ?? "none") at \(selectedPiece?.position.stringValue ?? "none")")
+        print("🎯 isAIMoveInProgress: \(isAIMoveInProgress), isInMoveOperation: \(isInMoveOperation)")
         
         guard isGameActive else {
             print("🎯 Game not active")
@@ -1094,6 +1095,7 @@ class ChessGameManager: ObservableObject {
     
     func tryMove(from: ChessPosition3D, to: ChessPosition3D, bypassTurnValidation: Bool) -> Bool {
         print("🔍 tryMove called: from \(from.stringValue) to \(to.stringValue) (bypassTurnValidation: \(bypassTurnValidation))")
+        print("🔍 tryMove: isAIMoveInProgress = \(isAIMoveInProgress), isInMoveOperation = \(isInMoveOperation)")
         
         // Prevent concurrent move operations
         guard !isInMoveOperation else {
@@ -1104,6 +1106,9 @@ class ChessGameManager: ObservableObject {
         // Set move operation flag
         isInMoveOperation = true
         defer { isInMoveOperation = false }
+        
+        // Set visual move in progress flag to prevent AI from starting too early
+        isVisualMoveInProgress = true
         
         guard let piece = chessBoard.getPiece(at: from) else {
             print("❌ No piece found at \(from.stringValue)")
@@ -1291,13 +1296,20 @@ class ChessGameManager: ObservableObject {
             print("✅ Chess engine move successful")
             print("🔍 iOS Debug: Move successful, continuing to promotion detection...")
             
+            // Mark this as a local move for all local moves (not just GameKit moves)
+            // BUT exclude AI moves - they should not be marked as local moves
+            if !isProcessingReceivedMove && !isAIMoveInProgress {
+                isLocalMove = true
+                print("🎮 GameKit: Marking move as local move - isLocalMove set to true")
+            } else if isAIMoveInProgress {
+                print("🤖 AI: AI move detected - not marking as local move")
+            }
+            
             // Send move via Game Center if in multiplayer mode (but not when processing received moves)
             print("🎮 GameKit: Checking if move should be sent...")
             if isProcessingReceivedMove {
                 print("🎮 GameKit: Skipping move sending - processing received move")
             } else if let gameKitManager = self.gameKitManager {
-                // Mark this as a local move
-                isLocalMove = true
                 print("🎮 GameKit: GameKit manager found, match state: \(gameKitManager.matchState)")
                 if gameKitManager.matchState == .connected {
                     // Use format: "e2-e4:z" (file + rank + z-level)
@@ -1529,6 +1541,9 @@ class ChessGameManager: ObservableObject {
             
             print("✅ Move: \(piece.type.rawValue) from \(from.stringValue) to \(to.stringValue)")
             
+            // Clear visual move in progress flag after successful move
+            isVisualMoveInProgress = false
+            
             // Note: Move sending is now handled by the pending system in ChessPieceController.confirmMove()
             // This prevents duplicate sending and timing conflicts
             
@@ -1541,6 +1556,9 @@ class ChessGameManager: ObservableObject {
             return true
         } else {
             print("❌ Invalid move: \(piece.type.rawValue) from \(from.stringValue) to \(to.stringValue)")
+            
+            // Clear visual move in progress flag after failed move
+            isVisualMoveInProgress = false
             
             // Debug: Print current board state to see what's happening
             print("📊 Board state when move was rejected:")
@@ -2180,12 +2198,11 @@ class ChessGameManager: ObservableObject {
         // Store current tracking to avoid overwriting correctly tracked pieces
         let currentUSDZPieces = usdzPieces
         let currentPieceNodes = pieceNodes
-        _ = usdzPieceToPosition
+        let currentUSDZPieceToPosition = usdzPieceToPosition
         
-        // Clear current tracking
-        usdzPieces.removeAll()
-        pieceNodes.removeAll()
-        usdzPieceToPosition.removeAll()
+        // CRITICAL: Don't clear all tracking - this causes piece duplication
+        // Instead, we'll selectively update only the pieces that need resyncing
+        print("🔄 Preserving existing tracking: \(usdzPieces.count) pieces, \(usdzPieceToPosition.count) position mappings")
         
         print("🔄 Current chess board state:")
         for (position, piece) in chessBoard.pieces {
@@ -2250,16 +2267,27 @@ class ChessGameManager: ObservableObject {
             } else {
             // Find a USDZ piece that matches this chess piece
             if let usdzPiece = findUSDZPieceForChessPieceInAllPieces(piece) {
-            print("🔄 Found USDZ piece for \(piece.color) \(piece.type) at \(position.stringValue): \(usdzPiece.name ?? "unknown")")
-            print("🔄 USDZ piece world position: \(usdzPiece.worldPosition)")
-            print("🔄 Expected position for \(position.stringValue): \(boardToWorldPosition(file: position.file, rank: position.rank, z: position.z))")
-            
+                // CRITICAL: Check if this USDZ piece is already assigned to a different position
+                if let existingPosition = usdzPieceToPosition[usdzPiece], existingPosition != position {
+                    print("🚫 Cannot assign \(usdzPiece.name ?? "unknown") to \(position.stringValue) - already assigned to \(existingPosition.stringValue)")
+                    // Only warn if the piece is not a captured piece
+                    let isCaptured = capturedPieces.contains(where: { $0.position == position && $0.type == piece.type && $0.color == piece.color })
+                    if !isCaptured {
+                        trulyMissing.append((position, piece))
+                    }
+                    continue
+                }
+                
+                print("🔄 Found USDZ piece for \(piece.color) \(piece.type) at \(position.stringValue): \(usdzPiece.name ?? "unknown")")
+                print("🔄 USDZ piece world position: \(usdzPiece.worldPosition)")
+                print("🔄 Expected position for \(position.stringValue): \(boardToWorldPosition(file: position.file, rank: position.rank, z: position.z))")
+                
                 usdzPieces[position] = usdzPiece
                 pieceNodes[position] = usdzPiece
                 usdzPieceToPosition[usdzPiece] = position
                 print("🔄 Resynced: \(piece.color) \(piece.type) at \(position.stringValue) -> \(usdzPiece.name ?? "unknown")")
                 
-                    // Move to correct position if needed
+                // Move to correct position if needed
                 let expectedWorldPos = boardToWorldPosition(file: position.file, rank: position.rank, z: position.z)
                 let actualWorldPos = usdzPiece.position
                 let distance = sqrt(
@@ -2272,9 +2300,9 @@ class ChessGameManager: ObservableObject {
                     print("✅ Moved \(usdzPiece.name ?? "unknown") to correct position")
                 }
             } else {
-                    // Only warn if the piece is not a captured piece
+                // Only warn if the piece is not a captured piece
                 let isCaptured = capturedPieces.contains(where: { $0.position == position && $0.type == piece.type && $0.color == piece.color })
-                    if !isCaptured {
+                if !isCaptured {
                     trulyMissing.append((position, piece))
                 }
             }
@@ -2367,8 +2395,15 @@ class ChessGameManager: ObservableObject {
                 continue
             }
             
+            // CRITICAL: Only return pieces that are NOT already assigned to a different position
             if let pieceInfo = determinePieceFromNode(usdzPiece, at: position) {
                 if pieceInfo.type == chessPiece.type && pieceInfo.color == chessPiece.color {
+                    // Check if this piece is already assigned to a different position
+                    let isAlreadyAssigned = usdzPieceToPosition[usdzPiece] != nil && usdzPieceToPosition[usdzPiece] != chessPiece.position
+                    if isAlreadyAssigned {
+                        print("🚫 Piece \(usdzPiece.name ?? "unknown") is already assigned to position \(usdzPieceToPosition[usdzPiece]?.stringValue ?? "unknown")")
+                        continue
+                    }
                     print("🔄 Found in tracking: \(usdzPiece.name ?? "unknown") at \(position.stringValue)")
                     return usdzPiece
                 }
@@ -2872,8 +2907,8 @@ class ChessGameManager: ObservableObject {
     private func updateSpecificPiecePosition(_ piece: ChessPiece3D, from oldPosition: ChessPosition3D) {
         print("🔄 Updating position for \(piece.color) \(piece.type) from \(oldPosition.stringValue) to \(piece.position.stringValue)")
         
-        // Find the USDZ piece that represents this chess piece
-        if let usdzPiece = findUSDZPieceForChessPiece(piece) {
+        // CRITICAL: Find the USDZ piece at the OLD position, not the new position
+        if let usdzPiece = usdzPieces[oldPosition] {
             // Calculate the target world position
             let targetWorldPos = boardToWorldPosition(file: piece.position.file, rank: piece.position.rank, z: piece.position.z)
             
@@ -3986,25 +4021,109 @@ class ChessGameManager: ObservableObject {
         self.getPieceController?.cancelMove()
         
         // Select the AI's piece now that we're actually executing the move
+        print("🤖 AI: About to select piece for move")
         self.selectAIPiece(for: move)
+        print("🤖 AI: Piece selection completed")
         
         // Safety check: Validate board state before move
+        print("🤖 AI: Validating board state before move")
         if !chessBoard.validateBoardState() {
             print("❌ AI: Board state validation failed before move - aborting")
             return
         }
+        print("🤖 AI: Board state validation passed")
         
         // Debug: Check if the piece exists at the move's from position
         let pieceAtFrom = chessBoard.getPiece(at: move.from)
         print("🤖 AI debug: Piece at \(move.from.stringValue): \(pieceAtFrom?.type.rawValue ?? "none") \(pieceAtFrom?.color.rawValue ?? "none")")
         
+        // CRITICAL: Debug all black pieces to see if there's a position mismatch
+        print("🤖 AI debug: All black pieces in chess engine:")
+        let allBlackPieces = chessBoard.getPieces(of: .black)
+        for piece in allBlackPieces {
+            print("  - \(piece.type.rawValue) at \(piece.position.stringValue)")
+        }
+        
+        // CRITICAL: Debug all USDZ pieces to see visual positions
+        print("🤖 AI debug: All USDZ pieces (visual):")
+        for (position, usdzPiece) in usdzPieces {
+            if let piece = chessBoard.getPiece(at: position), piece.color == .black {
+                print("  - \(piece.type.rawValue) at \(position.stringValue) (USDZ: \(usdzPiece.name ?? "unknown"))")
+            }
+        }
+        
         // Debug: Check if the piece exists at the move's to position
         let pieceAtTo = chessBoard.getPiece(at: move.to)
         print("🤖 AI debug: Piece at \(move.to.stringValue): \(pieceAtTo?.type.rawValue ?? "none") \(pieceAtTo?.color.rawValue ?? "none")")
         
+        // CRITICAL: Debug what the chess engine thinks is at the move's from position
+        let pieceAtFromPosition = chessBoard.getPiece(at: move.from)
+        print("🤖 AI debug: Piece at \(move.from.stringValue): \(pieceAtFromPosition?.type.rawValue ?? "none") \(pieceAtFromPosition?.color.rawValue ?? "none")")
+        
+        // CRITICAL: Debug all pieces in the chess engine to see what's actually there
+        print("🤖 AI debug: All pieces in chess engine:")
+        let allPieces = chessBoard.getAllPieces()
+        for piece in allPieces {
+            if piece.color == .black {
+                print("  - \(piece.type.rawValue) at \(piece.position.stringValue)")
+            }
+        }
+        
+        // CRITICAL: Check for catastrophic piece loss - if we have fewer than 40 pieces, something is very wrong
+        // Normal state: 44 white + 44 black = 88 pieces initially, decreases with captures
+        if allPieces.count < 40 {
+            print("❌ CRITICAL ERROR: Chess engine has only \(allPieces.count) pieces! This is catastrophic corruption!")
+            print("❌ CRITICAL ERROR: Reinitializing board to recover from corruption...")
+            chessBoard.setupInitialPosition()
+            self.consecutiveFailedMoves += 1
+            self.isAIMoveInProgress = false
+            return
+        }
+        
+        // CRITICAL: Check for piece duplication - if we have more than 88 pieces, something is very wrong
+        // Normal state: 44 white + 44 black = 88 pieces initially, decreases with captures
+        if allPieces.count > 88 {
+            print("❌ CRITICAL ERROR: Chess engine has \(allPieces.count) pieces! This is piece duplication corruption!")
+            print("❌ CRITICAL ERROR: Reinitializing board to recover from corruption...")
+            chessBoard.setupInitialPosition()
+            self.consecutiveFailedMoves += 1
+            self.isAIMoveInProgress = false
+            return
+        }
+        
+        // CRITICAL: Check for duplicate kings (should only be 2 total)
+        let kings = allPieces.filter { $0.type == .king }
+        if kings.count != 2 {
+            print("❌ CRITICAL ERROR: Found \(kings.count) kings! Should be exactly 2. This is corruption!")
+            print("❌ CRITICAL ERROR: Reinitializing board to recover from corruption...")
+            chessBoard.setupInitialPosition()
+            self.consecutiveFailedMoves += 1
+            self.isAIMoveInProgress = false
+            return
+        }
+        
+        // CRITICAL: Check for duplicate queens (should be 2 total)
+        let queens = allPieces.filter { $0.type == .queen }
+        if queens.count != 2 {
+            print("❌ CRITICAL ERROR: Found \(queens.count) queens! Should be exactly 2. This is corruption!")
+            print("❌ CRITICAL ERROR: Reinitializing board to recover from corruption...")
+            chessBoard.setupInitialPosition()
+            self.consecutiveFailedMoves += 1
+            self.isAIMoveInProgress = false
+            return
+        }
+        
         // Execute the move using existing game logic
         if let piece = chessBoard.getPiece(at: move.from) {
             print("🤖 AI debug: Found piece \(piece.type.rawValue) \(piece.color.rawValue) at \(piece.position.stringValue)")
+            
+            // CRITICAL: Double-check that the piece actually exists and matches the move
+            guard piece.position == move.from else {
+                print("❌ AI: Piece position mismatch! Piece at \(piece.position.stringValue) but move from \(move.from.stringValue)")
+                self.consecutiveFailedMoves += 1
+                self.isAIMoveInProgress = false
+                return
+            }
             
             // Verify the move is valid before executing
             let validMoves = chessBoard.getValidMoves(for: piece)
@@ -4012,19 +4131,65 @@ class ChessGameManager: ObservableObject {
             print("🤖 AI debug: Move is valid: \(isValidMove)")
             
             if isValidMove {
-                // Use the same move execution path as human players
-                let success = self.tryMove(from: move.from, to: move.to)
+                // Use direct AI move execution path (not human tryMove logic)
+                print("🤖 AI: Executing move directly via chess engine")
+                let success = chessBoard.makeMove(ChessMove3D(piece: piece, from: move.from, to: move.to, capturedPiece: pieceAtTo), changeTurn: true)
+                print("🤖 AI: Direct move execution result: \(success)")
                 
-                                    if success {
-                        print("🤖 AI: Move completed: \(move.from.stringValue) -> \(move.to.stringValue)")
+                if success {
+                    // CRITICAL: Handle capture if there was a captured piece
+                    if let capturedPiece = pieceAtTo {
+                        print("🤖 AI: Move captured piece: \(capturedPiece.color) \(capturedPiece.type)")
+                        
+                        // CRITICAL: Find the captured piece's USDZ node BEFORE the move (at the destination position)
+                        // The captured piece should still be at the destination position before we move the capturing piece there
+                        let capturedUSDZPiece = usdzPieces[move.to]
+                        print("🤖 AI: Captured USDZ piece at \(move.to.stringValue): \(capturedUSDZPiece?.name ?? "none")")
+                        
+                        // CRITICAL: Find the capturing piece's USDZ node at the FROM position (before it moves)
+                        let capturingUSDZPiece = usdzPieces[move.from]
+                        print("🤖 AI: Capturing USDZ piece at \(move.from.stringValue): \(capturingUSDZPiece?.name ?? "none")")
+                        
+                        handleCapture(capturedPiece: capturedPiece, capturedUSDZPiece: capturedUSDZPiece, capturingUSDZPiece: capturingUSDZPiece, at: move.to)
+                    }
+                    
+                    // CRITICAL: Update the visual piece position after successful engine move
+                    print("🤖 AI: Updating visual piece position")
+                    // Get the updated piece from the chess engine (it now has the new position)
+                    if let updatedPiece = chessBoard.getPiece(at: move.to) {
+                        updateSpecificPiecePosition(updatedPiece, from: move.from)
+                    } else {
+                        print("❌ AI: Could not find updated piece at destination \(move.to.stringValue)")
+                    }
+                    
+                    // CRITICAL: Update game state after AI move
+                    let currentTurn = chessBoard.getCurrentTurn()
+                    gameState = "\(currentTurn.rawValue.capitalized)'s Turn"
+                    print("🤖 AI: Updated game state to: \(gameState)")
+                    
+                    // CRITICAL: Resync USDZ piece tracking after AI move to prevent missing pieces
+                    print("🤖 AI: Resyncing USDZ piece tracking after move...")
+                    resyncUSDZPieceTracking()
+                    
+                    // Clear selection and valid moves since it's now the other player's turn
+                    selectedPiece = nil
+                    self.validMoves = []
+                    
+                    // Update piece lists to reflect the new turn
+                    pieceController?.updatePieceLists()
+                    
+                    print("🤖 AI: Move completed: \(move.from.stringValue) -> \(move.to.stringValue)")
                         
                         // CRITICAL: Reset the AI move in progress flag with longer delay to prevent rapid successive moves
                         // The visual move animation takes 0.3s, so we need to wait for that + extra buffer
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                        // Add human-like thinking delay (2-4 seconds)
+                        let thinkingDelay = Double.random(in: 2.0...4.0)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + thinkingDelay) {
                             self.isAIMoveInProgress = false
                             self.lastAIMoveTime = Date()
                             self.consecutiveFailedMoves = 0 // Reset failed moves counter on success
-                            print("🤖 AI: Move flag reset after 3 second delay (allowing visual animation to complete)")
+                            print("🤖 AI: Move flag reset after \(thinkingDelay) second thinking delay (allowing visual animation to complete)")
+                            print("🤖 AI: isAIMoveInProgress is now: \(self.isAIMoveInProgress)")
                         }
                         
                         // Safety check: Validate board state after move

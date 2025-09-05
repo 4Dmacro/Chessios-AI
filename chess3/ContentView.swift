@@ -664,14 +664,14 @@ struct ContentView: View {
             Group {
                 if showAIWarning {
                     VStack {
-                        Text("⚠️ AI Play Mode Warning")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.red.opacity(0.9))
-                            .cornerRadius(8)
+                       // Text("⚠️ AI Play Mode Warning")
+                        //    .font(.headline)
+                        //    .fontWeight(.bold)
+                         //   .foregroundColor(.white)
+                        //    .padding(.horizontal, 16)
+                         //   .padding(.vertical, 8)
+                         //   .background(Color.red.opacity(0.9))
+                          //  .cornerRadius(8)
                         
                         Text("AI play mode is still in development, the exponential number of move possibilities makes it prone to crash, especially when in check")
                             .font(.caption)
@@ -679,7 +679,7 @@ struct ContentView: View {
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 12)
-                            .background(Color.red.opacity(0.8))
+                            .background(Color.red.opacity(0.6))
                             .cornerRadius(8)
                             .frame(maxWidth: 400)
                     }

@@ -217,6 +217,7 @@ class ChessBoard3D {
     var currentTurn: PieceColor = .white
     var enPassantTarget: ChessPosition3D?
     private var isCheckingForCheckmate = false // Prevent infinite recursion
+    private let piecesQueue = DispatchQueue(label: "com.chess.pieces")
     
     init() {
         pieces = [:]
@@ -350,7 +351,16 @@ class ChessBoard3D {
         }
         
         // Check if we have a reasonable number of pieces - be very lenient for 3D chess
-        let pieceCount = pieces.count
+        let pieceCount: Int
+        if let count = pieces.count as? Int {
+            pieceCount = count
+        } else {
+            print("❌ CRITICAL ERROR: pieces dictionary is corrupted! Type: \(type(of: pieces))")
+            print("❌ CRITICAL ERROR: pieces value: \(pieces)")
+            pieces = [:] // Reset to empty dictionary
+            return false
+        }
+        
         if pieceCount < 0 {
             print("❌ CRITICAL ERROR: Negative piece count: \(pieceCount)")
             return false
@@ -426,42 +436,38 @@ class ChessBoard3D {
         return pieces[position]
     }
     
+    // Safe pieces.values access wrapper
+    private func safePiecesValues() -> [ChessPiece3D] {
+        return piecesQueue.sync {
+            return Array(pieces.values)
+        }
+    }
+    
     // Safe dictionary access wrapper
     private func safeDictionaryAccess<T>(_ operation: () -> T?) -> T? {
-        // CRITICAL FIX: Add type safety check for pieces dictionary
-        guard pieces is [ChessPosition3D: ChessPiece3D] else {
-            print("❌ CRITICAL ERROR: pieces dictionary has wrong type - resetting")
-            pieces = [:]
-            return nil
+        // CRITICAL: Use thread-safe access to prevent crashes
+        return piecesQueue.sync {
+            // Only do basic validation - be very lenient to prevent crashes
+            let pieceCount = pieces.count
+            
+            // Only reset if count is clearly invalid (negative or extremely large)
+            if pieceCount < 0 {
+                print("❌ CRITICAL ERROR: Negative pieces count: \(pieceCount) - resetting")
+                pieces = [:]
+                return nil as T?
+            }
+            
+            // Allow up to 300 pieces in 3D chess (very lenient)
+            if pieceCount > 92 {
+                print("❌ CRITICAL ERROR: Too many pieces: \(pieceCount) - resetting")
+                pieces = [:]
+                return nil as T?
+            }
+            
+            // Skip all other integrity checks to prevent performance issues
+            // Just try the operation directly
+            return operation()
         }
-        
-        // Only do basic validation - be very lenient to prevent crashes
-        let pieceCount: Int
-        do {
-            pieceCount = pieces.count
-        } catch {
-            print("❌ CRITICAL ERROR: Failed to get pieces count - resetting")
-            pieces = [:]
-            return nil
-        }
-        
-        // Only reset if count is clearly invalid (negative or extremely large)
-        if pieceCount < 0 {
-            print("❌ CRITICAL ERROR: Negative pieces count: \(pieceCount) - resetting")
-            pieces = [:]
-            return nil
-        }
-        
-        // Allow up to 300 pieces in 3D chess (very lenient)
-        if pieceCount > 92 {
-            print("❌ CRITICAL ERROR: Too many pieces: \(pieceCount) - resetting")
-            pieces = [:]
-            return nil
-        }
-        
-        // Skip all other integrity checks to prevent performance issues
-        // Just try the operation directly
-        return operation()
     }
     
     // Safe set piece method
@@ -509,15 +515,11 @@ class ChessBoard3D {
     }
     
     func getAllPieces() -> [ChessPiece3D] {
-        return safeDictionaryAccess {
-            return Array(pieces.values)
-        } ?? []
+        return safePiecesValues()
     }
     
     func getPieces(of color: PieceColor) -> [ChessPiece3D] {
-        return safeDictionaryAccess {
-            return pieces.values.filter { $0.color == color }
-        } ?? []
+        return safePiecesValues().filter { $0.color == color }
     }
     
     func getCurrentTurn() -> PieceColor {
@@ -1496,14 +1498,15 @@ class ChessBoard3D {
         let startTime = Date()
         let maxCheckTime: TimeInterval = 1.0 // 1 second timeout for check detection
         
-        // Find the king of the specified color
-        guard let king = pieces.values.first(where: { $0.type == .king && $0.color == color }) else {
+        // Find the king of the specified color using safe access
+        let allPieces = safePiecesValues()
+        guard let king = allPieces.first(where: { $0.type == .king && $0.color == color }) else {
             return false
         }
         
-        // Check if any opponent piece can attack the king
+        // Check if any opponent piece can attack the king using safe access
         let opponentColor = color.opposite
-        let opponentPieces = pieces.values.filter { $0.color == opponentColor }
+        let opponentPieces = allPieces.filter { $0.color == opponentColor }
         
         if !suppressDebug {
             print("🔍 isCheck: Checking \(opponentPieces.count) opponent pieces for attacks on \(color.rawValue) king at \(king.position.stringValue)")
