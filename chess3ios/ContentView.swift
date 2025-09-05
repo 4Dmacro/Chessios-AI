@@ -782,7 +782,7 @@ struct ContentView: View {
         let fillLight = SCNNode()
         fillLight.light = SCNLight()
         fillLight.light?.type = .directional
-        fillLight.light?.intensity = 400
+        fillLight.light?.intensity = 300
         fillLight.light?.color = UIColor(red: 0.95, green: 0.95, blue: 1.0, alpha: 1.0)
         fillLight.position = SCNVector3(-3, 6, -3)
         fillLight.eulerAngles = SCNVector3(-Float.pi/6, -Float.pi/6, 0)
@@ -798,9 +798,17 @@ struct ContentView: View {
         rimLight.eulerAngles = SCNVector3(0, 0, 0)
         scene.rootNode.addChildNode(rimLight)
         
+        // Add omni light for better glass effect
+        let omniLight = SCNNode()
+        omniLight.light = SCNLight()
+        omniLight.light?.type = .omni
+        omniLight.light?.intensity = 30
+        omniLight.position = SCNVector3(-3, 20, 3)
+        scene.rootNode.addChildNode(omniLight)
+        
         // Set up scene environment for better reflections
         scene.lightingEnvironment.contents = UIColor(red: 0.8, green: 0.8, blue: 0.9, alpha: 1.0)
-        scene.lightingEnvironment.intensity = 0.3
+        scene.lightingEnvironment.intensity = 0.6
         
         // Set up scene view
         sceneView.scene = scene
@@ -1048,7 +1056,7 @@ struct ContentView: View {
             containerNode.addChildNode(boardNode)
             
             // Load additional guide elements if they exist
-            if let guidesUrl = Bundle.main.url(forResource: "alphanums1", withExtension: "usdz") {
+            if let guidesUrl = Bundle.main.url(forResource: "alphanums2", withExtension: "usdz") {
                 do {
                     let guidesScene = try SCNScene(url: guidesUrl, options: nil)
                     if let guidesRootNode = guidesScene.rootNode.childNodes.first {

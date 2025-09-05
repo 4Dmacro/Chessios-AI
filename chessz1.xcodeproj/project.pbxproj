@@ -30,6 +30,9 @@
 		FF0F28902E4C6ECA004C7507 /* alphanums1.usdz in Resources */ = {isa = PBXBuildFile; fileRef = FF0F288F2E4C6ECA004C7507 /* alphanums1.usdz */; };
 		FF2071072E505A7700A62549 /* boardfixz.usdz in Resources */ = {isa = PBXBuildFile; fileRef = FF2071062E505A7700A62549 /* boardfixz.usdz */; };
 		FF20710B2E51C7C600A62549 /* boardfix2.usdz in Resources */ = {isa = PBXBuildFile; fileRef = FF20710A2E51C7C600A62549 /* boardfix2.usdz */; };
+		FF395D982E6A6D1200929E2F /* alphanums2.usdz in Resources */ = {isa = PBXBuildFile; fileRef = FF395D972E6A6D1200929E2F /* alphanums2.usdz */; };
+		FF395D992E6A6D1200929E2F /* alphanums2.usdz in Resources */ = {isa = PBXBuildFile; fileRef = FF395D972E6A6D1200929E2F /* alphanums2.usdz */; };
+		FF395D9A2E6A6D1200929E2F /* alphanums2.usdz in Resources */ = {isa = PBXBuildFile; fileRef = FF395D972E6A6D1200929E2F /* alphanums2.usdz */; };
 		FF6ABEED2E234F6800EB04B8 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FF6ABEEC2E234F6800EB04B8 /* Metal.framework */; };
 		FFEE12DF2E56A6660052174C /* cheesicon5.icon in Resources */ = {isa = PBXBuildFile; fileRef = FFEE12DD2E56A6660052174C /* cheesicon5.icon */; };
 		FFEE12E02E56A6660052174C /* cheesicon5.icon in Resources */ = {isa = PBXBuildFile; fileRef = FFEE12DD2E56A6660052174C /* cheesicon5.icon */; };
@@ -105,6 +108,7 @@
 		FF0F288F2E4C6ECA004C7507 /* alphanums1.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = alphanums1.usdz; sourceTree = "<group>"; };
 		FF2071062E505A7700A62549 /* boardfixz.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = boardfixz.usdz; sourceTree = "<group>"; };
 		FF20710A2E51C7C600A62549 /* boardfix2.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = boardfix2.usdz; sourceTree = "<group>"; };
+		FF395D972E6A6D1200929E2F /* alphanums2.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = alphanums2.usdz; sourceTree = "<group>"; };
 		FF6ABEC12E234EF500EB04B8 /* chessz1.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = chessz1.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FF6ABECE2E234EF700EB04B8 /* chessz1Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = chessz1Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FF6ABED82E234EF700EB04B8 /* chessz1UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = chessz1UITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -247,6 +251,7 @@
 		FF0F26B02E4C4E41004C7507 /* chess3 */ = {
 			isa = PBXGroup;
 			children = (
+				FF395D972E6A6D1200929E2F /* alphanums2.usdz */,
 				FFEE12DD2E56A6660052174C /* cheesicon5.icon */,
 				FF20710A2E51C7C600A62549 /* boardfix2.usdz */,
 				FF2071062E505A7700A62549 /* boardfixz.usdz */,
@@ -633,6 +638,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FF395D9A2E6A6D1200929E2F /* alphanums2.usdz in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -642,6 +648,7 @@
 			files = (
 				FF0F26BB2E4C4E41004C7507 /* znums.usdz in Resources */,
 				FF2071072E505A7700A62549 /* boardfixz.usdz in Resources */,
+				FF395D982E6A6D1200929E2F /* alphanums2.usdz in Resources */,
 				FF0F26BD2E4C4E41004C7507 /* piecesplace.usdz in Resources */,
 				FF0F28902E4C6ECA004C7507 /* alphanums1.usdz in Resources */,
 				FF20710B2E51C7C600A62549 /* boardfix2.usdz in Resources */,
@@ -694,6 +701,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FF395D992E6A6D1200929E2F /* alphanums2.usdz in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
