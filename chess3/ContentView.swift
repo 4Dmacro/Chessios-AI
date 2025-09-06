@@ -520,6 +520,12 @@ struct ContentView: View {
                                 .cornerRadius(8)
                                 .multilineTextAlignment(.center)
                                 .animation(.easeInOut(duration: 0.6), value: gameKitManager.errorMessage)
+                                .onAppear {
+                                    // Auto-dismiss error message after 7 seconds
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 7.0) {
+                                        gameKitManager.clearErrorMessages()
+                                    }
+                                }
                             
                            // HStack(spacing: 12) {
                              //   Button("🔄 Reconnect") {

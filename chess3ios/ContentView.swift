@@ -257,7 +257,7 @@ struct ContentView: View {
                         .background(chessGame.gameMode == .learn ? Color.blue.opacity(0.6) : Color.clear)
                     }
                     .frame(width: 100)
-                    
+                  
                     
                     // AI Controls
                     Button(chessGame.isAITurn() ? "🤖 AI Thinking..." : "🤖 vs AI") {
@@ -277,7 +277,7 @@ struct ContentView: View {
                     .buttonStyle(AdaptiveButtonStyle())
                     .font(.caption)
                     .scaleEffect(uiScale)
-                    .background(chessGame.aiModeActive ? Color.green.opacity(0.4) : Color.clear)
+                    .background(chessGame.aiModeActive ? Color.green.opacity(0.35) : Color.clear)
                     .disabled(chessGame.aiModeActive)
                     
                     // Game State Display
@@ -323,6 +323,9 @@ struct ContentView: View {
                         }
                     }
                 }
+                
+               
+                    
                 .padding (.vertical,20)
                 // Camera Controls
                 VStack(spacing: 15) {
@@ -335,7 +338,7 @@ struct ContentView: View {
                     Button("↑ Boards Up") {
                         lowerCamera()
                     }
-                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.3))
+                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.35))
                     .font(.caption)
                     .foregroundColor(.white)
                     .scaleEffect(uiScale)
@@ -343,7 +346,7 @@ struct ContentView: View {
                     Button("↓ Boards Down") {
                         raiseCamera()
                     }
-                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.3))
+                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.35))
                     .font(.caption)
                     .foregroundColor(.white)
                     .scaleEffect(uiScale)
@@ -351,7 +354,7 @@ struct ContentView: View {
                     Button("🔍 Zoom In") {
                         zoomIn()
                     }
-                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.3))
+                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.35))
                     .font(.caption)
                     .foregroundColor(.white)
                     .scaleEffect(uiScale)
@@ -359,13 +362,17 @@ struct ContentView: View {
                     Button("🔍 Zoom Out") {
                         zoomOut()
                     }
-                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.3))
+                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.35))
                     .font(.caption)
                     .foregroundColor(.white)
                     .scaleEffect(uiScale)
                 }
                 
-               
+               // .background(.regularMaterial.opacity(0.2))
+               // .frame(maxWidth: 140)
+               // .padding(.horizontal, 8)
+              //  .padding(.vertical, 8)
+              //  .cornerRadius(12)
                 
                 // Game Controls
                 VStack(spacing: 20) {
@@ -375,9 +382,14 @@ struct ContentView: View {
                         resetCamera()
                     }
                     .padding(.vertical, 10)
-                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.3))
+                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.35))
                     .font(.caption)
                     .scaleEffect(uiScale)
+                //    .frame(maxWidth: 140)
+                //    .background(.regularMaterial.opacity(0.2))
+                //    .padding(.horizontal, 8)
+                //    .padding(.vertical, 8)
+                //    .cornerRadius(12)
                     
                     Spacer(minLength: 10)
                     
@@ -500,7 +512,7 @@ struct ContentView: View {
                          .padding(.horizontal, 2)
                          .padding(.vertical, 1)
                          .frame(maxWidth: .infinity)
-                         .background(chessGame.gameMode == .learn ? Color.blue.opacity(0.6) : Color.gray.opacity(0.3))
+                         .background(chessGame.gameMode == .learn ? Color.blue.opacity(0.6) : Color.gray.opacity(0.4))
                          .cornerRadius(3)
                          .scaleEffect(uiScale)
                      }
@@ -541,7 +553,7 @@ struct ContentView: View {
                         .font(.caption)
                         .foregroundColor(.white)
                         .scaleEffect(uiScale)
-                        .padding(.horizontal, 8)
+                        .padding(.horizontal, 4)
                         .padding(.vertical, 4)
                         .background(chessGame.gameState.contains("Checkmate") ? Color.red.opacity(0.8) :
                                    chessGame.gameState.contains("White") ? Color.red.opacity(0.6) : 
@@ -603,7 +615,7 @@ struct ContentView: View {
                             .foregroundColor(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
-                    .background(.regularMaterial.opacity(0.2))
+                    .background(.regularMaterial.opacity(0.3))
                     .cornerRadius(8)
                     .scaleEffect(uiScale)
                     
@@ -614,7 +626,7 @@ struct ContentView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
-                    .background(.regularMaterial.opacity(0.2))
+                    .background(.regularMaterial.opacity(0.3))
                     .cornerRadius(8)
                     .scaleEffect(uiScale)
                     
@@ -625,7 +637,7 @@ struct ContentView: View {
                                     .foregroundColor(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
-                    .background(.regularMaterial.opacity(0.2))
+                    .background(.regularMaterial.opacity(0.3))
                     .cornerRadius(8)
                     .scaleEffect(uiScale)
                     
@@ -636,7 +648,7 @@ struct ContentView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
-                    .background(.regularMaterial.opacity(0.2))
+                    .background(.regularMaterial.opacity(0.3))
                     .cornerRadius(8)
                     .scaleEffect(uiScale)
                     
@@ -647,7 +659,7 @@ struct ContentView: View {
                         .foregroundColor(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
-                    .background(.regularMaterial.opacity(0.2))
+                    .background(.regularMaterial.opacity(0.3))
                         .cornerRadius(8)
                     .scaleEffect(uiScale)
                 }
@@ -728,7 +740,7 @@ struct ContentView: View {
                         .font(.caption)
                     }
                     .padding(12)
-                    .background(Color.red.opacity(0.9)) // Temporary bright background for debugging
+                    .background(Color.red.opacity(0.6)) // Temporary bright background for debugging
                     .cornerRadius(8)
                     .frame(width: 120)
                     .position(x: geometry.size.width - 115, y: geometry.size.height / 2.3 - 150) // Position above piece controller

@@ -106,7 +106,7 @@ struct MultiplayerView: View {
                             HStack {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundColor(.orange)
-                                Text("Connection lost. You can try to reconnect or start a new game.")
+                                Text("Connection lost. Try to reconnect or start a new game.")
                                     .font(.caption)
                                     .foregroundColor(.orange)
                             }
