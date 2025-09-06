@@ -1496,11 +1496,17 @@ class ChessBoard3D {
     func isCheck(color: PieceColor, suppressDebug: Bool = false) -> Bool {
         // CRITICAL: Add timeout protection for isCheck function
         let startTime = Date()
-        let maxCheckTime: TimeInterval = 1.0 // 1 second timeout for check detection
+        let maxCheckTime: TimeInterval = 0.5 // Reduced to 0.5 seconds for faster timeout
         
         // Find the king of the specified color using safe access
         let allPieces = safePiecesValues()
         guard let king = allPieces.first(where: { $0.type == .king && $0.color == color }) else {
+            if !suppressDebug {
+                print("⚠️ isCheck: No king found for \(color.rawValue) - this is a critical error!")
+                print("⚠️ isCheck: Available pieces: \(allPieces.count) total")
+                let kings = allPieces.filter { $0.type == .king }
+                print("⚠️ isCheck: Found \(kings.count) kings: \(kings.map { "\($0.color) at \($0.position.stringValue)" })")
+            }
             return false
         }
         
@@ -1508,15 +1514,20 @@ class ChessBoard3D {
         let opponentColor = color.opposite
         let opponentPieces = allPieces.filter { $0.color == opponentColor }
         
+        // CRITICAL: For 3D chess, we need to check all opponent pieces to ensure check detection is accurate
+        // Don't limit the number of pieces to check - this is critical for game integrity
         if !suppressDebug {
-            print("🔍 isCheck: Checking \(opponentPieces.count) opponent pieces for attacks on \(color.rawValue) king at \(king.position.stringValue)")
+            // Only print this debug info occasionally to reduce spam
+            if opponentPieces.count > 40 {
+                print("🔍 isCheck: Checking \(opponentPieces.count) opponent pieces for attacks on \(color.rawValue) king at \(king.position.stringValue)")
+            }
         }
         
-        for opponentPiece in opponentPieces {
+        for (index, opponentPiece) in opponentPieces.enumerated() {
             // CRITICAL: Check timeout during loop
             if Date().timeIntervalSince(startTime) > maxCheckTime {
                 if !suppressDebug {
-                    print("⚠️ isCheck timeout - assuming not in check")
+                    print("⚠️ isCheck timeout after \(index) pieces - assuming not in check")
                 }
                 return false // Assume not in check if timeout occurs
             }
@@ -1886,7 +1897,11 @@ class ChessBoard3D {
         
         // Handle captures
         if let capturedPiece = move.capturedPiece {
-            // Captured piece is already removed by the move
+            // CRITICAL: Remove the captured piece from the pieces dictionary
+            _ = safeDictionaryAccess {
+                pieces.removeValue(forKey: capturedPiece.position)
+                return true
+            }
             print("🤖 AI: Captured \(capturedPiece.color) \(capturedPiece.type) at \(capturedPiece.position.stringValue)")
         }
         

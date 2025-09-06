@@ -142,7 +142,7 @@ class ChessAI {
         
         // Add aggressive timeout protection
         let startTime = Date()
-        let maxCalculationTime: TimeInterval = 2.0 // Further reduced to 2 seconds for 3D chess
+        let maxCalculationTime: TimeInterval = 1.0 // Reduced to 1 second to prevent infinite loops
         
         // Safety check for board corruption
         guard let board = getBoard() else {

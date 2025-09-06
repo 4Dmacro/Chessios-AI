@@ -485,9 +485,9 @@ class ChessPieceController: ObservableObject {
         
         let totalPiecesOnBoard = chessGame.chessBoard.pieces.count
         let totalCapturedPieces = capturedWhitePieces.count + capturedBlackPieces.count
-        let totalPieces = totalPiecesOnBoard + totalCapturedPieces
         
-        print("🔍 updatePieceLists: Chess board has \(totalPiecesOnBoard) pieces on board + \(totalCapturedPieces) captured = \(totalPieces) total pieces")
+        print("🔍 updatePieceLists: Chess board has \(totalPiecesOnBoard) pieces on board, \(totalCapturedPieces) captured pieces (for display only)")
+        print("🔍 updatePieceLists: Note: Captured pieces are already removed from chess engine, so total is \(totalPiecesOnBoard)")
         print("🔍 updatePieceLists: Found \(whitePieces.count) white pieces and \(blackPieces.count) black pieces")
             
             // Only print detailed debug info if not in knight mode to reduce interference
@@ -514,11 +514,11 @@ class ChessPieceController: ObservableObject {
         if !knightMode {
             if whitePieces.count != expectedWhitePieces {
                 print("⚠️ WARNING: Expected \(expectedWhitePieces) white pieces (44 - \(capturedWhitePiecesCount) captured), but got \(whitePieces.count)")
-                print("🔍 Debug: Captured white pieces: \(capturedWhitePiecesCount), On board: \(whitePieces.count), Total: \(capturedWhitePiecesCount + whitePieces.count)")
+                print("🔍 Debug: Captured white pieces: \(capturedWhitePiecesCount) (for display only), On board: \(whitePieces.count), Total pieces in game: \(capturedWhitePiecesCount + whitePieces.count)")
             }
             if blackPieces.count != expectedBlackPieces {
                 print("⚠️ WARNING: Expected \(expectedBlackPieces) black pieces (44 - \(capturedBlackPiecesCount) captured), but got \(blackPieces.count)")
-                print("🔍 Debug: Captured black pieces: \(capturedBlackPiecesCount), On board: \(blackPieces.count), Total: \(capturedBlackPiecesCount + blackPieces.count)")
+                print("🔍 Debug: Captured black pieces: \(capturedBlackPiecesCount) (for display only), On board: \(blackPieces.count), Total pieces in game: \(capturedBlackPiecesCount + blackPieces.count)")
             }
         }
         
@@ -537,8 +537,8 @@ class ChessPieceController: ObservableObject {
         let expectedBlackRooks = 3 - capturedBlackPiecesByType.filter { $0 == .rook }.count
         let expectedWhiteKnights = 3 - capturedWhitePiecesByType.filter { $0 == .knight }.count
         let expectedBlackKnights = 3 - capturedBlackPiecesByType.filter { $0 == .knight }.count
-        let expectedWhiteBishops = 3 - capturedWhitePiecesByType.filter { $0 == .bishop }.count
-        let expectedBlackBishops = 3 - capturedBlackPiecesByType.filter { $0 == .bishop }.count
+        let expectedWhiteBishops = 4 - capturedWhitePiecesByType.filter { $0 == .bishop }.count
+        let expectedBlackBishops = 4 - capturedBlackPiecesByType.filter { $0 == .bishop }.count
         let expectedWhiteQueens = 1 - capturedWhitePiecesByType.filter { $0 == .queen }.count
         let expectedBlackQueens = 1 - capturedBlackPiecesByType.filter { $0 == .queen }.count
         let expectedWhiteKings = 1 - capturedWhitePiecesByType.filter { $0 == .king }.count
@@ -2580,7 +2580,19 @@ class ChessPieceController: ObservableObject {
                                                        y: CGFloat(blackAIRotation.y),
                                                        z: CGFloat(blackAIRotation.z),
                                                        duration: 0.8)
-                    modelNode.runAction(blackAction)
+                    
+                    // CRITICAL: Track board rotation in progress
+                    isBoardRotationInProgress = true
+                    print("🔄 Board rotation started - AI must wait until rotation completes")
+                    
+                    // Run rotation with completion handler
+                    modelNode.runAction(blackAction) {
+                        DispatchQueue.main.async {
+                            self.isBoardRotationInProgress = false
+                            print("🔄 Board rotation completed - AI can now proceed")
+                        }
+                    }
+                    
                     self.isBoardRotatedForBlack = true
                     print("🔄 AI mode: Rotated to black's turn perspective (+30° Y-axis from white default)")
                 } else {
@@ -2590,7 +2602,19 @@ class ChessPieceController: ObservableObject {
                                                        y: CGFloat(whiteRotation.y),
                                                        z: CGFloat(whiteRotation.z),
                                                        duration: 0.8)
-                    modelNode.runAction(whiteAction)
+                    
+                    // CRITICAL: Track board rotation in progress
+                    isBoardRotationInProgress = true
+                    print("🔄 Board rotation started - AI must wait until rotation completes")
+                    
+                    // Run rotation with completion handler
+                    modelNode.runAction(whiteAction) {
+                        DispatchQueue.main.async {
+                            self.isBoardRotationInProgress = false
+                            print("🔄 Board rotation completed - AI can now proceed")
+                        }
+                    }
+                    
                     self.isBoardRotatedForBlack = false
                     print("🔄 AI mode: Board at white's perspective (default position)")
                 }
@@ -2603,7 +2627,19 @@ class ChessPieceController: ObservableObject {
                                                        y: CGFloat(blackRotation.y),
                                                        z: CGFloat(blackRotation.z),
                                                        duration: 0.8)
-                    modelNode.runAction(blackAction)
+                    
+                    // CRITICAL: Track board rotation in progress
+                    isBoardRotationInProgress = true
+                    print("🔄 Board rotation started - AI must wait until rotation completes")
+                    
+                    // Run rotation with completion handler
+                    modelNode.runAction(blackAction) {
+                        DispatchQueue.main.async {
+                            self.isBoardRotationInProgress = false
+                            print("🔄 Board rotation completed - AI can now proceed")
+                        }
+                    }
+                    
                     self.isBoardRotatedForBlack = true
                     print("🔄 Player mode: Rotated to black's position: 180° Y-axis from white default")
                 } else if currentTurn == .white {
@@ -2613,7 +2649,19 @@ class ChessPieceController: ObservableObject {
                                                        y: CGFloat(whiteRotation.y),
                                                        z: CGFloat(whiteRotation.z),
                                                        duration: 0.8)
-                    modelNode.runAction(whiteAction)
+                    
+                    // CRITICAL: Track board rotation in progress
+                    isBoardRotationInProgress = true
+                    print("🔄 Board rotation started - AI must wait until rotation completes")
+                    
+                    // Run rotation with completion handler
+                    modelNode.runAction(whiteAction) {
+                        DispatchQueue.main.async {
+                            self.isBoardRotationInProgress = false
+                            print("🔄 Board rotation completed - AI can now proceed")
+                        }
+                    }
+                    
                     self.isBoardRotatedForBlack = false
                     print("🔄 Player mode: Rotated to white's default position")
                 }
@@ -2623,10 +2671,30 @@ class ChessPieceController: ObservableObject {
         }
     }
     
+    // MARK: - Visual Operation Synchronization
+    
+    // Track all visual operations that must complete before AI can move
+    @Published var isVisualOperationInProgress = false
+    @Published var isBoardRotationInProgress = false
+    @Published var isMoveAnimationInProgress = false
+    @Published var isMoveConfirmationInProgress = false
+    
+    // Combined flag to check if any visual operation is in progress
+    var isAnyVisualOperationInProgress: Bool {
+        return isVisualOperationInProgress || 
+               isBoardRotationInProgress || 
+               isMoveAnimationInProgress || 
+               isMoveConfirmationInProgress
+    }
+    
     // MARK: - Move Confirmation Timer
     
     func startMoveConfirmation(from: ChessPosition3D, to: ChessPosition3D, pieceNode: SCNNode) {
         print("⏰ Starting move confirmation timer: \(from.stringValue) -> \(to.stringValue)")
+        
+        // CRITICAL: Track move confirmation in progress
+        isMoveConfirmationInProgress = true
+        print("⏰ Move confirmation started - AI must wait until confirmation completes")
         
         // Safety check: Ensure we have a chess game reference
         guard chessGame != nil else {
@@ -2748,6 +2816,10 @@ class ChessPieceController: ObservableObject {
         pendingMoveTo = nil
         pendingPieceNode = nil
         
+        // CRITICAL: Clear move confirmation in progress flag
+        isMoveConfirmationInProgress = false
+        print("⏰ Move confirmation completed - AI can now proceed")
+        
         // Check if promotion choice UI should be shown, otherwise execute any pending promotion
         if let chessGame = chessGame {
             // CRITICAL: Only auto-execute promotion for LOCAL moves, not for received moves in GameKit mode
@@ -2825,6 +2897,10 @@ class ChessPieceController: ObservableObject {
         pendingMoveFrom = nil
         pendingMoveTo = nil
         pendingPieceNode = nil
+        
+        // CRITICAL: Clear move confirmation in progress flag
+        isMoveConfirmationInProgress = false
+        print("⏰ Move confirmation cancelled - AI can now proceed")
     }
 
     // Two-step 3D move state

@@ -215,7 +215,7 @@ struct ContentView: View {
                 Spacer(minLength:30) // Reduced spacing to move Game Center UI up on iPad
                 
                 // Game Controls - Above Camera Controls
-                VStack(spacing: 10) {
+                VStack(spacing: 15) {
                     // New Game button
                     Button(action: {
                         if chessGame.isInitialLoadingComplete {
@@ -285,9 +285,9 @@ struct ContentView: View {
                         .font(.caption)
                         .foregroundColor(.white)
                         .scaleEffect(uiScale)
-                        .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                        .background(chessGame.gameState.contains("Checkmate") ? Color.red.opacity(0.8) : 
+                        .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                        .background(chessGame.gameState.contains("Checkmate") ? Color.red.opacity(0.8) :
                                    chessGame.gameState.contains("White") ? Color.red.opacity(0.6) : 
                                    chessGame.gameState.contains("Black") ? Color.blue.opacity(0.6) : Color.clear)
                             .cornerRadius(6)
@@ -1128,9 +1128,11 @@ struct ContentView: View {
         print("🤖 AI timer: Starting timer for AI mode")
         
         aiTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            if chessGame.aiModeActive && chessGame.isAITurn() && chessGame.isGameActive && !chessGame.isAIMoveInProgress && !pieceController.isMovePending && chessGame.canAIMakeMove() && !chessGame.isVisualMoveInProgress {
+            if chessGame.aiModeActive && chessGame.isAITurn() && chessGame.isGameActive && !chessGame.isAIMoveInProgress && !pieceController.isMovePending && chessGame.canAIMakeMove() && !chessGame.isVisualMoveInProgress && !pieceController.isAnyVisualOperationInProgress {
                 print("🤖 AI timer triggered - making AI move")
                 chessGame.makeAIMove()
+            } else if chessGame.aiModeActive && chessGame.isAITurn() && chessGame.isGameActive && pieceController.isAnyVisualOperationInProgress {
+                print("🤖 AI timer: Visual operation in progress (rotation: \(pieceController.isBoardRotationInProgress), animation: \(pieceController.isMoveAnimationInProgress), confirmation: \(pieceController.isMoveConfirmationInProgress)), waiting...")
             }
         }
     }

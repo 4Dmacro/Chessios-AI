@@ -74,6 +74,7 @@ class ChessGameManager: ObservableObject {
     private var aiMoveCountdownTimer: Timer?
     private var lastAIMoveTime: Date = Date.distantPast
     private var lastAIMoveObject: ChessMove3D?
+    private var secondLastAIMoveObject: ChessMove3D?
     private var consecutiveFailedMoves: Int = 0
     @Published var isVisualMoveInProgress: Bool = false
     
@@ -3871,6 +3872,12 @@ class ChessGameManager: ObservableObject {
             return
         }
         
+        // CRITICAL: Check if any visual operations are in progress (board rotation, move confirmation, etc.)
+        if let pieceController = pieceController, pieceController.isAnyVisualOperationInProgress {
+            print("🤖 Visual operation in progress (rotation: \(pieceController.isBoardRotationInProgress), animation: \(pieceController.isMoveAnimationInProgress), confirmation: \(pieceController.isMoveConfirmationInProgress)), skipping AI move...")
+            return
+        }
+        
         // CRITICAL: Check if AI has failed too many consecutive moves
         if consecutiveFailedMoves >= 3 {
             print("🤖 AI: Too many consecutive failed moves (\(consecutiveFailedMoves)) - resetting AI state")
@@ -3878,6 +3885,16 @@ class ChessGameManager: ObservableObject {
             consecutiveFailedMoves = 0
             lastAIMoveObject = nil
             return
+        }
+        
+        // CRITICAL: Check for AI move loop - if AI is making the same moves repeatedly
+        if let lastAIMove = lastAIMoveObject, let secondLastAIMove = secondLastAIMoveObject {
+            if lastAIMove.from == secondLastAIMove.from && lastAIMove.to == secondLastAIMove.to {
+                print("🤖 AI: Detected move loop - AI making same move repeatedly, forcing different move")
+                isAIMoveInProgress = false
+                consecutiveFailedMoves += 1
+                return
+            }
         }
         
         // CRITICAL: Check if king is in check and handle appropriately
@@ -3961,7 +3978,7 @@ class ChessGameManager: ObservableObject {
         print("🤖 AI is thinking...")
         
         // CRITICAL: Add timeout for AI calculation to prevent infinite thinking
-        let calculationTimeout = DispatchTime.now() + 3.0 // 3 second timeout (reduced from 5)
+        let calculationTimeout = DispatchTime.now() + 2.0 // Reduced to 2 seconds for faster timeout
         
         // Run AI calculation on background thread
         DispatchQueue.global(qos: .userInitiated).async {
@@ -4179,6 +4196,10 @@ class ChessGameManager: ObservableObject {
                     pieceController?.updatePieceLists()
                     
                     print("🤖 AI: Move completed: \(move.from.stringValue) -> \(move.to.stringValue)")
+                    
+                    // CRITICAL: Track AI moves to detect loops
+                    secondLastAIMoveObject = lastAIMoveObject
+                    lastAIMoveObject = move
                         
                         // CRITICAL: Reset the AI move in progress flag with longer delay to prevent rapid successive moves
                         // The visual move animation takes 0.3s, so we need to wait for that + extra buffer

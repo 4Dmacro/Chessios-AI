@@ -1755,13 +1755,15 @@ struct ContentView: View {
             // ADDITIONAL FIX: Wait for human move confirmation to complete before starting AI
             // ADDITIONAL FIX: Add extra delay after AI moves to prevent immediate re-triggering
             // ADDITIONAL FIX: Wait for visual move animation to complete before starting AI
-            if chessGame.aiModeActive && chessGame.isAITurn() && chessGame.isGameActive && !chessGame.isAIMoveInProgress && !pieceController.isMovePending && chessGame.canAIMakeMove() && !chessGame.isVisualMoveInProgress {
+            if chessGame.aiModeActive && chessGame.isAITurn() && chessGame.isGameActive && !chessGame.isAIMoveInProgress && !pieceController.isMovePending && chessGame.canAIMakeMove() && !chessGame.isVisualMoveInProgress && !pieceController.isAnyVisualOperationInProgress {
                 print("🤖 AI timer triggered - making AI move")
                 chessGame.makeAIMove()
             } else if chessGame.aiModeActive && chessGame.isAITurn() && chessGame.isGameActive && chessGame.isAIMoveInProgress {
                 print("🤖 AI timer: Move already in progress, skipping")
             } else if chessGame.aiModeActive && chessGame.isAITurn() && chessGame.isGameActive && pieceController.isMovePending {
                 print("🤖 AI timer: Human move pending confirmation, waiting...")
+            } else if chessGame.aiModeActive && chessGame.isAITurn() && chessGame.isGameActive && pieceController.isAnyVisualOperationInProgress {
+                print("🤖 AI timer: Visual operation in progress (rotation: \(pieceController.isBoardRotationInProgress), animation: \(pieceController.isMoveAnimationInProgress), confirmation: \(pieceController.isMoveConfirmationInProgress)), waiting...")
             } else {
                 print("🤖 AI timer: Conditions not met for AI move")
                 // CRITICAL FIX: If AI mode is no longer active, stop the timer immediately
