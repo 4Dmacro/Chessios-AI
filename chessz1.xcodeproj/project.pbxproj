@@ -7,22 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		FF0F26B12E4C4E41004C7507 /* ChessAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0F26A22E4C4E41004C7507 /* ChessAI.swift */; };
-		FF0F26B22E4C4E41004C7507 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0F26A92E4C4E41004C7507 /* ContentView.swift */; };
-		FF0F26B32E4C4E41004C7507 /* chess3App.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0F26A12E4C4E41004C7507 /* chess3App.swift */; };
-		FF0F26B42E4C4E41004C7507 /* ChessGameManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0F26A72E4C4E41004C7507 /* ChessGameManager.swift */; };
-		FF0F26B62E4C4E41004C7507 /* ScreenSpaceSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0F26AE2E4C4E41004C7507 /* ScreenSpaceSelection.swift */; };
-		FF0F26B72E4C4E41004C7507 /* PromotionChoiceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0F26AC2E4C4E41004C7507 /* PromotionChoiceView.swift */; };
-		FF0F26B82E4C4E41004C7507 /* ChessPieceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0F26A82E4C4E41004C7507 /* ChessPieceController.swift */; };
-		FF0F26B92E4C4E41004C7507 /* ChessEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0F26A62E4C4E41004C7507 /* ChessEngine.swift */; };
 		FF0F26C12E4C4E41004C7507 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FF0F269F2E4C4E41004C7507 /* Assets.xcassets */; };
-		FF0F26C22E4C4E41004C7507 /* chessappnums.usdz in Resources */ = {isa = PBXBuildFile; fileRef = FF0F26A42E4C4E41004C7507 /* chessappnums.usdz */; };
-		FF0F26C32E4C4E41004C7507 /* README_AI.md in Resources */ = {isa = PBXBuildFile; fileRef = FF0F26AD2E4C4E41004C7507 /* README_AI.md */; };
-		FF0F26CA2E4C4E52004C7507 /* chess3Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0F26C72E4C4E52004C7507 /* chess3Tests.swift */; };
-		FF0F26D02E4C4E65004C7507 /* chess2UITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0F26CC2E4C4E65004C7507 /* chess2UITestsLaunchTests.swift */; };
-		FF0F26D12E4C4E65004C7507 /* chess3UITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0F26CD2E4C4E65004C7507 /* chess3UITests.swift */; };
-		FF0F26D22E4C4E65004C7507 /* chess3UITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0F26CE2E4C4E65004C7507 /* chess3UITestsLaunchTests.swift */; };
-		FF0F26D32E4C4E65004C7507 /* chess2UITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0F26CB2E4C4E65004C7507 /* chess2UITests.swift */; };
+		FF0F26C22E4C4E41004C7507 /* (null) in Resources */ = {isa = PBXBuildFile; };
+		FF0F26C32E4C4E41004C7507 /* (null) in Resources */ = {isa = PBXBuildFile; };
 		FF20710B2E51C7C600A62549 /* boardfix2.usdz in Resources */ = {isa = PBXBuildFile; fileRef = FF20710A2E51C7C600A62549 /* boardfix2.usdz */; };
 		FF6ABEED2E234F6800EB04B8 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FF6ABEEC2E234F6800EB04B8 /* Metal.framework */; };
 /* End PBXBuildFile section */
@@ -74,22 +61,6 @@
 
 /* Begin PBXFileReference section */
 		FF0F269F2E4C4E41004C7507 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		FF0F26A02E4C4E41004C7507 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		FF0F26A12E4C4E41004C7507 /* chess3App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = chess3App.swift; sourceTree = "<group>"; };
-		FF0F26A22E4C4E41004C7507 /* ChessAI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChessAI.swift; sourceTree = "<group>"; };
-		FF0F26A42E4C4E41004C7507 /* chessappnums.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = chessappnums.usdz; sourceTree = "<group>"; };
-		FF0F26A62E4C4E41004C7507 /* ChessEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChessEngine.swift; sourceTree = "<group>"; };
-		FF0F26A72E4C4E41004C7507 /* ChessGameManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChessGameManager.swift; sourceTree = "<group>"; };
-		FF0F26A82E4C4E41004C7507 /* ChessPieceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChessPieceController.swift; sourceTree = "<group>"; };
-		FF0F26A92E4C4E41004C7507 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		FF0F26AC2E4C4E41004C7507 /* PromotionChoiceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromotionChoiceView.swift; sourceTree = "<group>"; };
-		FF0F26AD2E4C4E41004C7507 /* README_AI.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README_AI.md; sourceTree = "<group>"; };
-		FF0F26AE2E4C4E41004C7507 /* ScreenSpaceSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenSpaceSelection.swift; sourceTree = "<group>"; };
-		FF0F26C72E4C4E52004C7507 /* chess3Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = chess3Tests.swift; sourceTree = "<group>"; };
-		FF0F26CB2E4C4E65004C7507 /* chess2UITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = chess2UITests.swift; sourceTree = "<group>"; };
-		FF0F26CC2E4C4E65004C7507 /* chess2UITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = chess2UITestsLaunchTests.swift; sourceTree = "<group>"; };
-		FF0F26CD2E4C4E65004C7507 /* chess3UITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = chess3UITests.swift; sourceTree = "<group>"; };
-		FF0F26CE2E4C4E65004C7507 /* chess3UITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = chess3UITestsLaunchTests.swift; sourceTree = "<group>"; };
 		FF0F26D82E4C4EDB004C7507 /* chess3.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = chess3.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FF20710A2E51C7C600A62549 /* boardfix2.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = boardfix2.usdz; sourceTree = "<group>"; };
 		FF6ABEC12E234EF500EB04B8 /* chessz1.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = chessz1.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -105,12 +76,12 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		FF3D69592E6EDCCF001F40F5 /* Exceptions for "chess3" folder in "chess3ios" target */ = {
+		FF0F26DB2E4C4EDB004C7507 /* Exceptions for "chess3" folder in "chess3" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				alphanums1.usdz,
+				Info.plist,
 			);
-			target = FFEE14AA2E583CC60052174C /* chess3ios */;
+			target = FF0F26D72E4C4EDB004C7507 /* chess3 */;
 		};
 		FF594CDF2E62AF4100DB5B33 /* Exceptions for "chess3ios" folder in "chess3ios" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
@@ -125,24 +96,9 @@
 		FF0F26D92E4C4EDB004C7507 /* chess3 */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				FF3D69592E6EDCCF001F40F5 /* Exceptions for "chess3" folder in "chess3ios" target */,
+				FF0F26DB2E4C4EDB004C7507 /* Exceptions for "chess3" folder in "chess3" target */,
 			);
 			path = chess3;
-			sourceTree = "<group>";
-		};
-		FF9A08A72E262C8D002D3CF1 /* chess2 */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = chess2;
-			sourceTree = "<group>";
-		};
-		FF9A08B52E262C8E002D3CF1 /* chess2Tests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = chess2Tests;
-			sourceTree = "<group>";
-		};
-		FF9A08BF2E262C8E002D3CF1 /* chess2UITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = chess2UITests;
 			sourceTree = "<group>";
 		};
 		FFEE14AC2E583CC60052174C /* chess3ios */ = {
@@ -240,60 +196,25 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		FF0F26B02E4C4E41004C7507 /* chess3 */ = {
+		FF3D6D572E6EE05D001F40F5 /* Recovered References */ = {
 			isa = PBXGroup;
 			children = (
 				FF20710A2E51C7C600A62549 /* boardfix2.usdz */,
 				FF0F269F2E4C4E41004C7507 /* Assets.xcassets */,
-				FF0F26A02E4C4E41004C7507 /* Info.plist */,
-				FF0F26A12E4C4E41004C7507 /* chess3App.swift */,
-				FF0F26A22E4C4E41004C7507 /* ChessAI.swift */,
-				FF0F26A42E4C4E41004C7507 /* chessappnums.usdz */,
-				FF0F26A62E4C4E41004C7507 /* ChessEngine.swift */,
-				FF0F26A72E4C4E41004C7507 /* ChessGameManager.swift */,
-				FF0F26A82E4C4E41004C7507 /* ChessPieceController.swift */,
-				FF0F26A92E4C4E41004C7507 /* ContentView.swift */,
-				FF0F26AC2E4C4E41004C7507 /* PromotionChoiceView.swift */,
-				FF0F26AD2E4C4E41004C7507 /* README_AI.md */,
-				FF0F26AE2E4C4E41004C7507 /* ScreenSpaceSelection.swift */,
 			);
-			path = chess3;
-			sourceTree = "<group>";
-		};
-		FF0F26C82E4C4E52004C7507 /* chess3Tests */ = {
-			isa = PBXGroup;
-			children = (
-				FF0F26C72E4C4E52004C7507 /* chess3Tests.swift */,
-			);
-			path = chess3Tests;
-			sourceTree = "<group>";
-		};
-		FF0F26CF2E4C4E65004C7507 /* chess3UITests */ = {
-			isa = PBXGroup;
-			children = (
-				FF0F26CB2E4C4E65004C7507 /* chess2UITests.swift */,
-				FF0F26CC2E4C4E65004C7507 /* chess2UITestsLaunchTests.swift */,
-				FF0F26CD2E4C4E65004C7507 /* chess3UITests.swift */,
-				FF0F26CE2E4C4E65004C7507 /* chess3UITestsLaunchTests.swift */,
-			);
-			path = chess3UITests;
+			name = "Recovered References";
 			sourceTree = "<group>";
 		};
 		FF6ABEB82E234EF400EB04B8 = {
 			isa = PBXGroup;
 			children = (
-				FF0F26CF2E4C4E65004C7507 /* chess3UITests */,
-				FF0F26C82E4C4E52004C7507 /* chess3Tests */,
-				FF0F26B02E4C4E41004C7507 /* chess3 */,
-				FF9A08A72E262C8D002D3CF1 /* chess2 */,
-				FF9A08B52E262C8E002D3CF1 /* chess2Tests */,
-				FF9A08BF2E262C8E002D3CF1 /* chess2UITests */,
 				FF0F26D92E4C4EDB004C7507 /* chess3 */,
 				FFEE14AC2E583CC60052174C /* chess3ios */,
 				FFEE14BA2E583CC80052174C /* chess3iosTests */,
 				FFEE14C42E583CC80052174C /* chess3iosUITests */,
 				FF6ABEEB2E234F6700EB04B8 /* Frameworks */,
 				FF6ABEC22E234EF500EB04B8 /* Products */,
+				FF3D6D572E6EE05D001F40F5 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -418,9 +339,6 @@
 			);
 			dependencies = (
 			);
-			fileSystemSynchronizedGroups = (
-				FF9A08A72E262C8D002D3CF1 /* chess2 */,
-			);
 			name = chess2;
 			packageProductDependencies = (
 			);
@@ -441,9 +359,6 @@
 			dependencies = (
 				FF9A08B42E262C8E002D3CF1 /* PBXTargetDependency */,
 			);
-			fileSystemSynchronizedGroups = (
-				FF9A08B52E262C8E002D3CF1 /* chess2Tests */,
-			);
 			name = chess2Tests;
 			packageProductDependencies = (
 			);
@@ -463,9 +378,6 @@
 			);
 			dependencies = (
 				FF9A08BE2E262C8E002D3CF1 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				FF9A08BF2E262C8E002D3CF1 /* chess2UITests */,
 			);
 			name = chess2UITests;
 			packageProductDependencies = (
@@ -632,8 +544,8 @@
 			files = (
 				FF20710B2E51C7C600A62549 /* boardfix2.usdz in Resources */,
 				FF0F26C12E4C4E41004C7507 /* Assets.xcassets in Resources */,
-				FF0F26C22E4C4E41004C7507 /* chessappnums.usdz in Resources */,
-				FF0F26C32E4C4E41004C7507 /* README_AI.md in Resources */,
+				FF0F26C22E4C4E41004C7507 /* (null) in Resources */,
+				FF0F26C32E4C4E41004C7507 /* (null) in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -707,19 +619,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FF0F26B12E4C4E41004C7507 /* ChessAI.swift in Sources */,
-				FF0F26B22E4C4E41004C7507 /* ContentView.swift in Sources */,
-				FF0F26CA2E4C4E52004C7507 /* chess3Tests.swift in Sources */,
-				FF0F26B32E4C4E41004C7507 /* chess3App.swift in Sources */,
-				FF0F26D02E4C4E65004C7507 /* chess2UITestsLaunchTests.swift in Sources */,
-				FF0F26D12E4C4E65004C7507 /* chess3UITests.swift in Sources */,
-				FF0F26D22E4C4E65004C7507 /* chess3UITestsLaunchTests.swift in Sources */,
-				FF0F26D32E4C4E65004C7507 /* chess2UITests.swift in Sources */,
-				FF0F26B42E4C4E41004C7507 /* ChessGameManager.swift in Sources */,
-				FF0F26B62E4C4E41004C7507 /* ScreenSpaceSelection.swift in Sources */,
-				FF0F26B72E4C4E41004C7507 /* PromotionChoiceView.swift in Sources */,
-				FF0F26B82E4C4E41004C7507 /* ChessPieceController.swift in Sources */,
-				FF0F26B92E4C4E41004C7507 /* ChessEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -818,7 +717,7 @@
 		FF0F26E22E4C4EDC004C7507 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = cheesicon5;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Appicon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = chess3/chess3.entitlements;
@@ -842,7 +741,7 @@
 				LSApplicationCategoryType = "public.app-category.games";
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = a.chess3D;
+				PRODUCT_BUNDLE_IDENTIFIER = a.chess3D.macos;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
@@ -858,7 +757,7 @@
 		FF0F26E32E4C4EDC004C7507 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = cheesicon5;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = chess3/chess3.entitlements;
@@ -880,7 +779,7 @@
 				LSApplicationCategoryType = "public.app-category.games";
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = a.chess3D;
+				PRODUCT_BUNDLE_IDENTIFIER = a.chess3D.macos;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
@@ -1360,7 +1259,7 @@
 				);
 				LSApplicationCategoryType = "public.app-category.games";
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = a.chess3D;
+				PRODUCT_BUNDLE_IDENTIFIER = a.chess3D.macos;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -1403,7 +1302,7 @@
 				);
 				LSApplicationCategoryType = "public.app-category.games";
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = a.chess3D;
+				PRODUCT_BUNDLE_IDENTIFIER = a.chess3D.macos;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
