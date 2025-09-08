@@ -2759,8 +2759,14 @@ class ChessPieceController: ObservableObject {
                 // Find the new node for the piece (it might have been recreated)
                 if let newNode = chessGame.getPieceNode(at: to) {
                     selectedPiece = newNode
-                    highlightSelectedPiece()
+                    // Only highlight in Game Center mode, not in AI mode (prevents sync issues)
+                    if let gameKitManager = chessGame.gameKitManager, gameKitManager.matchState == .connected {
+                        highlightSelectedPiece()
+                    }
                 }
+                
+                // CRITICAL: Turn already changed when move was executed, no need to change again
+                // chessGame.changeTurnAfterConfirmation()
                 
                 // Add move to history
                 if let piece = chessGame.getPieceAtPosition(to) {
@@ -2792,8 +2798,14 @@ class ChessPieceController: ObservableObject {
                     // Find the new node for the piece (it might have been recreated)
                     if let newNode = chessGame.getPieceNode(at: to) {
                         selectedPiece = newNode
-                        highlightSelectedPiece()
+                        // Only highlight in Game Center mode, not in AI mode (prevents sync issues)
+                        if let gameKitManager = chessGame.gameKitManager, gameKitManager.matchState == .connected {
+                            highlightSelectedPiece()
+                        }
                     }
+                    
+                    // CRITICAL: Turn already changed when move was executed, no need to change again
+                    // chessGame.changeTurnAfterConfirmation()
                     
                     // Add move to history
                     if let piece = chessGame.getPieceAtPosition(to) {

@@ -47,6 +47,12 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
     }
     
     func authenticatePlayer() {
+        // CRITICAL: Suppress authentication during AI mode to prevent mid-game interruptions
+        if let chessGameManager = chessGameManager, chessGameManager.aiModeActive {
+            print("🎮 GameKit: Authentication suppressed - AI mode is active")
+            return
+        }
+        
         print("🎮 GameKit: Starting iOS authentication...")
         print("🎮 GameKit: GKLocalPlayer.local.isAuthenticated: \(GKLocalPlayer.local.isAuthenticated)")
         print("🎮 GameKit: GKLocalPlayer.local.displayName: \(GKLocalPlayer.local.displayName)")
@@ -556,6 +562,11 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
         // Wait a moment to ensure cleanup is complete, then re-authenticate
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             print("🔄 GameKit: Starting fresh authentication after cleanup")
+            // Check if AI mode is active before re-authenticating
+            if let chessGameManager = self.chessGameManager, chessGameManager.aiModeActive {
+                print("🎮 GameKit: Re-authentication suppressed - AI mode is active")
+                return
+            }
             self.authenticatePlayer()
         }
         
@@ -584,6 +595,11 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
         // Wait a moment then re-authenticate
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             print("🔄 GameKit: Starting force re-authentication")
+            // Check if AI mode is active before re-authenticating
+            if let chessGameManager = self.chessGameManager, chessGameManager.aiModeActive {
+                print("🎮 GameKit: Force re-authentication suppressed - AI mode is active")
+                return
+            }
             self.authenticatePlayer()
         }
     }

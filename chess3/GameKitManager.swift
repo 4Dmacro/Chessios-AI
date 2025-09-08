@@ -67,6 +67,12 @@ class GameKitManager: NSObject, ObservableObject {
             return
         }
         
+        // CRITICAL: Suppress authentication during AI mode to prevent mid-game interruptions
+        if let chessGameManager = chessGameManager, chessGameManager.aiModeActive {
+            print("🎮 GameKit: Authentication suppressed - AI mode is active")
+            return
+        }
+        
         isAuthenticating = true
         print("🎮 GameKit: Starting authentication...")
         print("🎮 GameKit: GKLocalPlayer.local.isAuthenticated: \(GKLocalPlayer.local.isAuthenticated)")
@@ -580,6 +586,11 @@ class GameKitManager: NSObject, ObservableObject {
         // Wait a moment to ensure cleanup is complete, then re-authenticate
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             print("🔄 GameKit: Starting fresh authentication after cleanup")
+            // Check if AI mode is active before re-authenticating
+            if let chessGameManager = self.chessGameManager, chessGameManager.aiModeActive {
+                print("🎮 GameKit: Re-authentication suppressed - AI mode is active")
+                return
+            }
             self.authenticatePlayer()
         }
         
@@ -621,6 +632,11 @@ class GameKitManager: NSObject, ObservableObject {
         // Wait a moment then re-authenticate
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             print("🔄 GameKit: Starting force re-authentication")
+            // Check if AI mode is active before re-authenticating
+            if let chessGameManager = self.chessGameManager, chessGameManager.aiModeActive {
+                print("🎮 GameKit: Force re-authentication suppressed - AI mode is active")
+                return
+            }
             self.authenticatePlayer()
         }
     }
@@ -714,7 +730,7 @@ extension GameKitManager: GKMatchmakerViewControllerDelegate {
     func matchmakerViewController(_ viewController: GKMatchmakerViewController, didFailWithError error: Error) {
         print("❌ GameKit: Matchmaker failed with error: \(error.localizedDescription)")
         print("❌ GameKit: Error domain: \(error._domain), code: \(error._code)")
-        print("❌ GameKit: Error user info: \(error._userInfo)")
+        print("❌ GameKit: Error user info: \(String(describing: error._userInfo))")
         print("❌ GameKit: Error description: \(error)")
         
         // Add specific handling for macOS network errors

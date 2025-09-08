@@ -351,15 +351,7 @@ class ChessBoard3D {
         }
         
         // Check if we have a reasonable number of pieces - be very lenient for 3D chess
-        let pieceCount: Int
-        if let count = pieces.count as? Int {
-            pieceCount = count
-        } else {
-            print("❌ CRITICAL ERROR: pieces dictionary is corrupted! Type: \(type(of: pieces))")
-            print("❌ CRITICAL ERROR: pieces value: \(pieces)")
-            pieces = [:] // Reset to empty dictionary
-            return false
-        }
+        let pieceCount = pieces.count
         
         if pieceCount < 0 {
             print("❌ CRITICAL ERROR: Negative piece count: \(pieceCount)")
@@ -842,7 +834,7 @@ class ChessBoard3D {
         return true
     }
     
-    func getValidMoves(for piece: ChessPiece3D, checkEnPassant: Bool = true, checkKingSafety: Bool = true) -> [ChessMove3D] {
+    func getValidMoves(for piece: ChessPiece3D, checkEnPassant: Bool = true, checkKingSafety: Bool = true, suppressDebug: Bool = false) -> [ChessMove3D] {
         var validMoves: [ChessMove3D] = []
         
         // CRITICAL: Add overall move limit to prevent AI overload
@@ -850,10 +842,12 @@ class ChessBoard3D {
         
         switch piece.type {
         case .pawn:
-            validMoves = generatePawnMoves(for: piece, checkEnPassant: checkEnPassant)
-            print("🔍 Generated \(validMoves.count) moves for \(piece.color) pawn at \(piece.position.stringValue)")
-            for move in validMoves {
-                print("🔍 Move: \(move.from.stringValue) -> \(move.to.stringValue) (captured: \(move.capturedPiece?.type.rawValue ?? "none"))")
+            validMoves = generatePawnMoves(for: piece, checkEnPassant: checkEnPassant, suppressDebug: suppressDebug)
+            if !suppressDebug {
+                print("🔍 Generated \(validMoves.count) moves for \(piece.color) pawn at \(piece.position.stringValue)")
+                for move in validMoves {
+                    print("🔍 Move: \(move.from.stringValue) -> \(move.to.stringValue) (captured: \(move.capturedPiece?.type.rawValue ?? "none"))")
+                }
             }
         case .rook:
             validMoves = generateRookMoves(for: piece)
@@ -885,7 +879,7 @@ class ChessBoard3D {
     
     // MARK: - Piece-Specific Move Generation
     
-    private func generatePawnMoves(for piece: ChessPiece3D, checkEnPassant: Bool = true) -> [ChessMove3D] {
+    private func generatePawnMoves(for piece: ChessPiece3D, checkEnPassant: Bool = true, suppressDebug: Bool = false) -> [ChessMove3D] {
         var moves: [ChessMove3D] = []
         let direction = piece.color == .white ? 1 : -1
         let startRank = piece.color == .white ? 1 : 6
@@ -908,14 +902,9 @@ class ChessBoard3D {
             }
         }
         
-        // Debug: Check if this is the problematic move
+        // Debug: Check if this is the problematic move (reduced verbosity)
         if piece.position.stringValue.contains("b2") {
-            print("🔍 Pawn move generation for \(piece.position.stringValue):")
-            print("🔍 Direction: \(direction), startRank: \(startRank)")
-            print("🔍 Generated moves:")
-            for move in moves {
-                print("  - \(move.from.stringValue) -> \(move.to.stringValue)")
-            }
+            print("🔍 Pawn move generation for \(piece.position.stringValue): \(moves.count) moves")
         }
         // Upward move (z) - only allow forward Z movement for pawns
         if let upPos = piece.position.offset(file: 0, rank: 0, z: 1), safeIsEmpty(at: upPos) {
@@ -960,43 +949,53 @@ class ChessBoard3D {
         
         // En passant logic for horizontal moves only (2D chess rules) - SKIPPED for AI performance
         if checkEnPassant {
-            print("🔍 Current en passant target: \(enPassantTarget?.stringValue ?? "none")")
+            if !suppressDebug {
+                print("🔍 Current en passant target: \(enPassantTarget?.stringValue ?? "none")")
+            }
             if let enPassantTarget = enPassantTarget {
-                print("🔍 En passant check: target at \(enPassantTarget.stringValue)")
+                if !suppressDebug {
+                    print("🔍 En passant check: target at \(enPassantTarget.stringValue)")
+                }
                 // Check if this pawn can capture en passant
                 let fileDiff = abs(piece.position.file - enPassantTarget.file)
                 let rankDiff = abs(piece.position.rank - enPassantTarget.rank)
                 let zDiff = abs(piece.position.z - enPassantTarget.z)
                 
-                print("🔍 En passant check: pawn at \(piece.position.stringValue), fileDiff=\(fileDiff), rankDiff=\(rankDiff), zDiff=\(zDiff)")
+                if !suppressDebug {
+                    print("🔍 En passant check: pawn at \(piece.position.stringValue), fileDiff=\(fileDiff), rankDiff=\(rankDiff), zDiff=\(zDiff)")
+                }
                 
                 // En passant is only possible for horizontal moves (same rank, adjacent files, same z)
                 if rankDiff == 0 && fileDiff == 1 && zDiff == 0 {
                     // Calculate the capture position (same rank as the en passant target)
                     let capturePos = ChessPosition3D(file: enPassantTarget.file, rank: enPassantTarget.rank, z: enPassantTarget.z)
                     
-                    print("🔍 En passant check: capture position would be \(capturePos.stringValue)")
+                    if !suppressDebug {
+                        print("🔍 En passant check: capture position would be \(capturePos.stringValue)")
+                    }
                     
                     // Check if the capture position is valid (support extended board)
                     let maxFile = 8
                     if capturePos.file >= 0 && capturePos.file <= maxFile && capturePos.rank >= 0 && capturePos.rank <= 7 {
                         // Check if there's an opponent pawn at the en passant target
                         if let targetPawn = safeGetPiece(at: enPassantTarget), targetPawn.type == .pawn && targetPawn.color != piece.color {
-                            print("🔍 En passant: adding capture move to \(capturePos.stringValue)")
+                            if !suppressDebug {
+                                print("🔍 En passant: adding capture move to \(capturePos.stringValue)")
+                            }
                             moves.append(ChessMove3D(piece: piece, from: piece.position, to: capturePos, capturedPiece: targetPawn))
-                        } else {
+                        } else if !suppressDebug {
                             print("🔍 En passant: no opponent pawn at target")
                         }
-                    } else {
+                    } else if !suppressDebug {
                         print("🔍 En passant: capture position outside board")
                     }
-                } else {
+                } else if !suppressDebug {
                     print("🔍 En passant: conditions not met (rankDiff=\(rankDiff), fileDiff=\(fileDiff), zDiff=\(zDiff))")
                 }
-            } else {
+            } else if !suppressDebug {
                 print("🔍 En passant: no target set")
             }
-        } else {
+        } else if !suppressDebug {
             print("🔍 En passant: SKIPPED for AI performance")
         }
         
@@ -1508,11 +1507,10 @@ class ChessBoard3D {
         // Check if any piece can make a move that gets the king out of check
         for piece in piecesOfColor {
             // CRITICAL: Use getValidMoves with checkEnPassant: false and checkKingSafety: false to prevent recursion
-            let validMoves = getValidMoves(for: piece, checkEnPassant: false, checkKingSafety: false)
-            print("♔ \(piece.color) \(piece.type) at \(piece.position.stringValue) has \(validMoves.count) valid moves")
-            
+            let validMoves = getValidMoves(for: piece, checkEnPassant: false, checkKingSafety: false, suppressDebug: true)
+            // Only log if piece has moves (reduces debug spam)
             if validMoves.count > 0 {
-                print("♔ DEBUG: Checking moves for \(piece.type) at \(piece.position.stringValue): \(validMoves.map { "\($0.from.stringValue)->\($0.to.stringValue)" })")
+                print("♔ \(piece.color) \(piece.type) at \(piece.position.stringValue) has \(validMoves.count) valid moves")
             }
             
             for move in validMoves {
@@ -1881,7 +1879,8 @@ class ChessBoard3D {
         // Add to move history
         moveHistory.append(move)
         
-        print("🤖 AI: Move completed: \(move.from.stringValue) -> \(move.to.stringValue)")
+        // Suppress move completion debug to reduce spam
+        // print("🤖 AI: Move completed: \(move.from.stringValue) -> \(move.to.stringValue)")
     }
     
     func undoMove(_ move: ChessMove3D, capturedPiece: ChessPiece3D?) {
@@ -1944,7 +1943,8 @@ class ChessBoard3D {
             enPassantTarget = nil
         }
         
-        print("🤖 AI: Move undone: \(move.to.stringValue) -> \(move.from.stringValue)")
+        // Suppress move undo debug to reduce spam
+        // print("🤖 AI: Move undone: \(move.to.stringValue) -> \(move.from.stringValue)")
     }
     
     // getGameState method moved to ChessGameManager to avoid duplication

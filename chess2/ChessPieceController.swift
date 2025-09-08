@@ -1,6 +1,6 @@
 //
 //  ChessPieceController.swift
-//  chess2
+//  chess3
 //
 //  Created by Kiro on 17/07/2025.
 //
@@ -479,8 +479,8 @@ class ChessPieceController: ObservableObject {
         let capturedWhitePiecesCount = chessGame.getCapturedPiecesCount(for: .white)
         let capturedBlackPiecesCount = chessGame.getCapturedPiecesCount(for: .black)
         
-        let expectedWhitePieces = 32 - capturedWhitePiecesCount // 24 pawns (8 original + 16 extended) + 2 rooks + 2 knights + 2 bishops + 1 queen + 1 king
-        let expectedBlackPieces = 32 - capturedBlackPiecesCount
+        let expectedWhitePieces = 44 - capturedWhitePiecesCount // 32 pawns (8 original + 16 extended + 8 aerial) + 12 others (8 original + 4 aerial)
+        let expectedBlackPieces = 44 - capturedBlackPiecesCount
         
         // Only show piece count warnings if not in knight mode to reduce interference
         if !knightMode {
@@ -500,8 +500,8 @@ class ChessPieceController: ObservableObject {
         let capturedWhitePiecesByType = chessGame.getCapturedPieces().filter { $0.color == .white }.map { $0.type }
         let capturedBlackPiecesByType = chessGame.getCapturedPieces().filter { $0.color == .black }.map { $0.type }
         
-        let expectedWhiteTypes: [PieceType] = Array(repeating: .pawn, count: 24) + [.rook, .knight, .bishop, .queen, .king, .bishop, .knight, .rook]
-        let expectedBlackTypes: [PieceType] = Array(repeating: .pawn, count: 24) + [.rook, .knight, .bishop, .queen, .king, .bishop, .knight, .rook]
+        let expectedWhiteTypes: [PieceType] = Array(repeating: .pawn, count: 32) + [.rook, .knight, .bishop, .queen, .king, .bishop, .knight, .rook, .bishop, .rook, .knight, .bishop]
+        let expectedBlackTypes: [PieceType] = Array(repeating: .pawn, count: 32) + [.rook, .knight, .bishop, .queen, .king, .bishop, .knight, .rook, .bishop, .rook, .knight, .bishop]
         
         for pieceType in expectedWhiteTypes {
             let count = whitePieceTypes.filter { $0 == pieceType }.count
@@ -652,6 +652,15 @@ class ChessPieceController: ObservableObject {
         // Get valid moves from the chess game (for debugging/logging purposes)
         let validMoves = chessGame.chessBoard.getValidMoves(for: piece)
         print("🎯 Valid moves for \(piece.type) at \(piece.position.stringValue): \(validMoves.map { $0.to.stringValue })")
+        
+        // CRITICAL: Check for checkmate when king is selected and has no valid moves
+        if piece.type == .king && validMoves.isEmpty && chessGame.chessBoard.isCheck(color: piece.color) {
+            print("🔍 King has no valid moves and is in check - checking for checkmate...")
+            if chessGame.chessBoard.isCheckmate(color: piece.color) {
+                print("🎯 CHECKMATE DETECTED! \(piece.color.opposite.rawValue.capitalized) wins!")
+                // You could add UI notification here
+            }
+        }
     }
     
     // Clear all move indicators (kept for compatibility, but no longer needed)
@@ -883,12 +892,17 @@ class ChessPieceController: ObservableObject {
                 print("⚠️ ChessPieceController: Move validation failed for \(piece.type)")
                 chessGame.showInvalidMoveMessage("Invalid Move")
                 
-                // Check for checkmate if the king is in check and no valid moves are available
-                if chessGame.chessBoard.isCheck(color: piece.color) {
+                // Check for checkmate if this is a king and it has no valid moves
+                if piece.type == .king && chessGame.chessBoard.isCheck(color: piece.color) {
                     print("🔍 King is in check and move was rejected - checking for checkmate...")
-                    if chessGame.chessBoard.isCheckmate(color: piece.color) {
+                    print("🔍 About to call isCheckmate for \(piece.color)...")
+                    let isCheckmateResult = chessGame.chessBoard.isCheckmate(color: piece.color)
+                    print("🔍 isCheckmate result: \(isCheckmateResult)")
+                    if isCheckmateResult {
                         print("🎯 CHECKMATE DETECTED! \(piece.color.opposite.rawValue.capitalized) wins!")
                         // You could add UI notification here
+                    } else {
+                        print("🔍 Not checkmate - king has escape moves")
                     }
                 }
                 return
@@ -1689,9 +1703,12 @@ class ChessPieceController: ObservableObject {
     private func canPieceAttackPosition(piece: ChessPiece3D, targetPosition: ChessPosition3D, excluding movingPiece: ChessPiece3D? = nil) -> Bool {
         switch piece.type {
         case .pawn:
+            // Pawns attack diagonally in 3D space (file change + forward Y + any Z)
             let direction = piece.color == .white ? 1 : -1
             let fileDiff = abs(targetPosition.file - piece.position.file)
             let rankDiff = targetPosition.rank - piece.position.rank
+            
+            // Allow diagonal captures: file change + forward Y only + any Z direction
             return fileDiff == 1 && rankDiff == direction
             
         case .rook:
@@ -1790,7 +1807,7 @@ class ChessPieceController: ObservableObject {
         
         // Get the piece to determine color and board rotation for direction handling
         let piece = chessGame.getPieceAtPosition(originalPosition)
-        let isBlack = piece?.color == .black
+        _ = piece?.color == .black
         
         // Apply first move (2 squares in any axis)
         switch firstMove {
@@ -2412,28 +2429,58 @@ class ChessPieceController: ObservableObject {
         // Get the modelNode from the ContentView through the chess game
         if let chessGame = chessGame,
            let modelNode = chessGame.getModelNode() {
-            
-            // Apply turn-based rotation directly to the target position
-            if currentTurn == .black {
-                // For black's turn: rotate to black's position (180° Y-axis + -30° X-axis from default)
-                let blackRotation = SCNVector3(-Float.pi * 5/12 - Float.pi/6, Float.pi, 0) // Default + -30° X-axis + 180° Y-axis
-                let blackAction = SCNAction.rotateTo(x: CGFloat(blackRotation.x), 
-                                                   y: CGFloat(blackRotation.y), 
-                                                   z: CGFloat(blackRotation.z), 
-                                                   duration: 0.8)
-                modelNode.runAction(blackAction)
-                self.isBoardRotatedForBlack = true
-                print("🔄 Rotated to black's position: 180° Y-axis + -30° X-axis from default")
-            } else if currentTurn == .white {
-                // For white's turn: rotate to white's default position
-                let whiteRotation = SCNVector3(-Float.pi * 5/12, 0, 0) // Default white position
-                let whiteAction = SCNAction.rotateTo(x: CGFloat(whiteRotation.x), 
-                                                   y: CGFloat(whiteRotation.y), 
-                                                   z: CGFloat(whiteRotation.z), 
-                                                   duration: 0.8)
-                modelNode.runAction(whiteAction)
-                self.isBoardRotatedForBlack = false
-                print("🔄 Rotated to white's default position")
+             
+            //AI Mode Rotation (ChessPieceController.swift):
+           // White position: SCNVector3(-Float.pi * 5/12, Float.pi/12, 0) (X-axis + Y-axis)
+          //  Black position: SCNVector3(-Float.pi * 5/12 - Float.pi/6, Float.pi + Float.pi/12, 0) (X-axis + Y-axis + 180° Y)
+            // In AI mode, always keep the board oriented for the human player's perspective
+            // (white pieces at bottom, black pieces at top) regardless of whose turn it is
+            if chessGame.aiModeActive {
+                // AI mode: Rotate based on whose turn it is for better visibility
+                if currentTurn == .black {
+                    // For black's turn in AI mode: add 30° Y-axis rotation from white default
+                    let blackAIRotation = SCNVector3(-Float.pi * 6/12, Float.pi * 1/7 + Float.pi/6, 0) // White default + 30° Y rotation
+                    let blackAction = SCNAction.rotateTo(x: CGFloat(blackAIRotation.x),
+                                                       y: CGFloat(blackAIRotation.y), 
+                                                       z: CGFloat(blackAIRotation.z), 
+                                                       duration: 0.8)
+                    modelNode.runAction(blackAction)
+                    self.isBoardRotatedForBlack = true
+                    print("🔄 AI mode: Rotated to black's turn perspective (+30° Y-axis from white default)")
+                } else {
+                    // For white's turn in AI mode: use white's default perspective
+                    let whiteRotation = SCNVector3(-Float.pi * 6/12, Float.pi * 1/7, 0) // Default white position with 15° Y rotation
+                    let whiteAction = SCNAction.rotateTo(x: CGFloat(whiteRotation.x),
+                                                       y: CGFloat(whiteRotation.y), 
+                                                       z: CGFloat(whiteRotation.z), 
+                                                       duration: 0.8)
+                    modelNode.runAction(whiteAction)
+                    self.isBoardRotatedForBlack = false
+                    print("🔄 AI mode: Board at white's perspective (default position)")
+                }
+            } else {
+                // Player mode: Rotate based on whose turn it is
+                if currentTurn == .black {
+                    // For black's turn: rotate to black's position (180° Y-axis from white default)
+                    let blackRotation = SCNVector3(-Float.pi * 5/12 - Float.pi * 1/12, Float.pi + Float.pi * 1/7, 0) // White default + 180° Y-axis rotation
+                    let blackAction = SCNAction.rotateTo(x: CGFloat(blackRotation.x),
+                                                       y: CGFloat(blackRotation.y), 
+                                                       z: CGFloat(blackRotation.z), 
+                                                       duration: 0.8)
+                    modelNode.runAction(blackAction)
+                    self.isBoardRotatedForBlack = true
+                    print("🔄 Player mode: Rotated to black's position: 180° Y-axis from white default")
+                } else if currentTurn == .white {
+                    // For white's turn: rotate to white's default position
+                    let whiteRotation = SCNVector3(-Float.pi * 6/12, Float.pi * 1/7, 0) // Default white position with 15° Y rotation
+                    let whiteAction = SCNAction.rotateTo(x: CGFloat(whiteRotation.x),
+                                                       y: CGFloat(whiteRotation.y), 
+                                                       z: CGFloat(whiteRotation.z), 
+                                                       duration: 0.8)
+                    modelNode.runAction(whiteAction)
+                    self.isBoardRotatedForBlack = false
+                    print("🔄 Player mode: Rotated to white's default position")
+                }
             }
         } else {
             print("⚠️ Cannot rotate board - modelNode not available")
@@ -2446,7 +2493,7 @@ class ChessPieceController: ObservableObject {
         print("⏰ Starting move confirmation timer: \(from.stringValue) -> \(to.stringValue)")
         
         // Safety check: Ensure we have a chess game reference
-        guard let chessGame = chessGame else {
+        guard chessGame != nil else {
             print("⚠️ Cannot start move confirmation timer - no chess game")
             return
         }
@@ -2809,8 +2856,8 @@ class ChessPieceController: ObservableObject {
             print("❌ tryCustomMove: Chess engine rejected the move")
             chessGame.showInvalidMoveMessage("Invalid Move")
             
-            // Check for checkmate if the king is in check and no valid moves are available
-            if chessGame.chessBoard.isCheck(color: piece.color) {
+            // Check for checkmate if this is a king and it has no valid moves
+            if piece.type == .king && chessGame.chessBoard.isCheck(color: piece.color) {
                 print("🔍 King is in check and move was rejected - checking for checkmate...")
                 if chessGame.chessBoard.isCheckmate(color: piece.color) {
                     print("🎯 CHECKMATE DETECTED! \(piece.color.opposite.rawValue.capitalized) wins!")
@@ -4104,7 +4151,7 @@ struct CompactPieceRowView: View {
             }
             .padding(.vertical, 2)
             .padding(.horizontal, 4)
-            .background(controller.selectedPiecePosition == piece.position ? Color.yellow.opacity(0.4) : (piece.color == .white ? Color.red.opacity(0.2) : Color.blue.opacity(0.2)))
+            .background(controller.selectedPiecePosition == piece.position ? Color.yellow.opacity(0.5) : (piece.color == .white ? Color.red.opacity(0.2) : Color.blue.opacity(0.2)))
             .cornerRadius(4)
         }
         .buttonStyle(PlainButtonStyle())

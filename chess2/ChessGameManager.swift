@@ -7,7 +7,7 @@
 
 //
 //  ChessGameManager.swift
-//  chess2
+//  chess3
 //
 //  Created by Gareth Costa on 15/7/2025.
 //
@@ -69,6 +69,10 @@ class ChessGameManager: ObservableObject {
     @Published var showAIMoveHighlight = false
     @Published var lastAIMovePiece: SCNNode?
     private var aiMoveCountdownTimer: Timer?
+    private var lastAIMoveTime: Date = Date.distantPast
+    private var lastAIMoveObject: ChessMove3D?
+    private var consecutiveFailedMoves: Int = 0
+    @Published var isVisualMoveInProgress: Bool = false
     
     // Promotion properties
     private var pendingPromotion: (from: ChessPosition3D, to: ChessPosition3D, piece: ChessPiece3D)?
@@ -152,6 +156,9 @@ class ChessGameManager: ObservableObject {
         // Clear the selected piece in the piece controller
         notifyPieceController(clearSelectedPiece: true)
         
+        // Reset board rotation to match the new game state (white's turn)
+        rotateBoardForTurn()
+        
         print("🔄 Complete game reset completed")
     }
     
@@ -224,6 +231,11 @@ class ChessGameManager: ObservableObject {
         executePendingPromotion(to: pieceType)
     }
     
+    // MARK: - Promotion Access
+    func getPendingPromotion() -> (from: ChessPosition3D, to: ChessPosition3D, piece: ChessPiece3D)? {
+        return pendingPromotion
+    }
+    
     // MARK: - Promotion Helper Functions
     private func getPromotionPieceName(pieceType: PieceType, color: PieceColor) -> String {
         let colorPrefix = color == .white ? "WR" : "BB"
@@ -267,7 +279,7 @@ class ChessGameManager: ObservableObject {
     func executePendingPromotion(to promotionType: PieceType = .queen) {
         guard let promotion = pendingPromotion else { return }
         
-        let from = promotion.from
+        _ = promotion.from
         let to = promotion.to
         let piece = promotion.piece
         
@@ -488,6 +500,12 @@ class ChessGameManager: ObservableObject {
     func tryMove(from: ChessPosition3D, to: ChessPosition3D) -> Bool {
         print("🔍 tryMove called: from \(from.stringValue) to \(to.stringValue)")
         
+        // Prevent concurrent move operations
+        guard !isInMoveOperation else {
+            print("⚠️ Move operation already in progress, ignoring")
+            return false
+        }
+        
         // Set move operation flag
         isInMoveOperation = true
         defer { isInMoveOperation = false }
@@ -658,16 +676,17 @@ class ChessGameManager: ObservableObject {
             }
 
             // --- PAWN PROMOTION 3D SYNC ---
-            // If a pawn was promoted (reached opposite end rank on level i), mark it for promotion but don't execute yet
-            // RESTRICTION: Only allow promotion on level i (z = 0)
-            if piece.type == .pawn && ((piece.color == .white && to.rank == 7) || (piece.color == .black && to.rank == 0)) && to.z == 0 {
-                print("♕ 3D Pawn promotion detected at \(to.stringValue) on level i! Showing promotion choice UI.");
+            // If a pawn was promoted (reached opposite end rank on level i or viii), mark it for promotion but don't execute yet
+            // RESTRICTION: Only allow promotion on level i (z = 0) and level viii (z = 7)
+            if piece.type == .pawn && ((piece.color == .white && to.rank == 7) || (piece.color == .black && to.rank == 0)) && (to.z == 0 || to.z == 7) {
+                let levelName = to.z == 0 ? "i" : "viii"
+                print("♕ 3D Pawn promotion detected at \(to.stringValue) on level \(levelName)! Showing promotion choice UI.");
                 // Store promotion info and show selection UI
                 pendingPromotion = (from: from, to: to, piece: piece)
                 showPromotionChoice = true
-            } else if piece.type == .pawn && ((piece.color == .white && to.rank == 7) || (piece.color == .black && to.rank == 0)) && to.z != 0 {
-                let levelName = to.z == 1 ? "ii" : to.z == 2 ? "iii" : to.z == 3 ? "iv" : to.z == 4 ? "v" : to.z == 5 ? "vi" : to.z == 6 ? "vii" : "viii"
-                print("🚫 Pawn promotion blocked on level \(levelName) (z=\(to.z)) - promotion only allowed on level i")
+            } else if piece.type == .pawn && ((piece.color == .white && to.rank == 7) || (piece.color == .black && to.rank == 0)) && to.z != 0 && to.z != 7 {
+                let levelName = to.z == 1 ? "ii" : to.z == 2 ? "iii" : to.z == 3 ? "iv" : to.z == 4 ? "v" : to.z == 5 ? "vi" : "vii"
+                print("🚫 Pawn promotion blocked on level \(levelName) (z=\(to.z)) - promotion only allowed on level i and viii")
             }
             
             // Handle capture AFTER moving the capturing piece and syncing
@@ -859,36 +878,15 @@ class ChessGameManager: ObservableObject {
                     // For promoted pieces, just remove them from the scene entirely
                     capturedUSDZPiece.removeFromParentNode()
                 } else if let template = pieceTemplates[nodeName] {
-                    // Reset opacity
-                    capturedUSDZPiece.opacity = 1.0
-                    
-                    // Restore collision cylinders and highlights to normal size
-                    capturedUSDZPiece.enumerateChildNodes { (childNode, _) in
-                        if childNode.name?.contains("Collision") == true || childNode.geometry is SCNCylinder {
-                            print("🔄 Restoring collision cylinder: \(childNode.name ?? "unknown")")
-                            childNode.scale = SCNVector3(1.0, 1.0, 1.0)
-                            if let geometry = childNode.geometry {
-                                geometry.materials.forEach { material in
-                                    material.transparency = 0.3
-                                }
-                            }
-                        }
-                        if childNode.name == "PieceHighlight" || childNode.name?.contains("Highlight") == true {
-                            print("🔄 Restoring highlight node: \(childNode.name ?? "unknown")")
-                            childNode.scale = SCNVector3(1.0, 1.0, 1.0)
-                            if let geometry = childNode.geometry {
-                                geometry.materials.forEach { material in
-                                    material.transparency = 1.0
-                                }
-                            }
-                        }
+                    // Standard piece - use template position
+                    resetCapturedPieceToPosition(capturedUSDZPiece, nodeName: nodeName, targetPosition: template.position)
+                } else {
+                    // Aerial piece or piece not in templates - use mapping logic
+                    if let targetPosition = getAerialPieceResetPosition(nodeName: nodeName) {
+                        resetCapturedPieceToPosition(capturedUSDZPiece, nodeName: nodeName, targetPosition: targetPosition)
+                    } else {
+                        print("⚠️ Could not determine reset position for captured piece: \(nodeName)")
                     }
-                    
-                    // Move back to original position
-                    let moveAction = SCNAction.move(to: template.position, duration: 0.3)
-                    capturedUSDZPiece.runAction(moveAction)
-                    
-                    print("🔄 Moved captured piece \(nodeName) back to original position")
                 }
             }
         }
@@ -898,6 +896,104 @@ class ChessGameManager: ObservableObject {
         
         // Re-sync USDZ pieces with chess board
         updateUSDZPiecePositions()
+    }
+    
+    private func resetCapturedPieceToPosition(_ capturedUSDZPiece: SCNNode, nodeName: String, targetPosition: SCNVector3) {
+        // Reset opacity
+        capturedUSDZPiece.opacity = 1.0
+        
+        // Restore collision cylinders and highlights to normal size
+        capturedUSDZPiece.enumerateChildNodes { (childNode, _) in
+            if childNode.name?.contains("Collision") == true || childNode.geometry is SCNCylinder {
+                print("🔄 Restoring collision cylinder: \(childNode.name ?? "unknown")")
+                childNode.scale = SCNVector3(1.0, 1.0, 1.0)
+                if let geometry = childNode.geometry {
+                    geometry.materials.forEach { material in
+                        material.transparency = 0.0 // Keep collision cylinders invisible
+                    }
+                }
+            }
+            if childNode.name == "PieceHighlight" || childNode.name?.contains("Highlight") == true {
+                print("🔄 Restoring highlight node: \(childNode.name ?? "unknown")")
+                childNode.scale = SCNVector3(1.0, 1.0, 1.0)
+                if let geometry = childNode.geometry {
+                    geometry.materials.forEach { material in
+                        material.transparency = 1.0
+                    }
+                }
+            }
+        }
+        
+        // Move back to original position
+        let moveAction = SCNAction.move(to: targetPosition, duration: 0.3)
+        capturedUSDZPiece.runAction(moveAction)
+        
+        print("🔄 Moved captured piece \(nodeName) back to original position")
+    }
+    
+    private func getAerialPieceResetPosition(nodeName: String) -> SCNVector3? {
+        // Use the same mapping logic as resetUSDZPieceTracking for aerial pieces
+        let name = nodeName.lowercased()
+        
+        // AERIAL PIECES RESET MAPPING
+        // White aerial pieces
+        if name.hasPrefix("piece_wr") {
+            if name == "piece_wrbishop4" {
+                return SCNVector3(4 * 2.0, 0 * 2.0, 4 * 2.0) // v e1
+            } else if name == "piece_wrpawn25" {
+                return SCNVector3(4 * 2.0, 1 * 2.0, 4 * 2.0) // v e2
+            } else if name == "piece_wrpawn26" {
+                return SCNVector3(3 * 2.0, 1 * 2.0, 4 * 2.0) // v d2
+            } else if name == "piece_wrrook4" {
+                return SCNVector3(3 * 2.0, 0 * 2.0, 5 * 2.0) // vi d1
+            } else if name == "piece_wrpawn27" {
+                return SCNVector3(4 * 2.0, 1 * 2.0, 5 * 2.0) // vi e2
+            } else if name == "piece_wrpawn28" {
+                return SCNVector3(3 * 2.0, 1 * 2.0, 5 * 2.0) // vi d2
+            } else if name == "piece_wrknight4" {
+                return SCNVector3(4 * 2.0, 0 * 2.0, 6 * 2.0) // vii e1
+            } else if name == "piece_wrpawn29" {
+                return SCNVector3(4 * 2.0, 1 * 2.0, 6 * 2.0) // vii e2
+            } else if name == "piece_wrpawn30" {
+                return SCNVector3(3 * 2.0, 1 * 2.0, 6 * 2.0) // vii d2
+            } else if name == "piece_wrbishop5" {
+                return SCNVector3(3 * 2.0, 0 * 2.0, 7 * 2.0) // viii d1
+            } else if name == "piece_wrpawn31" {
+                return SCNVector3(4 * 2.0, 1 * 2.0, 7 * 2.0) // viii e2
+            } else if name == "piece_wrpawn32" {
+                return SCNVector3(3 * 2.0, 1 * 2.0, 7 * 2.0) // viii d2
+            }
+        }
+        // Black aerial pieces
+        else if name.hasPrefix("piece_bb") {
+            if name == "piece_bbbishop4" {
+                return SCNVector3(4 * 2.0, 7 * 2.0, 4 * 2.0) // v e1 (black side)
+            } else if name == "piece_bbpawn25" {
+                return SCNVector3(3 * 2.0, 6 * 2.0, 4 * 2.0) // v d2 (black side)
+            } else if name == "piece_bbpawn26" {
+                return SCNVector3(4 * 2.0, 6 * 2.0, 4 * 2.0) // v e2 (black side)
+            } else if name == "piece_bbrook4" {
+                return SCNVector3(3 * 2.0, 7 * 2.0, 5 * 2.0) // vi d1 (black side)
+            } else if name == "piece_bbpawn27" {
+                return SCNVector3(3 * 2.0, 6 * 2.0, 5 * 2.0) // vi d2 (black side)
+            } else if name == "piece_bbpawn28" {
+                return SCNVector3(4 * 2.0, 6 * 2.0, 5 * 2.0) // vi e2 (black side)
+            } else if name == "piece_bbknight4" {
+                return SCNVector3(4 * 2.0, 7 * 2.0, 6 * 2.0) // vii e1 (black side)
+            } else if name == "piece_bbpawn29" {
+                return SCNVector3(3 * 2.0, 6 * 2.0, 6 * 2.0) // vii d2 (black side)
+            } else if name == "piece_bbpawn30" {
+                return SCNVector3(4 * 2.0, 6 * 2.0, 6 * 2.0) // vii e2 (black side)
+            } else if name == "piece_bbbishop5" {
+                return SCNVector3(3 * 2.0, 7 * 2.0, 7 * 2.0) // viii d1 (black side)
+            } else if name == "piece_bbpawn31" {
+                return SCNVector3(3 * 2.0, 6 * 2.0, 7 * 2.0) // viii d2 (black side)
+            } else if name == "piece_bbpawn32" {
+                return SCNVector3(4 * 2.0, 6 * 2.0, 7 * 2.0) // viii e2 (black side)
+            }
+        }
+        
+        return nil
     }
     
     // MARK: - Capture System Access
@@ -1258,7 +1354,7 @@ class ChessGameManager: ObservableObject {
         // Store current tracking to avoid overwriting correctly tracked pieces
         let currentUSDZPieces = usdzPieces
         let currentPieceNodes = pieceNodes
-        let currentUSDZPieceToPosition = usdzPieceToPosition
+        _ = usdzPieceToPosition
         
         // Clear current tracking
         usdzPieces.removeAll()
@@ -1570,6 +1666,37 @@ class ChessGameManager: ObservableObject {
             }
         }
         
+        // If template name matching failed, try fuzzy matching based on piece type and color
+        print("🔄 Template name matching failed, trying fuzzy matching for \(chessPiece.color) \(chessPiece.type)")
+        if let piecesRootNode = piecesRootNode {
+            for childNode in piecesRootNode.childNodes {
+                if let nodeName = childNode.name?.lowercased() {
+                    // Check if this node matches the piece type and color
+                    let matchesType = matchesPieceType(nodeName, type: chessPiece.type)
+                    let matchesColor = matchesPieceColor(nodeName, color: chessPiece.color)
+                    
+                    if matchesType && matchesColor {
+                        // Check if this piece is at or near the expected position
+                        let distance = sqrt(
+                            pow(childNode.position.x - expectedWorldPosition.x, 2) +
+                            pow(childNode.position.y - expectedWorldPosition.y, 2)
+                        )
+                        
+                        print("🔄 Fuzzy match found: \(childNode.name ?? "unknown") for \(chessPiece.color) \(chessPiece.type)")
+                        print("🔄 Distance: \(distance)")
+                        
+                        // Only consider pieces that are close to the expected position
+                        if distance < 1.0 {
+                            print("✅ Found fuzzy match at expected position: \(childNode.name ?? "unknown")")
+                            return childNode
+                        } else {
+                            print("🔄 Fuzzy match too far from expected position (distance: \(distance)) - likely in graveyard")
+                        }
+                    }
+                }
+            }
+        }
+        
         print("❌ Could not find any USDZ piece for \(chessPiece.color) \(chessPiece.type) at \(chessPiece.position.stringValue)")
         print("❌ This piece may be missing from the scene or at the wrong position")
         return nil
@@ -1600,6 +1727,34 @@ class ChessGameManager: ObservableObject {
         }
         
         return nil
+    }
+    
+    private func matchesPieceType(_ nodeName: String, type: PieceType) -> Bool {
+        switch type {
+        case .pawn:
+            return nodeName.contains("pawn")
+        case .rook:
+            return nodeName.contains("rook")
+        case .knight:
+            return nodeName.contains("knight")
+        case .bishop:
+            return nodeName.contains("bishop")
+        case .queen:
+            return nodeName.contains("queen")
+        case .king:
+            return nodeName.contains("king")
+        }
+    }
+    
+    private func matchesPieceColor(_ nodeName: String, color: PieceColor) -> Bool {
+        switch color {
+        case .white:
+            // White pieces can be identified by: WR (white/red), white, or placeholder_white
+            return nodeName.contains("wr") || nodeName.contains("white") || nodeName.contains("placeholder_white")
+        case .black:
+            // Black pieces can be identified by: BB (black/blue), black, or placeholder_black
+            return nodeName.contains("bb") || nodeName.contains("black") || nodeName.contains("placeholder_black")
+        }
     }
     
     private func createPieceNode(for piece: ChessPiece3D) -> SCNNode? {
@@ -1868,8 +2023,18 @@ class ChessGameManager: ObservableObject {
     
     // Update the 3D scene after a piece is moved
     private func updatePiecesAfterMove() {
+        // Set visual move in progress flag
+        isVisualMoveInProgress = true
+        print("🎬 Visual move animation started")
+        
         update3DScene()
         notifyPieceController()
+        
+        // Reset visual move flag after animation completes (0.3s duration)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            self.isVisualMoveInProgress = false
+            print("🎬 Visual move animation completed")
+        }
     }
     
     // New function to update only a specific piece's position
@@ -2015,6 +2180,24 @@ class ChessGameManager: ObservableObject {
                 } else if name.hasPrefix("piece_bb") {
                     // Black main pieces (rook, knight, bishop, king)
                     collisionOffset = SCNVector3(0, 0.2, 0.4)
+                }
+            }
+            
+            // Handle aerial pieces (z-levels 4-7)
+            if name.contains("bishop4") || name.contains("bishop5") || 
+               name.contains("rook4") || name.contains("knight4") ||
+               name.contains("pawn25") || name.contains("pawn26") || 
+               name.contains("pawn27") || name.contains("pawn28") ||
+               name.contains("pawn29") || name.contains("pawn30") || 
+               name.contains("pawn31") || name.contains("pawn32") {
+                // Aerial pieces need higher collision cylinders due to their elevated position
+                collisionHeight = 1.5
+                if name.hasPrefix("piece_wr") {
+                    // White aerial pieces
+                    collisionOffset = SCNVector3(0, -0.1, 0.8)
+                } else if name.hasPrefix("piece_bb") {
+                    // Black aerial pieces
+                    collisionOffset = SCNVector3(0, 0.1, 0.8)
                 }
             }
         }
@@ -2250,10 +2433,10 @@ class ChessGameManager: ObservableObject {
             print("📊 Chess board already has \(chessBoard.pieces.count) pieces")
         }
         
-        // Ensure we have exactly 64 pieces (32 white + 32 black)
+        // Ensure we have exactly 88 pieces (44 white + 44 black) for chess3 with aerial pieces
         let totalPieces = chessBoard.pieces.count
-        if totalPieces != 64 {
-            print("⚠️ WARNING: Chess board has \(totalPieces) pieces, expected 64. Setting up board.")
+        if totalPieces != 88 {
+            print("⚠️ WARNING: Chess board has \(totalPieces) pieces, expected 88. Setting up board.")
             chessBoard.setupInitialPosition()
         }
         
@@ -2311,9 +2494,9 @@ class ChessGameManager: ObservableObject {
             }
         }
         
-        // CRITICAL: Ensure the chess board always has all 64 pieces
+        // CRITICAL: Ensure the chess board always has all 88 pieces for chess3 with aerial pieces
         // If we lost any pieces during the sync, restore them
-        if newChessBoard.count != 64 {
+        if newChessBoard.count != 88 {
             print("⚠️ WARNING: Lost pieces during sync! Restoring complete board...")
             // Restore the complete board from original pieces
             newChessBoard = originalPieces
@@ -2564,7 +2747,7 @@ class ChessGameManager: ObservableObject {
         // All positions use files 0-7, Z-axis determines board level
         let x = Float(file) - 3.5
         let y = Float(rank) - 3.5
-        let zWorld = Float(z) * 1.01 + 0.06 // 1 unit per board, 0.01 gap, +0.08 offset to sit on top of squares
+        let zWorld = Float(z) * 1.01 + 0.08 // 1 unit per board, 0.01 gap, +0.08 offset to sit on top of squares
         let worldPos = SCNVector3(x, y, zWorld)
         // print("🔍 Board position: file=\(file), rank=\(rank), z=\(z) -> world=\(worldPos)")
         return worldPos
@@ -2584,7 +2767,7 @@ class ChessGameManager: ObservableObject {
         guard file >= 0 && file <= 7 && rank >= 0 && rank <= 7 else { return nil }
         
         // Calculate z coordinate from world position
-        let z = Int(round((worldPosition.z - 0.06) / 1.01)) // Reverse the z calculation from boardToWorldPosition, accounting for +0.08 offset
+        let z = Int(round((worldPosition.z - 0.08) / 1.01)) // Reverse the z calculation from boardToWorldPosition, accounting for +0.08 offset
         
         // Bounds check for Z coordinate - limit to valid board levels (i=0, ii=1, iii=2, iv=3, v=4, vi=5, vii=6, viii=7 for 8-board setup)
         let clampedZ = max(0, min(7, z))
@@ -2682,11 +2865,39 @@ class ChessGameManager: ObservableObject {
         // Cancel any existing timer
         aiMoveCountdownTimer?.invalidate()
         
+        // CRITICAL: Add timeout protection for countdown
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+            guard let self = self else { return }
+            if self.isAIMoveInProgress {
+                print("⚠️ AI countdown timeout - forcing move execution")
+                self.aiMoveCountdownTimer?.invalidate()
+                DispatchQueue.main.async {
+                    self.executeAIMove(move)
+                }
+            }
+        }
+        
         // Start a 1-second countdown before executing the move
-        aiMoveCountdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+        print("🤖 AI: Setting up 1-second countdown timer...")
+        aiMoveCountdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in
+            guard let self = self else { return }
+            print("🤖 AI: Countdown timer fired - executing move")
             DispatchQueue.main.async {
                 self.executeAIMove(move)
                 self.isAIMoveInProgress = false
+            }
+        }
+        
+        // CRITICAL: Add immediate fallback in case timer doesn't fire
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            guard let self = self else { return }
+            if self.isAIMoveInProgress {
+                print("⚠️ AI countdown fallback - timer may not have fired, forcing execution")
+                self.aiMoveCountdownTimer?.invalidate()
+                DispatchQueue.main.async {
+                    self.executeAIMove(move)
+                    self.isAIMoveInProgress = false
+                }
             }
         }
     }
@@ -2734,32 +2945,161 @@ class ChessGameManager: ObservableObject {
     }
     
     func makeAIMove() {
+        print("🤖 AI: makeAIMove() called - checking conditions...")
+        
+        // CRITICAL: Add timeout protection with nuclear option
+        let startTime = Date()
+        let maxAITime: TimeInterval = 5.0 // Reduced from 8 to 5 seconds
+        let nuclearTimeout: TimeInterval = 10.0 // Nuclear option after 10 seconds
+        
         guard let ai = objc_getAssociatedObject(self, &AssociatedKeys.aiPlayer) as? ChessAI else {
             print("❌ AI not initialized")
             return
         }
         
-        guard chessBoard.getCurrentTurn() == ai.aiColor else {
-            print("❌ Not AI's turn")
+        // CRITICAL: Double-check that it's actually the AI's turn
+        let currentTurn = chessBoard.getCurrentTurn()
+        let aiColor = ai.aiColor
+        
+        print("🤖 AI: Current turn: \(currentTurn.rawValue), AI color: \(aiColor.rawValue)")
+        
+        guard currentTurn == aiColor else {
+            print("❌ Not AI's turn - current turn: \(currentTurn.rawValue), AI color: \(aiColor.rawValue)")
             return
         }
         
-        // Prevent multiple AI moves from executing simultaneously
+        // CRITICAL: Check if AI mode is actually active
+        guard aiModeActive else {
+            print("❌ AI mode not active")
+            return
+        }
+        
+        // CRITICAL: Check if enough time has passed since last move
+        guard canAIMakeMove() else {
+            print("❌ AI cannot make move yet - timing restriction")
+            return
+        }
+        
+        // CRITICAL: Prevent multiple AI moves from executing simultaneously
         guard !isAIMoveInProgress else {
             print("🤖 AI move already in progress, skipping...")
             return
         }
         
+        // CRITICAL: Check if any move operation is in progress
+        guard !isInMoveOperation else {
+            print("🤖 Move operation already in progress, skipping AI move...")
+            return
+        }
+        
+        // CRITICAL: Check if AI has failed too many consecutive moves
+        if consecutiveFailedMoves >= 3 {
+            print("🤖 AI: Too many consecutive failed moves (\(consecutiveFailedMoves)) - resetting AI state")
+            isAIMoveInProgress = false
+            consecutiveFailedMoves = 0
+            lastAIMoveObject = nil
+            return
+        }
+        
+        // CRITICAL: Check if king is in check and handle appropriately
+        if chessBoard.isCheck(color: aiColor) {
+            print("🤖 AI: King is in check - using emergency move selection")
+            // Use a simpler, faster move selection for check situations
+            let emergencyMove = selectEmergencyMove(for: aiColor)
+            if let move = emergencyMove {
+                print("🤖 AI: Emergency move selected: \(move.from.stringValue) -> \(move.to.stringValue)")
+                
+                // CRITICAL: Validate the emergency move before executing
+                if let piece = chessBoard.getPiece(at: move.from) {
+                    let validMoves = chessBoard.getValidMoves(for: piece)
+                    let isValidMove = validMoves.contains { $0.to == move.to }
+                    
+                                    if isValidMove {
+                    print("🤖 AI: Emergency move validated - executing immediately")
+                    // For emergency moves, execute immediately to prevent getting stuck
+                    DispatchQueue.main.async {
+                        self.executeAIMove(move)
+                    }
+                } else {
+                    print("❌ AI: Emergency move is not valid - resetting AI state")
+                    isAIMoveInProgress = false
+                    consecutiveFailedMoves += 1
+                }
+                } else {
+                    print("❌ AI: Emergency move piece not found - resetting AI state")
+                    isAIMoveInProgress = false
+                    consecutiveFailedMoves += 1
+                }
+            } else {
+                print("🤖 AI: No emergency move available - checkmate!")
+                isAIMoveInProgress = false
+            }
+            return
+        }
+        
+        // CRITICAL: Check if there are any valid moves available
+        let pieces = chessBoard.getPieces(of: aiColor)
+        var totalMoves = 0
+        
+        // Add timeout check during move counting
+        for piece in pieces {
+            if Date().timeIntervalSince(startTime) > maxAITime {
+                print("⚠️ AI timeout during move counting - proceeding with available moves")
+                break
+            }
+            let moves = chessBoard.getValidMoves(for: piece)
+            totalMoves += moves.count
+        }
+        
+        if totalMoves == 0 {
+            print("🤖 AI: No valid moves available - stalemate or checkmate!")
+            isAIMoveInProgress = false
+            return
+        }
+        
+        print("🤖 AI: Found \(totalMoves) total valid moves")
+        
         isAIMoveInProgress = true
         
+        // CRITICAL: Add timeout protection - if AI is stuck for more than 5 seconds, reset
+        DispatchQueue.main.asyncAfter(deadline: .now() + maxAITime) { [weak self] in
+            guard let self = self else { return }
+            if self.isAIMoveInProgress {
+                print("⚠️ AI move timeout - resetting stuck AI move")
+                self.isAIMoveInProgress = false
+            }
+        }
+        
+        // NUCLEAR OPTION: If AI is still stuck after 10 seconds, force any available move
+        DispatchQueue.main.asyncAfter(deadline: .now() + nuclearTimeout) { [weak self] in
+            guard let self = self else { return }
+            if self.isAIMoveInProgress {
+                print("🚨 NUCLEAR OPTION: AI stuck for \(nuclearTimeout)s - forcing any available move")
+                self.forceAnyAvailableMove(for: aiColor)
+            }
+        }
+        
         print("🤖 AI is thinking...")
+        
+        // CRITICAL: Add timeout for AI calculation to prevent infinite thinking
+        let calculationTimeout = DispatchTime.now() + 3.0 // 3 second timeout (reduced from 5)
         
         // Run AI calculation on background thread
         DispatchQueue.global(qos: .userInitiated).async {
             let bestMove = ai.getBestMove()
             
+            // Check if we've exceeded the timeout
+            if DispatchTime.now() > calculationTimeout {
+                print("⚠️ AI calculation timeout - forcing move selection")
+                DispatchQueue.main.async {
+                    self.isAIMoveInProgress = false
+                }
+                return
+            }
+            
             DispatchQueue.main.async {
                 if let move = bestMove {
+                    print("🤖 AI found move: \(move.from.stringValue) -> \(move.to.stringValue)")
                     // Start countdown timer instead of executing immediately
                     self.startAIMoveCountdown(for: move)
                 } else {
@@ -2779,11 +3119,30 @@ class ChessGameManager: ObservableObject {
     func executeAIMove(_ move: ChessMove3D) {
         print("🤖 AI executing move: \(move.from.stringValue) -> \(move.to.stringValue)")
         
+        // CRITICAL: Final check - ensure it's still the AI's turn before executing
+        guard let ai = objc_getAssociatedObject(self, &AssociatedKeys.aiPlayer) as? ChessAI else {
+            print("❌ AI not initialized during move execution")
+            return
+        }
+        
+        let currentTurn = chessBoard.getCurrentTurn()
+        let aiColor = ai.aiColor
+        
+        print("🤖 AI execution check: Current turn: \(currentTurn.rawValue), AI color: \(aiColor.rawValue)")
+        
+        guard currentTurn == aiColor else {
+            print("❌ AI execution blocked: Not AI's turn anymore (current: \(currentTurn.rawValue), AI: \(aiColor.rawValue))")
+            // Reset the flag since we're not executing
+            isAIMoveInProgress = false
+            return
+        }
+        
+        // Execute immediately to avoid race conditions with turn changes
         // Cancel any pending move confirmation timer when AI takes over
-        getPieceController?.cancelMove()
+        self.getPieceController?.cancelMove()
         
         // Select the AI's piece now that we're actually executing the move
-        selectAIPiece(for: move)
+        self.selectAIPiece(for: move)
         
         // Safety check: Validate board state before move
         if !chessBoard.validateBoardState() {
@@ -2815,8 +3174,14 @@ class ChessGameManager: ObservableObject {
                                     if success {
                         print("🤖 AI: Move completed: \(move.from.stringValue) -> \(move.to.stringValue)")
                         
-                        // CRITICAL: Reset the AI move in progress flag
-                        self.isAIMoveInProgress = false
+                        // CRITICAL: Reset the AI move in progress flag with longer delay to prevent rapid successive moves
+                        // The visual move animation takes 0.3s, so we need to wait for that + extra buffer
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                            self.isAIMoveInProgress = false
+                            self.lastAIMoveTime = Date()
+                            self.consecutiveFailedMoves = 0 // Reset failed moves counter on success
+                            print("🤖 AI: Move flag reset after 3 second delay (allowing visual animation to complete)")
+                        }
                         
                         // Safety check: Validate board state after move
                         if !chessBoard.validateBoardState() {
@@ -2842,24 +3207,30 @@ class ChessGameManager: ObservableObject {
                             print("🤖 AI: Could not find USDZ piece for highlighting")
                         }
                         
-                        // Rotate board for the new turn after a 2-second delay
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        // Rotate board for the new turn after piece movement completes (0.3s) + 2-second delay
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3 + 3.0) {
                             self.rotateBoardForTurn()
                         }
                     }
                 } else {
                     print("❌ AI move failed: tryMove returned false")
-                    // Reset the flag on failure
+                    // Track failed moves and reset the flag on failure
+                    self.consecutiveFailedMoves += 1
+                    print("🤖 AI: Failed move count: \(self.consecutiveFailedMoves)")
                     self.isAIMoveInProgress = false
                 }
             } else {
                 print("❌ AI move failed: move is not valid for piece")
-                // Reset the flag on failure
+                // Track failed moves and reset the flag on failure
+                self.consecutiveFailedMoves += 1
+                print("🤖 AI: Failed move count: \(self.consecutiveFailedMoves)")
                 self.isAIMoveInProgress = false
             }
         } else {
             print("❌ AI move failed: piece not found at \(move.from.stringValue)")
-            // Reset the flag on failure
+            // Track failed moves and reset the flag on failure
+            self.consecutiveFailedMoves += 1
+            print("🤖 AI: Failed move count: \(self.consecutiveFailedMoves)")
             self.isAIMoveInProgress = false
             
             // Debug: List all pieces to help identify the issue
@@ -2929,6 +3300,95 @@ class ChessGameManager: ObservableObject {
     func isAITurn() -> Bool {
         guard let ai = objc_getAssociatedObject(self, &AssociatedKeys.aiPlayer) as? ChessAI else { return false }
         return chessBoard.getCurrentTurn() == ai.aiColor
+    }
+    
+    func canAIMakeMove() -> Bool {
+        // Check if enough time has passed since the last AI move (minimum 3 seconds)
+        let timeSinceLastMove = Date().timeIntervalSince(lastAIMoveTime)
+        let minimumDelay: TimeInterval = 3.0
+        
+        if timeSinceLastMove < minimumDelay {
+            print("🤖 AI: Cannot make move yet - only \(String(format: "%.1f", timeSinceLastMove))s since last move (need \(minimumDelay)s)")
+            return false
+        }
+        
+        return true
+    }
+    
+    func selectEmergencyMove(for color: PieceColor) -> ChessMove3D? {
+        print("🤖 AI: Selecting emergency move for \(color.rawValue)")
+        
+        // Check if the king is actually in check
+        let isInCheck = chessBoard.isCheck(color: color)
+        print("🤖 AI: King in check: \(isInCheck)")
+        
+        // Get all pieces for this color
+        let pieces = chessBoard.getPieces(of: color)
+        var allMoves: [ChessMove3D] = []
+        
+        // Generate all possible moves quickly
+        for piece in pieces {
+            let moves = chessBoard.getValidMoves(for: piece)
+            allMoves.append(contentsOf: moves)
+        }
+        
+        print("🤖 AI: Found \(allMoves.count) total moves for emergency selection")
+        
+        if !allMoves.isEmpty {
+            if isInCheck {
+                // King is in check - prioritize escape moves
+                let escapeMoves = allMoves.filter { move in
+                    // Prioritize king moves and captures when in check
+                    if move.piece.type == .king {
+                        return true // King moves are escape attempts when in check
+                    }
+                    if move.capturedPiece != nil {
+                        return true // Captures might get out of check
+                    }
+                    return false
+                }
+                
+                if !escapeMoves.isEmpty {
+                    // Prioritize capture escape moves
+                    let captureEscapeMoves = escapeMoves.filter { $0.capturedPiece != nil }
+                    if !captureEscapeMoves.isEmpty {
+                        print("🤖 AI: Emergency escape capture move selected (in check)")
+                        return captureEscapeMoves.first
+                    }
+                    print("🤖 AI: Emergency escape move selected (in check)")
+                    return escapeMoves.first
+                }
+            } else {
+                // Not in check - prioritize non-king moves
+                let nonKingMoves = allMoves.filter { $0.piece.type != .king }
+                
+                if !nonKingMoves.isEmpty {
+                    // Prioritize captures
+                    let captureMoves = nonKingMoves.filter { $0.capturedPiece != nil }
+                    if !captureMoves.isEmpty {
+                        print("🤖 AI: Emergency capture move selected (not in check)")
+                        return captureMoves.first
+                    }
+                    
+                    // Then prioritize pawn moves
+                    let pawnMoves = nonKingMoves.filter { $0.piece.type == .pawn }
+                    if !pawnMoves.isEmpty {
+                        print("🤖 AI: Emergency pawn move selected (not in check)")
+                        return pawnMoves.first
+                    }
+                    
+                    print("🤖 AI: Emergency non-king move selected (not in check)")
+                    return nonKingMoves.first
+                }
+            }
+            
+            // Fallback: if no preferred moves, use any available move
+            print("🤖 AI: Emergency fallback move selected")
+            return allMoves.first
+        }
+        
+        print("🤖 AI: No emergency moves available")
+        return nil
     }
     
     func getAIStats() -> String? {
@@ -3014,15 +3474,71 @@ class ChessGameManager: ObservableObject {
                             }
                     var targetPosition: ChessPosition3D?
                     
-                    // Skip promotion pieces to prevent confusion
-                    let promotionPieces = ["WRqueen3", "BBqueen3", "WRrook3", "WRbishop3", "WRknight3", "BBBrook3", "BBbishop3", "BBknight3"]
+                    // Remove promotion pieces during reset - they will be restored by the chess engine
+                    let promotionPieces = ["WRqueen3", "BBqueen3", "WRrook3", "WRbishop3", "WRknight3", "BBrook3", "BBbishop3", "BBknight3"]
                     if promotionPieces.contains(where: { nodeName.contains($0) }) {
-                        print("🚫 Skipping promotion piece: \(nodeName)")
+                        print("🔄 Removing promotion piece during reset: \(nodeName)")
+                        node.removeFromParentNode()
                         return
                     }
                     
-                                                // Map piece names to their initial positions
-                            if nodeName.hasPrefix("Piece_WRpawn") || nodeName.hasPrefix("Piece_WRPawn") {
+                    // AERIAL PIECES RESET MAPPING (check these FIRST before general pawn logic)
+                    // White aerial pieces
+                    if nodeName == "Piece_WRbishop4" {
+                        targetPosition = ChessPosition3D(file: 4, rank: 0, z: 4) // v e1
+                    } else if nodeName == "Piece_WRpawn25" {
+                        targetPosition = ChessPosition3D(file: 4, rank: 1, z: 4) // v e2
+                    } else if nodeName == "Piece_WRpawn26" {
+                        targetPosition = ChessPosition3D(file: 3, rank: 1, z: 4) // v d2
+                    } else if nodeName == "Piece_WRrook4" {
+                        targetPosition = ChessPosition3D(file: 3, rank: 0, z: 5) // vi d1
+                    } else if nodeName == "Piece_WRpawn27" {
+                        targetPosition = ChessPosition3D(file: 4, rank: 1, z: 5) // vi e2
+                    } else if nodeName == "Piece_WRpawn28" {
+                        targetPosition = ChessPosition3D(file: 3, rank: 1, z: 5) // vi d2
+                    } else if nodeName == "Piece_WRknight4" {
+                        targetPosition = ChessPosition3D(file: 4, rank: 0, z: 6) // vii e1
+                    } else if nodeName == "Piece_WRpawn29" {
+                        targetPosition = ChessPosition3D(file: 4, rank: 1, z: 6) // vii e2
+                    } else if nodeName == "Piece_WRpawn30" {
+                        targetPosition = ChessPosition3D(file: 3, rank: 1, z: 6) // vii d2
+                    } else if nodeName == "Piece_WRbishop5" {
+                        targetPosition = ChessPosition3D(file: 3, rank: 0, z: 7) // viii d1
+                    } else if nodeName == "Piece_WRpawn31" {
+                        targetPosition = ChessPosition3D(file: 4, rank: 1, z: 7) // viii e2
+                    } else if nodeName == "Piece_WRpawn32" {
+                        targetPosition = ChessPosition3D(file: 3, rank: 1, z: 7) // viii d2
+                    }
+                    
+                    // Black aerial pieces
+                    else if nodeName == "Piece_BBbishop4" {
+                        targetPosition = ChessPosition3D(file: 4, rank: 7, z: 4) // v e7 (black side)
+                    } else if nodeName == "Piece_BBpawn25" {
+                        targetPosition = ChessPosition3D(file: 3, rank: 6, z: 4) // v d6 (black side)
+                    } else if nodeName == "Piece_BBpawn26" {
+                        targetPosition = ChessPosition3D(file: 4, rank: 6, z: 4) // v e6 (black side)
+                    } else if nodeName == "Piece_BBrook4" {
+                        targetPosition = ChessPosition3D(file: 3, rank: 7, z: 5) // vi d7 (black side)
+                    } else if nodeName == "Piece_BBpawn27" {
+                        targetPosition = ChessPosition3D(file: 3, rank: 6, z: 5) // vi d6 (black side)
+                    } else if nodeName == "Piece_BBpawn28" {
+                        targetPosition = ChessPosition3D(file: 4, rank: 6, z: 5) // vi e6 (black side)
+                    } else if nodeName == "Piece_BBknight4" {
+                        targetPosition = ChessPosition3D(file: 4, rank: 7, z: 6) // vii e7 (black side)
+                    } else if nodeName == "Piece_BBpawn29" {
+                        targetPosition = ChessPosition3D(file: 3, rank: 6, z: 6) // vii d6 (black side)
+                    } else if nodeName == "Piece_BBpawn30" {
+                        targetPosition = ChessPosition3D(file: 4, rank: 6, z: 6) // vii e6 (black side)
+                    } else if nodeName == "Piece_BBbishop5" {
+                        targetPosition = ChessPosition3D(file: 3, rank: 7, z: 7) // viii d7 (black side)
+                    } else if nodeName == "Piece_BBpawn31" {
+                        targetPosition = ChessPosition3D(file: 3, rank: 6, z: 7) // viii d7 (black side)
+                    } else if nodeName == "Piece_BBpawn32" {
+                        targetPosition = ChessPosition3D(file: 4, rank: 6, z: 7) // viii e7 (black side)
+                    }
+                    
+                    // Map piece names to their initial positions (general logic for non-aerial pieces)
+                    else if nodeName.hasPrefix("Piece_WRpawn") || nodeName.hasPrefix("Piece_WRPawn") {
                                 // Extract pawn number (1-24) - handle both naming conventions
                                 let pawnNumber: Int
                                 if nodeName.hasPrefix("Piece_WRpawn") {
@@ -3038,10 +3554,11 @@ class ChessGameManager: ObservableObject {
                                     print("🔍 DEBUG: *** D-FILE PAWN DETECTED: \(nodeName) (number \(pawnNumber)) ***")
                                 }
                         
-                        // White pawns: WRpawn1-24 laid out sequentially
+                        // White pawns: WRpawn1-32 laid out sequentially
                         // Row 1 (z=0): WRpawn1-8 at rank 1 (i h2 to i a2)
                         // Row 2 (z=1): WRpawn9-16 at rank 1 (ii h2 to ii a2) 
                         // Row 3 (z=1): WRpawn17-24 at rank 0 (ii h1 to ii a1)
+                        // Aerial (z=4-7): WRpawn25-32 at various positions
                         if pawnNumber <= 8 {
                             // WRpawn1-8: Row 1 at rank 1, z=0 (i h2 to i a2)
                             let file = 8 - pawnNumber // h=7, g=6, f=5, e=4, d=3, c=2, b=1, a=0
@@ -3060,7 +3577,7 @@ class ChessGameManager: ObservableObject {
                             if pawnNumber == 13 {
                                 print("🔍 DEBUG: WRpawn13 mapped to file \(file), rank 1, z 1 (should be d-file)")
                             }
-                        } else {
+                        } else if pawnNumber <= 24 {
                             // WRpawn17-24: Row 3 at rank 0, z=1 (ii h1 to ii a1)
                             let file = 8 - (pawnNumber - 16) // h=7, g=6, f=5, e=4, d=3, c=2, b=1, a=0
                             targetPosition = ChessPosition3D(file: file, rank: 0, z: 1)
@@ -3070,6 +3587,7 @@ class ChessGameManager: ObservableObject {
                                 print("🔍 DEBUG: WRpawn21 mapped to file \(file), rank 0, z 1 (should be d-file)")
                             }
                         }
+                        // Note: WRpawn25-32 are now handled by the aerial piece mappings above
                         
                                                         // Debug logging for d-file pawns
                                 if pawnNumber == 5 || pawnNumber == 13 || pawnNumber == 21 {
@@ -3081,10 +3599,11 @@ class ChessGameManager: ObservableObject {
                         // Extract pawn number (1-24)
                         let pawnNumber = Int(nodeName.replacingOccurrences(of: "Piece_BBpawn", with: "")) ?? 1
                         
-                        // Black pawns: BBpawn1-24 laid out sequentially
+                        // Black pawns: BBpawn1-32 laid out sequentially
                         // Row 1 (z=0): BBpawn1-8 at rank 6 (i h7 to i a7)
                         // Row 2 (z=1): BBpawn9-16 at rank 7 (ii h8 to ii a8)
                         // Row 3 (z=1): BBpawn17-24 at rank 6 (ii h7 to ii a7)
+                        // Aerial (z=4-7): BBpawn25-32 at various positions
                         if pawnNumber <= 8 {
                             // BBpawn1-8: Row 1 at rank 6, z=0 (i h7 to i a7)
                             let file = 8 - pawnNumber // h=7, g=6, f=5, e=4, d=3, c=2, b=1, a=0
@@ -3093,11 +3612,12 @@ class ChessGameManager: ObservableObject {
                             // BBpawn9-16: Row 2 at rank 7, z=1 (ii h8 to ii a8)
                             let file = 8 - (pawnNumber - 8) // h=7, g=6, f=5, e=4, d=3, c=2, b=1, a=0
                             targetPosition = ChessPosition3D(file: file, rank: 7, z: 1)
-                        } else {
+                        } else if pawnNumber <= 24 {
                             // BBpawn17-24: Row 3 at rank 6, z=1 (ii h7 to ii a7)
                             let file = 8 - (pawnNumber - 16) // h=7, g=6, f=5, e=4, d=3, c=2, b=1, a=0
                             targetPosition = ChessPosition3D(file: file, rank: 6, z: 1)
                         }
+                        // Note: BBpawn25-32 are now handled by the aerial piece mappings above
                     } else if nodeName == "Piece_WRking" {
                         targetPosition = ChessPosition3D(file: 4, rank: 0, z: 0) // e1
                     } else if nodeName == "Piece_WRqueen2" {
@@ -3186,6 +3706,131 @@ class ChessGameManager: ObservableObject {
             }
             
             print("🔍 DEBUG: After reset - usdzPieces: \(usdzPieces.count), pieceNodes: \(pieceNodes.count), usdzPieceToPosition: \(usdzPieceToPosition.count)")
+            
+            // Check for missing pawns and restore them
+            print("🔍 DEBUG: Checking for missing pawns after reset...")
+            
+            // Check for missing white aerial pawns
+            let expectedWhiteAerialPawns = [
+                ("Piece_WRpawn31", ChessPosition3D(file: 4, rank: 1, z: 7)), // viii e2
+                ("Piece_WRpawn32", ChessPosition3D(file: 3, rank: 1, z: 7))  // viii d2
+            ]
+            
+            for (pawnName, expectedPosition) in expectedWhiteAerialPawns {
+                let hasPawn = usdzPieces.values.contains { node in
+                    node.name == pawnName
+                }
+                
+                                    if !hasPawn {
+                        print("🔍 DEBUG: Missing white aerial pawn: \(pawnName) at \(expectedPosition.stringValue)")
+                        print("🔍 DEBUG: Available templates: \(pieceTemplates.keys.filter { $0.contains("pawn") }.sorted())")
+                        
+                        // Try to find the pawn template and restore it
+                        // Remove "Piece_" prefix to match template naming convention
+                        let templateName = pawnName.replacingOccurrences(of: "Piece_", with: "")
+                        if let pawnTemplate = pieceTemplates[templateName] {
+                        let newPawnNode = pawnTemplate.clone()
+                        newPawnNode.name = pawnName
+                        
+                        // Clear any highlight/selection state
+                        newPawnNode.geometry?.firstMaterial?.emission.contents = NSColor.clear
+                        newPawnNode.geometry?.firstMaterial?.diffuse.contents = NSColor.white
+                        
+                        // Remove any existing highlight nodes from the template
+                        newPawnNode.childNodes.forEach { childNode in
+                            if childNode.name == "PieceHighlight" {
+                                print("🎯 Removing highlight node from restored pawn: \(childNode.name ?? "unknown")")
+                                childNode.removeFromParentNode()
+                            }
+                        }
+                        
+                        // Position the new pawn node
+                        let worldPosition = boardToWorldPosition(file: expectedPosition.file, rank: expectedPosition.rank, z: expectedPosition.z)
+                        newPawnNode.position = worldPosition
+                        
+                        // Add collision
+                        let collisionNode = SCNNode(geometry: SCNCylinder(radius: 0.5, height: 0.1))
+                        collisionNode.name = "Collision_\(pawnName)"
+                        collisionNode.position = SCNVector3(0, 0, 0)
+                        collisionNode.geometry?.firstMaterial?.transparency = 0.0
+                        newPawnNode.addChildNode(collisionNode)
+                        
+                        // Add to scene
+                        modelNode.addChildNode(newPawnNode)
+                        
+                        // Update tracking dictionaries
+                        usdzPieces[expectedPosition] = newPawnNode
+                        pieceNodes[expectedPosition] = newPawnNode
+                        usdzPieceToPosition[newPawnNode] = expectedPosition
+                        
+                        print("🔄 Restored missing white aerial pawn: \(pawnName) at \(expectedPosition.stringValue)")
+                    } else {
+                        print("⚠️ Could not find template for missing pawn: \(pawnName)")
+                    }
+                }
+            }
+            
+            // Check for missing black aerial pawns
+            let expectedBlackAerialPawns = [
+                ("Piece_BBpawn31", ChessPosition3D(file: 3, rank: 6, z: 7)), // viii d7
+                ("Piece_BBpawn32", ChessPosition3D(file: 4, rank: 6, z: 7))  // viii e7
+            ]
+            
+            for (pawnName, expectedPosition) in expectedBlackAerialPawns {
+                let hasPawn = usdzPieces.values.contains { node in
+                    node.name == pawnName
+                }
+                
+                if !hasPawn {
+                    print("🔍 DEBUG: Missing black aerial pawn: \(pawnName) at \(expectedPosition.stringValue)")
+                    print("🔍 DEBUG: Available templates: \(pieceTemplates.keys.filter { $0.contains("pawn") }.sorted())")
+                    
+                    // Try to find the pawn template and restore it
+                    // Remove "Piece_" prefix to match template naming convention
+                    let templateName = pawnName.replacingOccurrences(of: "Piece_", with: "")
+                    if let pawnTemplate = pieceTemplates[templateName] {
+                        let newPawnNode = pawnTemplate.clone()
+                        newPawnNode.name = pawnName
+                        
+                        // Clear any highlight/selection state
+                        newPawnNode.geometry?.firstMaterial?.emission.contents = NSColor.clear
+                        newPawnNode.geometry?.firstMaterial?.diffuse.contents = NSColor.white
+                        
+                        // Remove any existing highlight nodes from the template
+                        newPawnNode.childNodes.forEach { childNode in
+                            if childNode.name == "PieceHighlight" {
+                                print("🎯 Removing highlight node from restored pawn: \(childNode.name ?? "unknown")")
+                                childNode.removeFromParentNode()
+                            }
+                        }
+                        
+                        // Position the new pawn node
+                        let worldPosition = boardToWorldPosition(file: expectedPosition.file, rank: expectedPosition.rank, z: expectedPosition.z)
+                        newPawnNode.position = worldPosition
+                        
+                        // Add collision
+                        let collisionNode = SCNNode(geometry: SCNCylinder(radius: 0.5, height: 0.1))
+                        collisionNode.name = "Collision_\(pawnName)"
+                        collisionNode.position = SCNVector3(0, 0, 0)
+                        collisionNode.geometry?.firstMaterial?.transparency = 0.0
+                        newPawnNode.addChildNode(collisionNode)
+                        
+                        // Add to scene
+                        modelNode.addChildNode(newPawnNode)
+                        
+                        // Update tracking dictionaries
+                        usdzPieces[expectedPosition] = newPawnNode
+                        pieceNodes[expectedPosition] = newPawnNode
+                        usdzPieceToPosition[newPawnNode] = expectedPosition
+                        
+                        print("🔄 Restored missing black aerial pawn: \(pawnName) at \(expectedPosition.stringValue)")
+                    } else {
+                        print("⚠️ Could not find template for missing pawn: \(pawnName)")
+                    }
+                }
+            }
+            
+            print("🔍 DEBUG: Final count after pawn restoration - usdzPieces: \(usdzPieces.count), pieceNodes: \(pieceNodes.count), usdzPieceToPosition: \(usdzPieceToPosition.count)")
         } else {
             print("⚠️ WARNING: modelNode is nil during reset - cannot update piece positions")
             print("🔍 DEBUG: This means the scene has not been properly loaded or the modelNode reference was lost")
@@ -3194,6 +3839,42 @@ class ChessGameManager: ObservableObject {
         }
         
         print("🔄 USDZ piece tracking reset completed")
+    }
+    
+    // MARK: - Nuclear Option for Stuck AI
+    
+    /// Forces the AI to make any available move when it gets stuck
+    private func forceAnyAvailableMove(for aiColor: PieceColor) {
+        print("🚨 NUCLEAR OPTION: Forcing any available move for \(aiColor.rawValue)")
+        
+        // Reset the stuck flag
+        isAIMoveInProgress = false
+        
+        // Get all pieces of the AI color
+        let pieces = chessBoard.getPieces(of: aiColor)
+        
+        // Try to find any valid move, starting with pawns
+        let priorityOrder: [PieceType] = [.pawn, .knight, .bishop, .rook, .queen, .king]
+        
+        for pieceType in priorityOrder {
+            let piecesOfType = pieces.filter { $0.type == pieceType }
+            
+            for piece in piecesOfType {
+                let moves = chessBoard.getValidMoves(for: piece)
+                if let firstMove = moves.first {
+                    print("🚨 NUCLEAR OPTION: Forcing move \(firstMove.from.stringValue) -> \(firstMove.to.stringValue) by \(piece.type.rawValue)")
+                    
+                    // Execute the move immediately
+                    DispatchQueue.main.async {
+                        self.executeAIMove(firstMove)
+                    }
+                    return
+                }
+            }
+        }
+        
+        // If we get here, no moves are available
+        print("🚨 NUCLEAR OPTION: No moves available - stalemate or checkmate!")
     }
     
 

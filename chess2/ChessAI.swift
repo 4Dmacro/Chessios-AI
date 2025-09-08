@@ -1,6 +1,6 @@
 //
 //  ChessAI.swift
-//  chess2
+//  chess3
 //
 //  Created by Gareth Costa on 15/7/2025.
 //
@@ -142,7 +142,7 @@ class ChessAI {
         
         // Add aggressive timeout protection
         let startTime = Date()
-        let maxCalculationTime: TimeInterval = 3.0 // Reduced to 3 seconds
+        let maxCalculationTime: TimeInterval = 2.0 // Further reduced to 2 seconds for 3D chess
         
         // Safety check for board corruption
         guard let board = getBoard() else {
@@ -177,61 +177,49 @@ class ChessAI {
             return allMoves.first
         }
         
+        // CRITICAL: Add timeout check before any heavy evaluation
+        if Date().timeIntervalSince(startTime) > maxCalculationTime * 0.5 {
+            print("⚠️ AI early timeout - skipping complex evaluation")
+            let allMoves = getAllValidMoves(for: aiColor)
+            return allMoves.first
+        }
+        
         // Check if king is in check - if so, we need to allow king moves
         let isKingInCheck = board.isCheck(color: aiColor)
         if isKingInCheck {
-            print("🤖 AI: King is in check - finding escape moves")
+            print("🤖 AI: King is in check - using emergency move selection")
             let allMoves = getAllValidMoves(for: aiColor)
             if allMoves.isEmpty {
                 print("🤖 AI: No valid moves available - checkmate!")
                 return nil
             }
             
-                    // Find moves that actually get us out of check (simplified for speed)
-        var escapeMoves: [ChessMove3D] = []
-        
-        for move in allMoves {
-            // Quick timeout check
-            let elapsedTime = Date().timeIntervalSince(startTime)
-            if elapsedTime > maxCalculationTime {
-                print("⚠️ AI timeout during escape move evaluation - using available moves")
-                break
+            // CRITICAL: When king is in check, force immediate decision to prevent freezing
+            // Don't do any complex evaluation - just pick the best available move type
+            
+            // CRITICAL: When in check, prioritize moves by type for speed
+            // Don't evaluate every move - just pick the best type available
+            let captureMoves = allMoves.filter { $0.capturedPiece != nil }
+            let kingMoves = allMoves.filter { move in
+                if let piece = board.getPiece(at: move.from) {
+                    return piece.type == .king
+                }
+                return false
             }
             
-            // Simplified check: just test if this move gets us out of check
-            if wouldMoveGetOutOfCheck(move: move) {
-                escapeMoves.append(move)
+            // Force immediate decision - no complex evaluation when in check
+            if !captureMoves.isEmpty {
+                print("🤖 AI: Choosing capture move to escape check")
+                return captureMoves.first
+            } else if !kingMoves.isEmpty {
+                print("🤖 AI: Choosing king move to escape check")
+                return kingMoves.first
+            } else {
+                print("🤖 AI: Choosing other move to escape check")
+                return allMoves.first
             }
-        }
             
-                    if escapeMoves.isEmpty {
-            print("🤖 AI: No escape moves found - checkmate!")
-            return nil
-        }
-        
-        print("🤖 AI: Found \(escapeMoves.count) escape moves")
-        
-        // CRITICAL: When in check, make a decision immediately to prevent freezing
-        // Prioritize moves by type: captures first, then king moves, then others
-        let captureMoves = escapeMoves.filter { $0.capturedPiece != nil }
-        let kingMoves = escapeMoves.filter { move in
-            if let piece = board.getPiece(at: move.from) {
-                return piece.type == .king
-            }
-            return false
-        }
-        
-        // Force immediate decision - no complex evaluation when in check
-        if !captureMoves.isEmpty {
-            print("🤖 AI: Choosing capture move to escape check")
-            return captureMoves.first
-        } else if !kingMoves.isEmpty {
-            print("🤖 AI: Choosing king move to escape check")
-            return kingMoves.first
-        } else {
-            print("🤖 AI: Choosing other move to escape check")
-            return escapeMoves.first
-        }
+
         }
         
         // Update game phase based on move count
@@ -247,17 +235,132 @@ class ChessAI {
         
         print("🤖 AI found \(allMoves.count) valid moves")
         
-        // Filter moves using strategic rules
-        let strategicMoves = allMoves.filter { isValidStrategicMove($0) }
-        let movesToEvaluate = strategicMoves.isEmpty ? allMoves : strategicMoves
+        // CRITICAL: Filter out king moves unless king is in check
+        let kingInCheck = self.isKingInCheck()
+        let filteredMoves: [ChessMove3D]
         
-        if strategicMoves.isEmpty {
-            print("🤖 AI Warning: No moves pass strategic rules, evaluating all \(allMoves.count) moves")
+        if kingInCheck {
+            // If king is in check, allow all moves (including king moves)
+            filteredMoves = allMoves
+            print("🤖 AI: King is in check - allowing all moves including king moves")
         } else {
-            print("🤖 AI: Filtered to \(strategicMoves.count) strategic moves from \(allMoves.count) total moves")
+            // If king is not in check, exclude king moves unless they're captures
+            // Also exclude moves that are clearly bad to reduce evaluation load
+            filteredMoves = allMoves.filter { move in
+                if let piece = board.getPiece(at: move.from) {
+                    // Allow all king moves to be evaluated (no filtering)
+                    if piece.type == .king {
+                        return true // Allow all king moves to be evaluated
+                    }
+                    
+                    // Exclude queen moves unless they're captures or defensive
+                    if piece.type == .queen {
+                        if move.capturedPiece != nil {
+                            return true // Captures are always good
+                        }
+                        // Only allow defensive queen moves
+                        if let board = getBoard(), isDefensiveMove(move, piece: piece, board: board) {
+                            return true
+                        }
+                        return false // Exclude non-capture, non-defensive queen moves
+                    }
+                    
+                    // CRITICAL: Exclude moves that would allow valuable pieces to be captured by less valuable pieces
+                    let movingPieceValue = pieceValues[piece.type] ?? 0
+                    if movingPieceValue >= 3 { // Queen, rook, bishop, knight
+                        // Check if this move would allow our piece to be captured by a less valuable enemy piece
+                        let enemyColor = aiColor.opposite
+                        let enemyPieces = board.getPieces(of: enemyColor)
+                        
+                        for enemyPiece in enemyPieces {
+                            let enemyValue = pieceValues[enemyPiece.type] ?? 0
+                            if enemyValue < movingPieceValue { // Enemy piece is less valuable
+                                // Check if enemy can capture our piece after this move
+                                let enemyMoves = board.getValidMoves(for: enemyPiece, checkEnPassant: false)
+                                if enemyMoves.contains(where: { $0.to == move.to }) {
+                                    // CRITICAL: This move would allow our valuable piece to be captured by a less valuable piece
+                                    print("🤖 AI CRITICAL FILTER: Excluding move that would allow \(piece.type.rawValue) to be captured by \(enemyPiece.type.rawValue)")
+                                    return false // Exclude this move completely
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Exclude moves that put pieces in obvious danger
+                    if move.capturedPiece == nil {
+                        // For non-capture moves, check if they put the piece in danger
+                        if movingPieceValue >= 3 { // Queen, rook, bishop
+                            // Check if this move puts a valuable piece in danger
+                            if wouldMovePutPieceInDanger(move: move) {
+                                return false // Exclude dangerous moves for valuable pieces
+                            }
+                        }
+                    }
+                }
+                return true
+            }
+            print("🤖 AI: King not in check - filtered out \(allMoves.count - filteredMoves.count) moves (including non-capture king moves and dangerous moves)")
+        }
+        
+        guard !filteredMoves.isEmpty else {
+            print("🤖 AI has no valid moves after filtering")
+            return nil
+        }
+        
+        // CRITICAL: Prioritize captures over strategic rules, but be smart about it
+        let captureMoves = filteredMoves.filter { $0.capturedPiece != nil }
+        let movesToEvaluate: [ChessMove3D]
+        
+        if !captureMoves.isEmpty {
+            // Check if any captures are advantageous
+            let advantageousCaptures = captureMoves.filter { move in
+                if let piece = board.getPiece(at: move.from),
+                   let capturedPiece = move.capturedPiece {
+                    let captureValue = pieceValues[capturedPiece.type] ?? 0
+                    let movingPieceValue = pieceValues[piece.type] ?? 0
+                    return captureValue >= movingPieceValue
+                }
+                return false
+            }
+            
+            if !advantageousCaptures.isEmpty {
+                print("🤖 AI: Found \(advantageousCaptures.count) advantageous capture moves - bypassing strategic rules")
+                // CRITICAL: For advantageous captures, make immediate decision to prevent freezing
+                print("🤖 AI: Making immediate decision for advantageous capture")
+                return advantageousCaptures.first
+            } else {
+                print("🤖 AI: Found \(captureMoves.count) capture moves but none are advantageous - evaluating all moves")
+                movesToEvaluate = allMoves
+            }
+        } else {
+            // Filter moves using strategic rules only if no captures available
+            let strategicMoves = filteredMoves.filter { isValidStrategicMove($0) }
+            movesToEvaluate = strategicMoves.isEmpty ? filteredMoves : strategicMoves
+            
+            if strategicMoves.isEmpty {
+                print("🤖 AI Warning: No moves pass strategic rules, evaluating all \(filteredMoves.count) moves")
+            } else {
+                print("🤖 AI: Filtered to \(strategicMoves.count) strategic moves from \(filteredMoves.count) total moves")
+            }
+        }
+        
+        // CRITICAL: If too many moves, force immediate decision to prevent freezing
+        if movesToEvaluate.count > 50 {
+            print("⚠️ AI: Too many moves (\(movesToEvaluate.count)) - forcing immediate decision")
+            let captureMoves = movesToEvaluate.filter { $0.capturedPiece != nil }
+            if !captureMoves.isEmpty {
+                print("🤖 AI forced decision: Choosing capture move")
+                return captureMoves.first
+            } else {
+                // Prioritize pawns, knights, bishops over king/queen when not under attack
+                let prioritizedMove = getPrioritizedMove(from: movesToEvaluate)
+                print("🤖 AI forced decision: Choosing prioritized move")
+                return prioritizedMove
+            }
         }
         
         // Debug: Print moves being considered
+        print("🤖 AI: Evaluating \(movesToEvaluate.count) moves:")
         for (index, move) in movesToEvaluate.enumerated() {
             let captureInfo = move.capturedPiece != nil ? " (captures \(move.capturedPiece!.type.rawValue))" : ""
             print("🤖 AI debug: Move \(index): \(move.from.stringValue) -> \(move.to.stringValue)\(captureInfo)")
@@ -269,11 +372,52 @@ class ChessAI {
         // Evaluate moves based on current strategy and game phase
         var evaluatedMoves: [(ChessMove3D, Int)] = []
         
-        // Limit the number of moves to evaluate to prevent timeout
-        let maxMovesToEvaluate = min(movesToEvaluate.count, 15) // Only evaluate first 15 moves
-        let movesToEvaluateLimited = Array(movesToEvaluate.prefix(maxMovesToEvaluate))
+        // CRITICAL: Limit the number of moves to evaluate to prevent timeout
+        // In 3D chess, there are many more moves, so we need to be more aggressive
+        // BUT: If king moves are present, evaluate ALL king moves
+        let kingMoves = movesToEvaluate.filter { move in
+            if let piece = board.getPiece(at: move.from) {
+                return piece.type == .king
+            }
+            return false
+        }
+        
+        let maxMovesToEvaluate = min(movesToEvaluate.count, 4) // Further reduced from 6 to 4
+        let movesToEvaluateLimited: [ChessMove3D]
+        
+        if !kingMoves.isEmpty {
+            // If king moves are present, evaluate ALL king moves plus some others
+            let nonKingMoves = movesToEvaluate.filter { move in
+                if let piece = board.getPiece(at: move.from) {
+                    return piece.type != .king
+                }
+                return true
+            }
+            let limitedNonKingMoves = Array(nonKingMoves.prefix(2)) // Limit non-king moves to 2
+            movesToEvaluateLimited = kingMoves + limitedNonKingMoves
+            print("🤖 AI: Evaluating ALL \(kingMoves.count) king moves + \(limitedNonKingMoves.count) other moves")
+        } else {
+            movesToEvaluateLimited = Array(movesToEvaluate.prefix(maxMovesToEvaluate))
+        }
         
         print("🤖 AI: Evaluating \(movesToEvaluateLimited.count) moves out of \(movesToEvaluate.count) total")
+        
+        // CRITICAL: Add early timeout check before starting evaluation
+        let earlyElapsedTime = Date().timeIntervalSince(startTime)
+        if earlyElapsedTime > maxCalculationTime * 0.5 { // More aggressive - 50% instead of 70%
+            print("⚠️ AI early timeout before evaluation - forcing decision")
+            // Force immediate decision with captures first
+            let captureMoves = movesToEvaluate.filter { $0.capturedPiece != nil }
+            if !captureMoves.isEmpty {
+                print("🤖 AI forced decision: Choosing capture move")
+                return captureMoves.first
+            } else {
+                // Prioritize pawns, knights, bishops over king/queen when not under attack
+                let prioritizedMove = getPrioritizedMove(from: movesToEvaluate)
+                print("🤖 AI forced decision: Choosing prioritized move")
+                return prioritizedMove
+            }
+        }
         
         for (index, move) in movesToEvaluateLimited.enumerated() {
             // Check timeout during evaluation
@@ -281,6 +425,14 @@ class ChessAI {
             if elapsedTime > maxCalculationTime {
                 print("⚠️ AI timeout during move evaluation - stopping at move \(index)")
                 break
+            }
+            
+            // Special timeout check for king moves - force decision after evaluating king moves
+            if let piece = board.getPiece(at: move.from), piece.type == .king {
+                if elapsedTime > maxCalculationTime * 0.8 {
+                    print("⚠️ AI king move timeout - forcing decision after evaluating \(index) king moves")
+                    break
+                }
             }
             
             let score = evaluateMove(move)
@@ -298,15 +450,33 @@ class ChessAI {
             // Fallback: Choose a move quickly
             print("🤖 AI: No evaluated moves - choosing fallback move")
             
+            // CRITICAL: Final timeout check before fallback
+            let elapsedTime = Date().timeIntervalSince(startTime)
+            if elapsedTime > maxCalculationTime {
+                print("⚠️ AI final timeout - forcing decision")
+                // Force immediate decision with captures first
+                let captureMoves = filteredMoves.filter { $0.capturedPiece != nil }
+                if !captureMoves.isEmpty {
+                    print("🤖 AI final forced decision: Choosing capture move")
+                    return captureMoves.first
+                } else {
+                    // Prioritize pawns, knights, bishops over king/queen when not under attack
+                    let prioritizedMove = getPrioritizedMove(from: filteredMoves)
+                    print("🤖 AI final forced decision: Choosing prioritized move")
+                    return prioritizedMove
+                }
+            }
+            
             // Prioritize captures first
-            let captureMoves = allMoves.filter { $0.capturedPiece != nil }
+            let captureMoves = filteredMoves.filter { $0.capturedPiece != nil }
             if !captureMoves.isEmpty {
                 bestMove = captureMoves.first
                 print("🤖 AI fallback: Choosing capture move")
             } else {
-                // Then choose first available move
-                bestMove = allMoves.first
-                print("🤖 AI fallback: Choosing first available move")
+                // Prioritize pawns, knights, bishops over king/queen when not under attack
+                let prioritizedMove = getPrioritizedMove(from: filteredMoves)
+                bestMove = prioritizedMove
+                print("🤖 AI fallback: Choosing prioritized move")
             }
         }
         
@@ -437,13 +607,13 @@ class ChessAI {
             
             // Add safety check for piece position
             guard piece.position.file >= 0 && piece.position.file <= 7 &&
-                  piece.position.rank >= 0 && piece.position.rank <= 7 &&
-                  piece.position.z >= 0 && piece.position.z <= 7 else {
+                    piece.position.rank >= 0 && piece.position.rank <= 7 &&
+                    piece.position.z >= 0 && piece.position.z <= 7 else {
                 print("⚠️ AI warning: Invalid piece position: \(piece.position.stringValue)")
                 continue
             }
             
-            let moves = board.getValidMoves(for: piece)
+            let moves = board.getValidMoves(for: piece, checkEnPassant: false)
             print("🤖 AI debug: Generated \(moves.count) moves for \(piece.type.rawValue) at \(piece.position.stringValue)")
             allMoves.append(contentsOf: moves)
         }
@@ -478,84 +648,84 @@ class ChessAI {
             
             // Add safety check for piece position
             guard piece.position.file >= 0 && piece.position.file <= 7 &&
-                  piece.position.rank >= 0 && piece.position.rank <= 7 &&
-                  piece.position.z >= 0 && piece.position.z <= 7 else {
+                    piece.position.rank >= 0 && piece.position.rank <= 7 &&
+                    piece.position.z >= 0 && piece.position.z <= 7 else {
                 print("⚠️ AI warning: Invalid pawn position: \(piece.position.stringValue)")
                 continue
             }
             
-                               let moves = board.getValidMoves(for: piece)
-                   print("🤖 AI debug: Generated \(moves.count) moves for pawn at \(piece.position.stringValue)")
-                   
-                   // Filter to only include valid pawn moves (forward or diagonal captures)
-                   let validPawnMoves = moves.filter { move in
-                       let fileDiff = abs(move.to.file - move.from.file)
-                       let rankDiff = move.to.rank - move.from.rank
-                       let zDiff = abs(move.to.z - move.from.z)
-                       
-                       // Valid pawn moves:
-                       // 1. Forward move (no file change, positive rank change for white, negative for black)
-                       // 2. Diagonal capture (file change of 1, rank change of 1, and there's a captured piece)
-                       // 3. No z-axis movement for pawns
-                       
-                       if zDiff > 0 {
-                           print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - invalid z-axis movement")
-                           return false
-                       }
-                       
-                       if aiColor == .white {
-                           // White pawns move up (increasing rank)
-                           if rankDiff <= 0 {
-                               print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - white pawn moving backward")
-                               return false
-                           }
-                           
-                           if fileDiff == 0 {
-                               // Forward move - must be empty
-                               if move.capturedPiece != nil {
-                                   print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - forward move with capture")
-                                   return false
-                               }
-                           } else if fileDiff == 1 {
-                               // Diagonal move - must have capture
-                               if move.capturedPiece == nil {
-                                   print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - diagonal move without capture")
-                                   return false
-                               }
-                           } else {
-                               print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - invalid file difference")
-                               return false
-                           }
-                       } else {
-                           // Black pawns move down (decreasing rank)
-                           if rankDiff >= 0 {
-                               print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - black pawn moving backward")
-                               return false
-                           }
-                           
-                           if fileDiff == 0 {
-                               // Forward move - must be empty
-                               if move.capturedPiece != nil {
-                                   print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - forward move with capture")
-                                   return false
-                               }
-                           } else if fileDiff == 1 {
-                               // Diagonal move - must have capture
-                               if move.capturedPiece == nil {
-                                   print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - diagonal move without capture")
-                                   return false
-                               }
-                           } else {
-                               print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - invalid file difference")
-                               return false
-                           }
-                       }
-                       
-                       print("🤖 AI debug: Accepting valid pawn move \(move.from.stringValue) -> \(move.to.stringValue)")
-                       return true
-                   }
-                   
-                   pawnMoves.append(contentsOf: validPawnMoves)
+            let moves = board.getValidMoves(for: piece, checkEnPassant: false)
+            print("🤖 AI debug: Generated \(moves.count) moves for pawn at \(piece.position.stringValue)")
+            
+            // Filter to only include valid pawn moves (forward or diagonal captures)
+            let validPawnMoves = moves.filter { move in
+                let fileDiff = abs(move.to.file - move.from.file)
+                let rankDiff = move.to.rank - move.from.rank
+                let zDiff = abs(move.to.z - move.from.z)
+                
+                // Valid pawn moves:
+                // 1. Forward move (no file change, positive rank change for white, negative for black)
+                // 2. Diagonal capture (file change of 1, rank change of 1, and there's a captured piece)
+                // 3. No z-axis movement for pawns
+                
+                if zDiff > 0 {
+                    print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - invalid z-axis movement")
+                    return false
+                }
+                
+                if aiColor == .white {
+                    // White pawns move up (increasing rank)
+                    if rankDiff <= 0 {
+                        print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - white pawn moving backward")
+                        return false
+                    }
+                    
+                    if fileDiff == 0 {
+                        // Forward move - must be empty
+                        if move.capturedPiece != nil {
+                            print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - forward move with capture")
+                            return false
+                        }
+                    } else if fileDiff == 1 {
+                        // Diagonal move - must have capture
+                        if move.capturedPiece == nil {
+                            print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - diagonal move without capture")
+                            return false
+                        }
+                    } else {
+                        print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - invalid file difference")
+                        return false
+                    }
+                } else {
+                    // Black pawns move down (decreasing rank)
+                    if rankDiff >= 0 {
+                        print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - black pawn moving backward")
+                        return false
+                    }
+                    
+                    if fileDiff == 0 {
+                        // Forward move - must be empty
+                        if move.capturedPiece != nil {
+                            print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - forward move with capture")
+                            return false
+                        }
+                    } else if fileDiff == 1 {
+                        // Diagonal move - must have capture
+                        if move.capturedPiece == nil {
+                            print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - diagonal move without capture")
+                            return false
+                        }
+                    } else {
+                        print("🤖 AI debug: Rejecting move \(move.from.stringValue) -> \(move.to.stringValue) - invalid file difference")
+                        return false
+                    }
+                }
+                
+                print("🤖 AI debug: Accepting valid pawn move \(move.from.stringValue) -> \(move.to.stringValue)")
+                return true
+            }
+            
+            pawnMoves.append(contentsOf: validPawnMoves)
         }
         
         return pawnMoves
@@ -571,18 +741,51 @@ class ChessAI {
         
         // SIMPLIFIED EVALUATION TO PREVENT LOOPS
         
-        // 1. Material evaluation - captures are the most important
+        // 1. CRITICAL: Piece preservation check - avoid moves that leave valuable pieces vulnerable
+        let movingPieceValue = pieceValues[piece.type] ?? 0
+        if movingPieceValue >= 3 { // Queen, rook, bishop, knight
+            // Check if this move would leave the piece vulnerable to capture by a less valuable piece
+            if let board = getBoard() {
+                let enemyColor = aiColor.opposite
+                let enemyPieces = board.getPieces(of: enemyColor)
+                
+                for enemyPiece in enemyPieces {
+                    let enemyValue = pieceValues[enemyPiece.type] ?? 0
+                    if enemyValue < movingPieceValue { // Enemy piece is less valuable
+                        // Check if enemy can capture our piece after this move
+                        let enemyMoves = board.getValidMoves(for: enemyPiece, checkEnPassant: false)
+                        if enemyMoves.contains(where: { $0.to == move.to }) {
+                            // CRITICAL: This move would allow our valuable piece to be captured by a less valuable piece
+                            let valueLoss = movingPieceValue - enemyValue
+                            score -= valueLoss * 50 // Massive penalty for allowing valuable piece to be captured cheaply
+                            print("🤖 AI CRITICAL ERROR: Move would allow \(piece.type.rawValue) to be captured by \(enemyPiece.type.rawValue) - penalty \(valueLoss * 50)")
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 2. Material evaluation - captures are the most important
         if let capturedPiece = move.capturedPiece {
             let captureValue = pieceValues[capturedPiece.type] ?? 0
-            let movingPieceValue = pieceValues[piece.type] ?? 0
             
             // If we're capturing a more valuable piece, this is excellent
             if captureValue > movingPieceValue {
-                score += captureValue * 2 // Very high bonus for winning material
+                score += captureValue * 10 // Much higher bonus for winning material
             } else if captureValue == movingPieceValue {
-                score += captureValue // Equal trade
+                score += captureValue * 2 // Good bonus for equal trades
             } else {
-                score += captureValue - movingPieceValue // Losing material
+                // For losing trades, apply a penalty based on the value difference
+                let valueLoss = movingPieceValue - captureValue
+                score -= valueLoss * 2 // Penalty for losing material
+                print("🤖 AI MATERIAL LOSS: Penalty of \(valueLoss * 2) for losing \(valueLoss) material")
+            }
+            
+            // Additional bonus for any capture, but reduced for losing trades
+            if captureValue >= movingPieceValue {
+                score += 500 // Base bonus for advantageous captures
+            } else {
+                score += 50 // Small bonus for losing trades
             }
         }
         
@@ -602,19 +805,88 @@ class ChessAI {
                 // Only move king when in check
                 score += 200 // Bonus for king moves when in check
             } else {
-                // Heavy penalty for unnecessary king moves
-                score -= 300 // Much stronger penalty for king moves when not in check
+                // CRITICAL: Massive penalty for unnecessary king moves
+                score -= 1000 // Extremely strong penalty for king moves when not in check
+                
+                // Additional penalty for moving king away from back rank
+                if aiColor == .white && move.to.rank > 1 {
+                    score -= 500 // Extra penalty for white king moving away from back rank
+                } else if aiColor == .black && move.to.rank < 6 {
+                    score -= 500 // Extra penalty for black king moving away from back rank
+                }
+                
+                // Penalty for moving king to center files
+                if move.to.file >= 2 && move.to.file <= 5 {
+                    score -= 300 // Extra penalty for moving king to center
+                }
             }
         }
         
-        // 4. Prefer pawn moves in opening (but NOT over captures)
-        if piece.type == .pawn && totalMovesPlayed < 10 && move.capturedPiece == nil {
-            score += 50 // Bonus for pawn moves in opening (only if not capturing)
+        // 4. QUEEN SAFETY - CRITICAL: Avoid any move that puts queen in danger
+        if piece.type == .queen {
+            if move.capturedPiece != nil {
+                // Queen captures are good, but check if it's safe
+                score += 100 // Bonus for queen captures
+                
+                // Check if queen would be vulnerable after capture
+                if let board = getBoard() {
+                    let enemyColor = aiColor.opposite
+                    let enemyPieces = board.getPieces(of: enemyColor)
+                    
+                    for enemyPiece in enemyPieces {
+                        let enemyValue = pieceValues[enemyPiece.type] ?? 0
+                        if enemyValue < 9 { // Queen value is 9, so any piece less valuable
+                            let enemyMoves = board.getValidMoves(for: enemyPiece, checkEnPassant: false)
+                            if enemyMoves.contains(where: { $0.to == move.to }) {
+                                // CRITICAL: Queen would be vulnerable after capture
+                                score -= 2000 // Massive penalty for putting queen in danger
+                                print("🤖 AI QUEEN DANGER: Queen would be vulnerable after capture - penalty -2000")
+                            }
+                        }
+                    }
+                }
+            } else if let board = getBoard(), isDefensiveMove(move, piece: piece, board: board) {
+                // Defensive queen moves are acceptable
+                score += 50 // Small bonus for defensive queen moves
+            } else {
+                // CRITICAL: Strong penalty for non-capture, non-defensive queen moves
+                score -= 800 // Strong penalty for reckless queen moves
+                print("🤖 AI QUEEN SAFETY: Penalty -800 for non-capture, non-defensive queen move")
+            }
         }
         
-        // 5. Basic positional scoring
+        // 5. ROOK SAFETY - prevent pointless rook movements
+        if piece.type == .rook {
+            if move.capturedPiece != nil {
+                // Rook captures are good
+                score += 80 // Bonus for rook captures
+            } else if let board = getBoard(), isDefensiveMove(move, piece: piece, board: board) {
+                // Defensive rook moves are acceptable
+                score += 40 // Small bonus for defensive rook moves
+            } else {
+                // Check if this is a pointless back-and-forth move
+                if isRepetitiveMove(move) {
+                    score -= 600 // Strong penalty for repetitive rook moves
+                    print("🤖 AI ROOK SAFETY: Penalty -600 for repetitive rook move")
+                } else {
+                    score -= 300 // Moderate penalty for non-capture, non-defensive rook moves
+                    print("🤖 AI ROOK SAFETY: Penalty -300 for non-capture, non-defensive rook move")
+                }
+            }
+        }
+        
+        // 6. PAWN ADVANCEMENT RISK ASSESSMENT - evaluate capture risks for advanced pawns
         if piece.type == .pawn {
-            // Pawn advancement
+            // Check if pawn is reaching advanced ranks where it might be captured
+            let advancedRank = aiColor == .white ? 5 : 2 // Rank 5 for white, rank 2 for black
+            if (aiColor == .white && move.to.rank >= advancedRank) || (aiColor == .black && move.to.rank <= advancedRank) {
+                // Evaluate capture risks for advanced pawns
+                let captureRisk = evaluatePawnCaptureRisk(move, piece: piece, board: board)
+                score += captureRisk
+                print("🤖 AI PAWN RISK: Advanced pawn at \(move.to.stringValue) - capture risk score: \(captureRisk)")
+            }
+            
+            // Basic positional scoring
             if aiColor == .white {
                 score += move.to.rank * 10
             } else {
@@ -622,7 +894,7 @@ class ChessAI {
             }
         }
         
-        // 6. 3D Space Usage Bonus - encourage Z-component moves
+        // 7. 3D Space Usage Bonus - encourage Z-component moves
         let zDiff = abs(move.to.z - move.from.z)
         let fileDiff = abs(move.to.file - move.from.file)
         let rankDiff = abs(move.to.rank - move.from.rank)
@@ -630,7 +902,7 @@ class ChessAI {
         if zDiff > 0 {
             // Bonus for using the Z-axis (3D space)
             score += zDiff * 15 // +15 points per Z-level moved
-            print("🤖 AI 3D Bonus: \(piece.type.rawValue) moved \(zDiff) Z-levels (+\(zDiff * 15))")
+            print("🤖 AI 3D Bonus: \(piece.type.rawValue) moved \(zDiff) Z-levels (+\(zDiff * 10))")
             
             // Extra bonus for true 3D diagonal moves (all 3 components change)
             if fileDiff > 0 && rankDiff > 0 && zDiff > 0 {
@@ -639,12 +911,12 @@ class ChessAI {
             }
         }
         
-        // 6. Avoid repetitive moves
+        // 8. Avoid repetitive moves
         if isRepetitiveMove(move) {
             score -= 50
         }
         
-        // 7. King safety - avoid moving king to squares that could be attacked
+        // 9. King safety - avoid moving king to squares that could be attacked
         if piece.type == .king {
             // Check if the destination square could be attacked by enemy pieces
             if wouldKingBeInDangerAtPosition(move.to) {
@@ -655,81 +927,142 @@ class ChessAI {
         // 8. Add some randomness to break ties and prevent loops
         score += Int.random(in: -10...10)
         
-        // Debug output for captures
-        if move.capturedPiece != nil {
-            let captureValue = pieceValues[move.capturedPiece!.type] ?? 0
-            let movingPieceValue = pieceValues[piece.type] ?? 0
-            print("🤖 AI Capture Analysis: \(piece.type.rawValue) captures \(move.capturedPiece!.type.rawValue) - Score: \(score) (capture value: \(captureValue), moving piece: \(movingPieceValue))")
-        }
-        
-        return score
-        
         // CRITICAL: Check if this move is defensive (saves a piece from capture)
         if isDefensiveMove(move, piece: piece, board: board) {
             score += 100 // High priority for defensive moves
         }
         
-        // CRITICAL: Check if this move prevents opponent from capturing our pieces
-        if preventsCapture(move, piece: piece, board: board) {
-            score += 80
+        // ENHANCED: High-value piece protection (queen, rooks, bishops, knights)
+        if isHighValuePiece(piece.type) {
+            let defensiveScore = evaluateHighValuePieceDefense(move, piece: piece, board: board)
+            score += defensiveScore
+            print("🤖 AI HIGH-VALUE DEFENSE: \(piece.type.rawValue) defensive score: \(defensiveScore)")
         }
         
-        // CRITICAL: Penalize moves that put our pieces in danger
-        if putsPieceInDanger(move, piece: piece, board: board) {
-            score -= 50
-        }
-        
-        // CRITICAL: Avoid repetitive moves (like rook moving back and forth)
-        if isRepetitiveMove(move) {
-            score -= 30
-        }
-        
-        // CRITICAL: Strategic rule 1 - Big pieces should avoid capture by pawns
-        if isBigPieceAvoidingPawnCapture(move, piece: piece, board: board) {
-            score += 120 // Very high priority for big pieces avoiding pawn capture
-        }
-        
-        // CRITICAL: Strategic rule 2 - Prefer non-king pieces for captures when possible
-        if isNonKingCapturePreferred(move, piece: piece, board: board) {
-            score += 90 // High priority for using non-king pieces for captures
-        }
-        
-        // CRITICAL: 3D positioning bonus
-        score += evaluate3DPositioning(move, piece: piece, board: board)
-        
-        // CRITICAL: Check evaluation - highest priority after captures
-        if givesCheck(move, board: board) {
-            score += 150 // Very high priority for giving check
-            print("🎯 AI found check opportunity: \(move.from.stringValue) -> \(move.to.stringValue)")
-            
-            // Check if this is actually checkmate - if so, maximum priority
-            if wouldBeCheckmate(move, board: board) {
-                score += 1000 // Checkmate is the ultimate goal
-                print("🏆 AI found CHECKMATE: \(move.from.stringValue) -> \(move.to.stringValue)")
+        // CRITICAL: Prevent allowing easy captures of valuable pieces
+        if let board = getBoard() {
+            let captureRisk = evaluateCaptureRiskForMove(move, piece: piece, board: board)
+            score += captureRisk
+            if captureRisk < 0 {
+                print("🤖 AI CAPTURE RISK: Move \(move.from.stringValue) -> \(move.to.stringValue) has capture risk: \(captureRisk)")
             }
         }
         
-        // Strategy-specific evaluation
-        switch currentStrategy {
-        case .aggressive:
-            score += evaluateAggressiveMove(move, piece: piece, board: board)
-        case .defensive:
-            score += evaluateDefensiveMove(move, piece: piece, board: board)
-        case .positional:
-            score += evaluatePositionalMove(move, piece: piece, board: board)
-        case .tactical:
-            score += evaluateTacticalMove(move, piece: piece, board: board)
-        case .endgame:
-            score += evaluateEndgameMove(move, piece: piece, board: board)
+        // Debug output for captures
+        if move.capturedPiece != nil {
+            let captureValue = pieceValues[move.capturedPiece!.type] ?? 0
+            let movingPieceValue = pieceValues[piece.type] ?? 0
+            print("🤖 AI Capture Analysis: \(piece.type.rawValue) captures \(move.capturedPiece!.type.rawValue) - Score: \(score) (capture value: \(captureValue), moving piece: \(movingPieceValue))")
+        } else {
+            print("🤖 AI Non-capture move: \(piece.type.rawValue) \(move.from.stringValue) -> \(move.to.stringValue) - Score: \(score)")
         }
         
-        // Game phase adjustments
-        score += evaluateGamePhaseAdjustments(move, piece: piece, board: board)
+        // CRITICAL: Force captures to be the highest priority, but only if they're advantageous
+        if move.capturedPiece != nil {
+            let captureValue = pieceValues[move.capturedPiece!.type] ?? 0
+            let movingPieceValue = pieceValues[piece.type] ?? 0
+            
+            // Only give massive bonus if we're gaining material or making an equal trade
+            if captureValue >= movingPieceValue {
+                score += 10000 // Massive bonus for advantageous captures
+                print("🤖 AI FORCE CAPTURE: Adding 10000 bonus for advantageous capture (\(piece.type.rawValue) captures \(move.capturedPiece!.type.rawValue))")
+            } else {
+                // For losing trades, still give a bonus but not as much
+                score += 1000 // Moderate bonus for losing trades
+                print("🤖 AI MODERATE CAPTURE: Adding 1000 bonus for losing trade (\(piece.type.rawValue) captures \(move.capturedPiece!.type.rawValue))")
+            }
+        }
         
-        // Apply learning to the final score
-        let finalScore = applyLearningToEvaluation(score, move: move)
+        return score
+    }
+    
+    // MARK: - Strategy-Specific Evaluations
+    
+    // MARK: - Pawn Risk Assessment
+    
+    private func evaluatePawnCaptureRisk(_ move: ChessMove3D, piece: ChessPiece3D, board: ChessBoard3D) -> Int {
+        var riskScore = 0
         
-        return finalScore
+        // Check if the pawn can be captured by enemy pieces
+        let enemyColor = piece.color == .white ? PieceColor.black : PieceColor.white
+        let enemyPieces = board.getPieces(of: enemyColor)
+        
+        // Limit evaluation to prevent timeout
+        let maxEnemyChecks = 10
+        var enemyChecks = 0
+        
+        for enemyPiece in enemyPieces {
+            if enemyChecks >= maxEnemyChecks { break }
+            enemyChecks += 1
+            
+            // Check if enemy piece can attack the pawn's destination
+            if canPieceAttackPosition(piece: enemyPiece, targetPosition: move.to) {
+                let enemyValue = pieceValues[enemyPiece.type] ?? 0
+                
+                // Higher penalty for being attacked by more valuable pieces
+                if enemyValue >= 3 { // Queen, rook, bishop
+                    riskScore -= 200 // High risk for being attacked by valuable pieces
+                    print("🤖 AI PAWN RISK: Pawn at \(move.to.stringValue) can be captured by \(enemyPiece.type.rawValue) (value: \(enemyValue))")
+                } else if enemyValue == 1 { // Pawn
+                    riskScore -= 50 // Lower risk for pawn attacks
+                } else { // Knight
+                    riskScore -= 100 // Medium risk for knight attacks
+                }
+            }
+        }
+        
+        // Bonus if pawn is protected by friendly pieces (limited check)
+        let friendlyColor = piece.color
+        let friendlyPieces = board.getPieces(of: friendlyColor)
+        
+        let maxFriendlyChecks = 5
+        var friendlyChecks = 0
+        
+        for friendlyPiece in friendlyPieces {
+            if friendlyChecks >= maxFriendlyChecks { break }
+            friendlyChecks += 1
+            
+            if friendlyPiece.type != .pawn && canPieceAttackPosition(piece: friendlyPiece, targetPosition: move.to) {
+                let friendlyValue = pieceValues[friendlyPiece.type] ?? 0
+                riskScore += friendlyValue * 10 // Bonus for protection by valuable pieces
+                print("🤖 AI PAWN PROTECTION: Pawn at \(move.to.stringValue) protected by \(friendlyPiece.type.rawValue)")
+            }
+        }
+        
+        return riskScore
+    }
+    
+    private func evaluateCaptureRiskForMove(_ move: ChessMove3D, piece: ChessPiece3D, board: ChessBoard3D) -> Int {
+        var riskScore = 0
+        let pieceValue = pieceValues[piece.type] ?? 0
+        
+        // Only evaluate capture risk for valuable pieces (knight and above)
+        if pieceValue >= 3 {
+            let enemyColor = piece.color == .white ? PieceColor.black : PieceColor.white
+            let enemyPieces = board.getPieces(of: enemyColor)
+            
+            // Limit evaluation to prevent timeout
+            let maxEnemyChecks = 8
+            var enemyChecks = 0
+            
+            for enemyPiece in enemyPieces {
+                if enemyChecks >= maxEnemyChecks { break }
+                enemyChecks += 1
+                
+                // Check if enemy piece can attack the destination square
+                if canPieceAttackPosition(piece: enemyPiece, targetPosition: move.to) {
+                    let enemyValue = pieceValues[enemyPiece.type] ?? 0
+                    
+                    // If enemy piece is less valuable, this is a bad trade
+                    if enemyValue < pieceValue {
+                        riskScore -= (pieceValue - enemyValue) * 50 // Heavy penalty for losing material
+                        print("🤖 AI CAPTURE RISK: \(piece.type.rawValue) (value: \(pieceValue)) can be captured by \(enemyPiece.type.rawValue) (value: \(enemyValue))")
+                    }
+                }
+            }
+        }
+        
+        return riskScore
     }
     
     // MARK: - Strategy-Specific Evaluations
@@ -1229,9 +1562,9 @@ class ChessAI {
         
         for opponentPiece in opponentPieces {
             // Check for vertical attacks (same file/rank, different Z)
-            if opponentPiece.position.file == position.file && 
-               opponentPiece.position.rank == position.rank && 
-               opponentPiece.position.z != position.z {
+            if opponentPiece.position.file == position.file &&
+                opponentPiece.position.rank == position.rank &&
+                opponentPiece.position.z != position.z {
                 return true
             }
             
@@ -1241,8 +1574,8 @@ class ChessAI {
             let zDiff = abs(opponentPiece.position.z - position.z)
             
             if (fileDiff == rankDiff && rankDiff == zDiff) || // 3D diagonal
-               (fileDiff == zDiff && rankDiff == 0) || // File-Z diagonal
-               (rankDiff == zDiff && fileDiff == 0) { // Rank-Z diagonal
+                (fileDiff == zDiff && rankDiff == 0) || // File-Z diagonal
+                (rankDiff == zDiff && fileDiff == 0) { // Rank-Z diagonal
                 return true
             }
         }
@@ -1270,6 +1603,59 @@ class ChessAI {
         return false
     }
     
+    // MARK: - High-Value Piece Protection
+    
+    private func isHighValuePiece(_ pieceType: PieceType) -> Bool {
+        // Queen, rooks, and bishops are high-value pieces that need protection
+        return pieceType == .queen || pieceType == .rook || pieceType == .bishop
+    }
+    
+    private func evaluateHighValuePieceDefense(_ move: ChessMove3D, piece: ChessPiece3D, board: ChessBoard3D) -> Int {
+        var score = 0
+        let pieceValue = pieceValues[piece.type] ?? 0
+        
+        // Check if the piece is currently under attack
+        if isPieceUnderAttack(move.from, board: board) {
+            let attackerValue = getHighestAttackerValue(at: move.from, board: board)
+            
+            // If a low-value piece (pawn, knight) is attacking a high-value piece, this is critical
+            if attackerValue < pieceValue {
+                score += 2000 // Massive bonus for escaping from low-value attackers
+                print("🤖 AI CRITICAL ESCAPE: \(piece.type.rawValue) escaping from \(attackerValue)-value attacker")
+            } else {
+                score += 500 // Good bonus for escaping from equal/higher value attackers
+            }
+        }
+        
+        // Check if the move destination is safer than current position
+        let currentDanger = calculatePositionDanger(move.from, board: board)
+        let destinationDanger = calculatePositionDanger(move.to, board: board)
+        
+        if destinationDanger < currentDanger {
+            score += (currentDanger - destinationDanger) * 100 // Bonus for moving to safer position
+            print("🤖 AI SAFETY IMPROVEMENT: \(piece.type.rawValue) moving from danger \(currentDanger) to \(destinationDanger)")
+        } else if destinationDanger > currentDanger {
+            score -= (destinationDanger - currentDanger) * 200 // Penalty for moving to more dangerous position
+            print("🤖 AI DANGER INCREASE: \(piece.type.rawValue) moving to more dangerous position")
+        }
+        
+        // Special protection for queen - she should be very defensive
+        if piece.type == .queen {
+            if isQueenUnderThreat(move.from, board: board) {
+                score += 3000 // Massive bonus for queen escaping threats
+                print("🤖 AI QUEEN PROTECTION: Queen escaping threat")
+            }
+            
+            // Penalty for moving queen to exposed positions
+            if isPositionExposed(move.to, board: board) {
+                score -= 1000 // Heavy penalty for exposing queen
+                print("🤖 AI QUEEN EXPOSURE: Penalty for exposing queen")
+            }
+        }
+        
+        return score
+    }
+    
     private func isPieceUnderAttack(_ position: ChessPosition3D, board: ChessBoard3D) -> Bool {
         let opponentColor: PieceColor = aiColor == .white ? .black : .white
         let opponentPieces = board.getPieces(of: opponentColor)
@@ -1279,9 +1665,67 @@ class ChessAI {
                 return true
             }
         }
-        
         return false
     }
+    
+    private func getHighestAttackerValue(at position: ChessPosition3D, board: ChessBoard3D) -> Int {
+        let opponentColor: PieceColor = aiColor == .white ? .black : .white
+        let opponentPieces = board.getPieces(of: opponentColor)
+        var highestValue = 0
+        
+        for opponentPiece in opponentPieces {
+            if canPieceCapture(opponentPiece, targetPosition: position, board: board) {
+                let value = pieceValues[opponentPiece.type] ?? 0
+                if value > highestValue {
+                    highestValue = value
+                }
+            }
+        }
+        return highestValue
+    }
+    
+    private func calculatePositionDanger(_ position: ChessPosition3D, board: ChessBoard3D) -> Int {
+        let opponentColor: PieceColor = aiColor == .white ? .black : .white
+        let opponentPieces = board.getPieces(of: opponentColor)
+        var danger = 0
+        
+        for opponentPiece in opponentPieces {
+            if canPieceCapture(opponentPiece, targetPosition: position, board: board) {
+                danger += pieceValues[opponentPiece.type] ?? 0
+            }
+        }
+        return danger
+    }
+    
+    private func isQueenUnderThreat(_ position: ChessPosition3D, board: ChessBoard3D) -> Bool {
+        // Check if queen is under immediate threat from any piece
+        return isPieceUnderAttack(position, board: board)
+    }
+    
+    private func isPositionExposed(_ position: ChessPosition3D, board: ChessBoard3D) -> Bool {
+        // Check if a position is exposed (can be attacked by multiple pieces)
+        let opponentColor: PieceColor = aiColor == .white ? .black : .white
+        let opponentPieces = board.getPieces(of: opponentColor)
+        var attackCount = 0
+        
+        for opponentPiece in opponentPieces {
+            if canPieceCapture(opponentPiece, targetPosition: position, board: board) {
+                attackCount += 1
+                if attackCount >= 2 { // Exposed if 2 or more pieces can attack
+                    return true
+                }
+            }
+        }
+        return false
+    }
+    
+    private func canPieceCapture(_ piece: ChessPiece3D, targetPosition: ChessPosition3D, board: ChessBoard3D) -> Bool {
+        // Check if a piece can capture at the target position
+        let moves = board.getValidMoves(for: piece, checkEnPassant: false)
+        return moves.contains { $0.to == targetPosition }
+    }
+    
+
     
     private func blocksAttackOnPiece(_ move: ChessMove3D, board: ChessBoard3D) -> Bool {
         // Check if this move blocks an attack on another piece
@@ -1299,64 +1743,7 @@ class ChessAI {
         return false
     }
     
-    private func canPieceCapture(_ piece: ChessPiece3D, targetPosition: ChessPosition3D, board: ChessBoard3D) -> Bool {
-        // Check if a piece can capture at the target position in 3D
-        let fileDiff = abs(piece.position.file - targetPosition.file)
-        let rankDiff = abs(piece.position.rank - targetPosition.rank)
-        let zDiff = abs(piece.position.z - targetPosition.z)
-        
-        switch piece.type {
-        case .pawn:
-            // Pawns can capture diagonally in 3D
-            // Forward diagonal: fileDiff == 1 AND rankDiff == 1 AND zDiff == 0
-            // 3D diagonal: fileDiff == 1 AND rankDiff == 1 AND zDiff == 1
-            // YZ diagonal: fileDiff == 0 AND rankDiff == 1 AND zDiff == 1
-            return (fileDiff == 1 && rankDiff == 1 && zDiff == 0) ||
-                   (fileDiff == 1 && rankDiff == 1 && zDiff == 1) ||
-                   (fileDiff == 0 && rankDiff == 1 && zDiff == 1)
-        case .knight:
-            // Knights can capture in 3D L-shape
-            // 2D L-shape: (fileDiff == 2 && rankDiff == 1 && zDiff == 0) || (fileDiff == 1 && rankDiff == 2 && zDiff == 0)
-            // 3D L-shape: (fileDiff == 2 && rankDiff == 0 && zDiff == 1) || (fileDiff == 0 && rankDiff == 2 && zDiff == 1)
-            // 3D L-shape: (fileDiff == 1 && rankDiff == 0 && zDiff == 2) || (fileDiff == 0 && rankDiff == 1 && zDiff == 2)
-            return (fileDiff == 2 && rankDiff == 1 && zDiff == 0) ||
-                   (fileDiff == 1 && rankDiff == 2 && zDiff == 0) ||
-                   (fileDiff == 2 && rankDiff == 0 && zDiff == 1) ||
-                   (fileDiff == 0 && rankDiff == 2 && zDiff == 1) ||
-                   (fileDiff == 1 && rankDiff == 0 && zDiff == 2) ||
-                   (fileDiff == 0 && rankDiff == 1 && zDiff == 2)
-        case .bishop:
-            // Bishops can capture diagonally in 3D
-            // 2D diagonal: fileDiff == rankDiff && zDiff == 0
-            // 3D diagonal: fileDiff == zDiff && rankDiff == 0
-            // 3D diagonal: rankDiff == zDiff && fileDiff == 0
-            // 3D diagonal: fileDiff == rankDiff == zDiff
-            return (fileDiff == rankDiff && zDiff == 0) ||
-                   (fileDiff == zDiff && rankDiff == 0) ||
-                   (rankDiff == zDiff && fileDiff == 0) ||
-                   (fileDiff == rankDiff && rankDiff == zDiff)
-        case .rook:
-            // Rooks can capture in straight lines in 3D
-            // 2D straight: (fileDiff == 0 && rankDiff == 0) || (rankDiff == 0 && zDiff == 0)
-            // 3D straight: (fileDiff == 0 && zDiff == 0) || (rankDiff == 0 && zDiff == 0)
-            return (fileDiff == 0 && rankDiff == 0) ||
-                   (rankDiff == 0 && zDiff == 0) ||
-                   (fileDiff == 0 && zDiff == 0)
-        case .queen:
-            // Queens can capture in straight lines or diagonally in 3D
-            // Combine rook and bishop patterns
-            return (fileDiff == 0 && rankDiff == 0) ||
-                   (rankDiff == 0 && zDiff == 0) ||
-                   (fileDiff == 0 && zDiff == 0) ||
-                   (fileDiff == rankDiff && zDiff == 0) ||
-                   (fileDiff == zDiff && rankDiff == 0) ||
-                   (rankDiff == zDiff && fileDiff == 0) ||
-                   (fileDiff == rankDiff && rankDiff == zDiff)
-        case .king:
-            // Kings can capture adjacent squares in 3D
-            return fileDiff <= 1 && rankDiff <= 1 && zDiff <= 1
-        }
-    }
+
     
     private func blocksAttackPath(_ move: ChessMove3D, targetPiece: ChessPiece3D, board: ChessBoard3D) -> Bool {
         // Simplified check - in a full implementation, this would check if the move blocks the attack path
@@ -1873,8 +2260,8 @@ class ChessAI {
         }
         
         // Doubled pawns penalty
-        let doubledPawns = allPieces.filter { 
-            $0.type == PieceType.pawn && $0.color == pawn.color && $0.position.file == position.file 
+        let doubledPawns = allPieces.filter {
+            $0.type == PieceType.pawn && $0.color == pawn.color && $0.position.file == position.file
         }.count
         if doubledPawns > 1 {
             score -= 20 * (doubledPawns - 1)
@@ -1882,8 +2269,8 @@ class ChessAI {
         
         // Isolated pawns penalty
         let adjacentFiles = [position.file - 1, position.file + 1].filter { $0 >= 0 && $0 <= 7 }
-        let hasAdjacentPawns = allPieces.contains { 
-            $0.type == PieceType.pawn && $0.color == pawn.color && adjacentFiles.contains($0.position.file) 
+        let hasAdjacentPawns = allPieces.contains {
+            $0.type == PieceType.pawn && $0.color == pawn.color && adjacentFiles.contains($0.position.file)
         }
         if !hasAdjacentPawns {
             score -= 30
@@ -1907,8 +2294,8 @@ class ChessAI {
         for rank in stride(from: position.rank + direction, through: pawn.color == .white ? 7 : 0, by: direction) {
             for z in 0...7 {
                 let checkPosition = ChessPosition3D(file: position.file, rank: rank, z: z)
-                if let piece = board.getPiece(at: checkPosition), 
-                   piece.type == PieceType.pawn && piece.color != pawn.color {
+                if let piece = board.getPiece(at: checkPosition),
+                    piece.type == PieceType.pawn && piece.color != pawn.color {
                     return false
                 }
             }
@@ -1946,8 +2333,8 @@ class ChessAI {
         }
         
         // Penalty for king in center in middlegame
-        if aiKing.position.file >= 2 && aiKing.position.file <= 5 && 
-           aiKing.position.rank >= 2 && aiKing.position.rank <= 5 {
+        if aiKing.position.file >= 2 && aiKing.position.file <= 5 &&
+            aiKing.position.rank >= 2 && aiKing.position.rank <= 5 {
             score -= 30
         }
         
@@ -2018,7 +2405,7 @@ class ChessAI {
     private func canPieceAttackPosition(piece: ChessPiece3D, targetPosition: ChessPosition3D) -> Bool {
         guard let board = getBoard() else { return false }
         
-        let moves = board.getValidMoves(for: piece)
+        let moves = board.getValidMoves(for: piece, checkEnPassant: false)
         return moves.contains { $0.to == targetPosition }
     }
     
@@ -2361,9 +2748,9 @@ class ChessAI {
         for square in protectionSquares {
             if square.file >= 0 && square.file <= 7 && square.rank >= 0 && square.rank <= 7 && square.z >= 0 && square.z <= 7 {
                 if let protectedPiece = board.getPiece(at: square) {
-                    if protectedPiece.color == friendlyColor && 
-                       (protectedPiece.type == .knight || protectedPiece.type == .bishop || 
-                        protectedPiece.type == .rook || protectedPiece.type == .queen) {
+                    if protectedPiece.color == friendlyColor &&
+                        (protectedPiece.type == .knight || protectedPiece.type == .bishop ||
+                         protectedPiece.type == .rook || protectedPiece.type == .queen) {
                         protectsImportantPiece = true
                         break
                     }
@@ -2381,9 +2768,9 @@ class ChessAI {
         for square in currentProtectionSquares {
             if square.file >= 0 && square.file <= 7 && square.rank >= 0 && square.rank <= 7 && square.z >= 0 && square.z <= 7 {
                 if let currentlyProtectedPiece = board.getPiece(at: square) {
-                    if currentlyProtectedPiece.color == friendlyColor && 
-                       (currentlyProtectedPiece.type == .knight || currentlyProtectedPiece.type == .bishop || 
-                        currentlyProtectedPiece.type == .rook || currentlyProtectedPiece.type == .queen) {
+                    if currentlyProtectedPiece.color == friendlyColor &&
+                        (currentlyProtectedPiece.type == .knight || currentlyProtectedPiece.type == .bishop ||
+                         currentlyProtectedPiece.type == .rook || currentlyProtectedPiece.type == .queen) {
                         // Check if this piece will still be protected by other pawns
                         if !isProtectedByOtherPawns(square, excludingPawn: move.from, color: friendlyColor) {
                             leavesImportantPieceUnprotected = true
@@ -2434,7 +2821,7 @@ class ChessAI {
         
         // Check if it's a 1-square lateral move (horizontal or forward/backward, not vertical Z)
         let isOneSquareLateral = (fileDistance == 1 && rankDistance == 0 && zDistance == 0) ||
-                                (fileDistance == 0 && rankDistance == 1 && zDistance == 0)
+        (fileDistance == 0 && rankDistance == 1 && zDistance == 0)
         
         if !isOneSquareLateral {
             return true // Not a 1-square lateral move, so it's valid
@@ -2471,7 +2858,7 @@ class ChessAI {
         
         // Check if any enemy piece can attack this position
         for enemyPiece in enemyPieces {
-            let enemyMoves = board.getValidMoves(for: enemyPiece)
+            let enemyMoves = board.getValidMoves(for: enemyPiece, checkEnPassant: false)
             if enemyMoves.contains(where: { $0.to == position }) {
                 return true
             }
@@ -2500,7 +2887,7 @@ class ChessAI {
         let pawns = allPieces.filter { $0.color == color && $0.type == .pawn }
         
         for pawn in pawns {
-            let pawnMoves = board.getValidMoves(for: pawn)
+            let pawnMoves = board.getValidMoves(for: pawn, checkEnPassant: false)
             if pawnMoves.contains(where: { $0.to == position }) {
                 return true
             }
@@ -2607,12 +2994,12 @@ class ChessAI {
         // Update consecutive move count
         if lastMovedPiece == pieceId {
             pieceMoveCounts[pieceId] = (pieceMoveCounts[pieceId] ?? 0) + 1
-            } else {
+        } else {
             // Reset all counts when moving a different piece
             pieceMoveCounts.removeAll()
             pieceMoveCounts[pieceId] = 1
             lastMovedPiece = pieceId
-            }
+        }
         
         // Track Z-axis moves
         if move.from.z != move.to.z {
@@ -2676,7 +3063,7 @@ class ChessAI {
         }
         
         // Check if this pawn move creates space for bishops or rooks
-        let destination = move.to
+        _ = move.to
         let color = piece.color
         
         // For bishops: Check if this opens diagonal paths
@@ -2815,7 +3202,7 @@ class ChessAI {
         
         // Prefer moves that control center or attack enemy territory
         let isCenterControl = (destination.file >= 2 && destination.file <= 5) &&
-                             (destination.rank >= 2 && destination.rank <= 5)
+        (destination.rank >= 2 && destination.rank <= 5)
         
         let isAttacking = move.capturedPiece != nil
         
@@ -3010,7 +3397,7 @@ class ChessAI {
         // Return the specific pawn moves that must be made
         return [
             "ii b8->ii b7",
-            "ii b7->i b7", 
+            "ii b7->i b7",
             "i b7->ii g8",
             "ii g8->ii g7",
             "ii g7->i g7"
@@ -3128,7 +3515,7 @@ class ChessAI {
     // Helper: Check if a move is repetitive (same piece moving back and forth)
     private func isRepetitiveMove(move: ChessMove3D) -> Bool {
         // Check if this piece has moved recently
-        let pieceId = "\(move.from.stringValue)->\(move.to.stringValue)"
+        _ = "\(move.from.stringValue)->\(move.to.stringValue)"
         
         // Check last few moves in AI history
         let recentMoves = Array(aiMoveHistory.suffix(4))
@@ -3154,7 +3541,7 @@ class ChessAI {
         let enemyPieces = board.getPieces(of: enemyColor)
         
         for enemyPiece in enemyPieces {
-            let enemyMoves = board.getValidMoves(for: enemyPiece)
+            let enemyMoves = board.getValidMoves(for: enemyPiece, checkEnPassant: false)
             if enemyMoves.contains(where: { $0.to == position }) {
                 return true // King would be in danger at this position
             }
@@ -3182,24 +3569,24 @@ class ChessAI {
         case .rook:
             // Rooks can move in straight lines
             return (fileDiff == 0 && rankDiff == 0 && zDiff > 0) || // Same file/rank, different Z
-                   (fileDiff > 0 && rankDiff == 0 && zDiff == 0) || // Same rank/Z, different file
-                   (fileDiff == 0 && rankDiff > 0 && zDiff == 0)    // Same file/Z, different rank
+            (fileDiff > 0 && rankDiff == 0 && zDiff == 0) || // Same rank/Z, different file
+            (fileDiff == 0 && rankDiff > 0 && zDiff == 0)    // Same file/Z, different rank
             
         case .bishop:
             // Bishops can move diagonally
             return fileDiff == rankDiff && fileDiff > 0 && zDiff == 0 // 2D diagonal
-                   || (fileDiff == rankDiff && fileDiff == zDiff && fileDiff > 0) // 3D diagonal
+            || (fileDiff == rankDiff && fileDiff == zDiff && fileDiff > 0) // 3D diagonal
             
         case .queen:
             // Queen combines rook and bishop moves
             return canPieceAttackSquare(ChessPiece3D(type: .rook, color: piece.color, position: piece.position), targetSquare: targetSquare) ||
-                   canPieceAttackSquare(ChessPiece3D(type: .bishop, color: piece.color, position: piece.position), targetSquare: targetSquare)
+            canPieceAttackSquare(ChessPiece3D(type: .bishop, color: piece.color, position: piece.position), targetSquare: targetSquare)
             
         case .knight:
             // Knights move in L-shape
             let totalDistance = fileDiff + rankDiff + zDiff
             return totalDistance == 3 && fileDiff <= 2 && rankDiff <= 2 && zDiff <= 2 &&
-                   (fileDiff == 0 || rankDiff == 0 || zDiff == 0) // One component must be 0
+            (fileDiff == 0 || rankDiff == 0 || zDiff == 0) // One component must be 0
             
         case .king:
             // King can move one square in any direction
@@ -3233,11 +3620,51 @@ class ChessAI {
         
         return true
     }
+    
+    // MARK: - Move Prioritization
+    
+    /// Prioritizes pawns, knights, and bishops over king/queen moves when not under attack
+    private func getPrioritizedMove(from moves: [ChessMove3D]) -> ChessMove3D {
+        guard let board = getBoard() else { return moves.first! }
+        
+        // Check if king is in check - if so, prioritize king moves
+        if board.isCheck(color: aiColor) {
+            let kingMoves = moves.filter { move in
+                if let piece = board.getPiece(at: move.from) {
+                    return piece.type == .king
+                }
+                return false
+            }
+            if !kingMoves.isEmpty {
+                print("🤖 AI priority: King in check - choosing king move")
+                return kingMoves.first!
+            }
+        }
+        
+        // Priority order: pawns > knights > bishops > rooks > queens > kings
+        let priorityOrder: [PieceType] = [.pawn, .knight, .bishop, .rook, .queen, .king]
+        
+        for pieceType in priorityOrder {
+            let movesOfType = moves.filter { move in
+                if let piece = board.getPiece(at: move.from) {
+                    return piece.type == pieceType
+                }
+                return false
+            }
+            
+            if !movesOfType.isEmpty {
+                print("🤖 AI priority: Choosing \(pieceType.rawValue) move (priority level \(priorityOrder.firstIndex(of: pieceType)! + 1))")
+                return movesOfType.first!
+            }
+        }
+        
+        // Fallback to first available move
+        print("🤖 AI priority: No prioritized moves found - using first available")
+        return moves.first!
+    }
+    
+    // MARK: - AI Integration with Game Manager
+    
+    // Note: AI integration methods are now implemented in ChessGameManager.swift
+    // This extension has been moved to the main ChessGameManager class
 }
-
-// MARK: - AI Integration with Game Manager
-
-// Note: AI integration methods are now implemented in ChessGameManager.swift
-// This extension has been moved to the main ChessGameManager class 
-
-
