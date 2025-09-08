@@ -1691,13 +1691,14 @@ class ChessBoard3D {
         }
         switch piece.type {
         case .pawn:
-            // Pawns attack diagonally in 3D space (file change + forward Y + any Z)
+            // Pawns attack diagonally in 3D space (file change + forward Y + same or adjacent Z)
             let direction = piece.color == .white ? 1 : -1
             let fileDiff = abs(targetPosition.file - piece.position.file)
             let rankDiff = targetPosition.rank - piece.position.rank
+            let zDiff = abs(targetPosition.z - piece.position.z)
             
-            // Allow diagonal captures: file change + forward Y only + any Z direction
-            let canAttack = fileDiff == 1 && rankDiff == direction
+            // Allow diagonal captures: file change + forward Y + same or adjacent Z level
+            let canAttack = fileDiff == 1 && rankDiff == direction && zDiff <= 1
             
             // Debug output for pawn attacks
             if targetPosition.stringValue.contains("g6") && (piece.position.stringValue.contains("h7") || piece.position.stringValue.contains("f7")) {

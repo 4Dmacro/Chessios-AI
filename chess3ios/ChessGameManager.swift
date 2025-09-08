@@ -1598,9 +1598,9 @@ class ChessGameManager: ObservableObject {
         
         let graveyardPosition: SCNVector3
         if capturedPiece.color == .white {
-            graveyardPosition = SCNVector3(x: whiteGraveyardPosition.x, y: whiteGraveyardPosition.y + CGFloat(offsetY), z: whiteGraveyardPosition.z)
+            graveyardPosition = SCNVector3(x: whiteGraveyardPosition.x, y: whiteGraveyardPosition.y + Float(CGFloat(offsetY)), z: whiteGraveyardPosition.z)
         } else {
-            graveyardPosition = SCNVector3(x: blackGraveyardPosition.x, y: blackGraveyardPosition.y + CGFloat(offsetY), z: blackGraveyardPosition.z)
+            graveyardPosition = SCNVector3(x: blackGraveyardPosition.x, y: blackGraveyardPosition.y + Float(CGFloat(offsetY)), z: blackGraveyardPosition.z)
         }
         
         // Animate the piece to graveyard
@@ -3969,36 +3969,47 @@ class ChessGameManager: ObservableObject {
         // CRITICAL: Check if king is in check and handle appropriately
         if chessBoard.isCheck(color: aiColor) {
             print("🤖 AI: King is in check - using emergency move selection")
-            // Use a simpler, faster move selection for check situations
-            let emergencyMove = selectEmergencyMove(for: aiColor)
-            if let move = emergencyMove {
-                print("🤖 AI: Emergency move selected: \(move.from.stringValue) -> \(move.to.stringValue)")
-                
-                // CRITICAL: Validate the emergency move before executing
-                if let piece = chessBoard.getPiece(at: move.from) {
-                    let validMoves = chessBoard.getValidMoves(for: piece)
-                    let isValidMove = validMoves.contains { $0.to == move.to }
+            
+            // Try up to 3 emergency moves to avoid infinite loops
+            var attempts = 0
+            let maxAttempts = 3
+            
+            while attempts < maxAttempts {
+                let emergencyMove = selectEmergencyMove(for: aiColor)
+                if let move = emergencyMove {
+                    print("🤖 AI: Emergency move attempt \(attempts + 1): \(move.from.stringValue) -> \(move.to.stringValue)")
                     
-                                    if isValidMove {
-                    print("🤖 AI: Emergency move validated - executing immediately")
-                    // For emergency moves, execute immediately to prevent getting stuck
-                    DispatchQueue.main.async {
-                        self.executeAIMove(move)
+                    // CRITICAL: Validate the emergency move before executing
+                    if let piece = chessBoard.getPiece(at: move.from) {
+                        let validMoves = chessBoard.getValidMoves(for: piece)
+                        let isValidMove = validMoves.contains { $0.to == move.to }
+                        
+                        if isValidMove {
+                            print("🤖 AI: Emergency move validated - executing immediately")
+                            // For emergency moves, execute immediately to prevent getting stuck
+                            DispatchQueue.main.async {
+                                self.executeAIMove(move)
+                            }
+                            return
+                        } else {
+                            print("❌ AI: Emergency move attempt \(attempts + 1) is not valid")
+                            attempts += 1
+                        }
+                    } else {
+                        print("❌ AI: Emergency move piece not found")
+                        attempts += 1
                     }
                 } else {
-                    print("❌ AI: Emergency move is not valid - resetting AI state")
+                    print("🤖 AI: No emergency move available - checkmate!")
                     isAIMoveInProgress = false
-                    consecutiveFailedMoves += 1
+                    return
                 }
-                } else {
-                    print("❌ AI: Emergency move piece not found - resetting AI state")
-                    isAIMoveInProgress = false
-                    consecutiveFailedMoves += 1
-                }
-            } else {
-                print("🤖 AI: No emergency move available - checkmate!")
-                isAIMoveInProgress = false
             }
+            
+            // If we've tried maxAttempts and still failed, reset AI state
+            print("❌ AI: Failed to find valid emergency move after \(maxAttempts) attempts - resetting AI state")
+            isAIMoveInProgress = false
+            consecutiveFailedMoves += 1
             return
         }
         

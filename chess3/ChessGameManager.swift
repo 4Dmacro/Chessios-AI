@@ -297,25 +297,29 @@ class ChessGameManager: ObservableObject {
     func rotateBoardForGameKitPlayer(playerColor: PieceColor) {
         print("🎮 GameKit: Rotating board for \(playerColor.rawValue) player")
         
-        // Rotate the board so the player sees their pieces at the bottom
-        // White pieces should be at the bottom for white player, top for black player
-        let targetRotation: Float = playerColor == .white ? 0.0 : Float.pi
-        
-        print("🎮 GameKit: Target rotation: \(targetRotation) radians (\(targetRotation * 180 / Float.pi) degrees)")
-        
-        // Apply rotation to the model node (container) - use Y-axis rotation, not X-axis
+        // Use the same rotation logic as iOS for consistency
         if let modelNode = modelNode {
-            let currentRotation = CGFloat(modelNode.eulerAngles.y)
-            print("🎮 GameKit: Current model rotation: \(currentRotation) radians (\(currentRotation * 180 / CGFloat.pi) degrees)")
+            let targetRotation: SCNVector3
             
-            // Only rotate if the current rotation is different from target
-            if abs(currentRotation - CGFloat(targetRotation)) > 0.01 {
-                modelNode.eulerAngles.y = CGFloat(targetRotation)
-                print("🎮 GameKit: Model rotated to \(playerColor.rawValue) perspective (Y-axis rotation: \(targetRotation))")
-                print("🎮 GameKit: New model rotation: \(modelNode.eulerAngles.y) radians (\(CGFloat(modelNode.eulerAngles.y) * 180 / CGFloat.pi) degrees)")
+            if playerColor == .black {
+                // For black player: rotate to black's position (180° Y-axis from white default)
+                targetRotation = SCNVector3(-Float.pi * 5/12 - Float.pi * 1/12, Float.pi + Float.pi * 1/7, 0)
+                print("🎮 GameKit: Target rotation for black player: \(targetRotation)")
             } else {
-                print("🎮 GameKit: Model already at correct rotation, no change needed")
+                // For white player: rotate to white's default position
+                targetRotation = SCNVector3(-Float.pi * 6/12, Float.pi * 1/7, 0)
+                print("🎮 GameKit: Target rotation for white player: \(targetRotation)")
             }
+            
+            // Apply the rotation using SCNAction for smooth animation
+            let rotationAction = SCNAction.rotateTo(x: CGFloat(targetRotation.x),
+                                                   y: CGFloat(targetRotation.y),
+                                                   z: CGFloat(targetRotation.z),
+                                                   duration: 0.8)
+            modelNode.runAction(rotationAction)
+            
+            print("🎮 GameKit: Model rotated to \(playerColor.rawValue) perspective")
+            print("🎮 GameKit: New model rotation: \(modelNode.eulerAngles) radians")
         } else {
             print("❌ GameKit: No model node found for rotation")
         }
@@ -3764,36 +3768,47 @@ class ChessGameManager: ObservableObject {
         // CRITICAL: Check if king is in check and handle appropriately
         if chessBoard.isCheck(color: aiColor) {
             print("🤖 AI: King is in check - using emergency move selection")
-            // Use a simpler, faster move selection for check situations
-            let emergencyMove = selectEmergencyMove(for: aiColor)
-            if let move = emergencyMove {
-                print("🤖 AI: Emergency move selected: \(move.from.stringValue) -> \(move.to.stringValue)")
-                
-                // CRITICAL: Validate the emergency move before executing
-                if let piece = chessBoard.getPiece(at: move.from) {
-                    let validMoves = chessBoard.getValidMoves(for: piece)
-                    let isValidMove = validMoves.contains { $0.to == move.to }
+            
+            // Try up to 3 emergency moves to avoid infinite loops
+            var attempts = 0
+            let maxAttempts = 3
+            
+            while attempts < maxAttempts {
+                let emergencyMove = selectEmergencyMove(for: aiColor)
+                if let move = emergencyMove {
+                    print("🤖 AI: Emergency move attempt \(attempts + 1): \(move.from.stringValue) -> \(move.to.stringValue)")
                     
-                                    if isValidMove {
-                    print("🤖 AI: Emergency move validated - executing immediately")
-                    // For emergency moves, execute immediately to prevent getting stuck
-                    DispatchQueue.main.async {
-                        self.executeAIMove(move)
+                    // CRITICAL: Validate the emergency move before executing
+                    if let piece = chessBoard.getPiece(at: move.from) {
+                        let validMoves = chessBoard.getValidMoves(for: piece)
+                        let isValidMove = validMoves.contains { $0.to == move.to }
+                        
+                        if isValidMove {
+                            print("🤖 AI: Emergency move validated - executing immediately")
+                            // For emergency moves, execute immediately to prevent getting stuck
+                            DispatchQueue.main.async {
+                                self.executeAIMove(move)
+                            }
+                            return
+                        } else {
+                            print("❌ AI: Emergency move attempt \(attempts + 1) is not valid")
+                            attempts += 1
+                        }
+                    } else {
+                        print("❌ AI: Emergency move piece not found")
+                        attempts += 1
                     }
                 } else {
-                    print("❌ AI: Emergency move is not valid - resetting AI state")
+                    print("🤖 AI: No emergency move available - checkmate!")
                     isAIMoveInProgress = false
-                    consecutiveFailedMoves += 1
+                    return
                 }
-                } else {
-                    print("❌ AI: Emergency move piece not found - resetting AI state")
-                    isAIMoveInProgress = false
-                    consecutiveFailedMoves += 1
-                }
-            } else {
-                print("🤖 AI: No emergency move available - checkmate!")
-                isAIMoveInProgress = false
             }
+            
+            // If we've tried maxAttempts and still failed, reset AI state
+            print("❌ AI: Failed to find valid emergency move after \(maxAttempts) attempts - resetting AI state")
+            isAIMoveInProgress = false
+            consecutiveFailedMoves += 1
             return
         }
         
