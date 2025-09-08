@@ -764,7 +764,7 @@ struct ContentView: View {
         .sheet(isPresented: $chessGame.showPromotionChoice) {
             PromotionChoiceView(chessGame: chessGame)
         }
-        .onChange(of: gameKitManager.playerColor) { newColor in
+        .onChange(of: gameKitManager.playerColor) { _, newColor in
             // Rotate board when GameKit player color changes
             if gameKitManager.matchState == .connected {
                 chessGame.rotateBoardForGameKitPlayer(playerColor: newColor)

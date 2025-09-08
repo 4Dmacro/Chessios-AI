@@ -3,6 +3,7 @@ import GameKit
 import SwiftUI
 import AppKit
 import SystemConfiguration
+import Network
 
 // MARK: - Match State Enum
 enum MatchState: Equatable {
@@ -686,15 +687,18 @@ class GameKitManager: NSObject, ObservableObject {
         
         // Check for network connectivity
         print("🔍 - Network connectivity:")
-        // Note: Using deprecated functions for compatibility, but they still work
-        let reachability = SCNetworkReachabilityCreateWithName(nil, "apple.com")
-        var flags = SCNetworkReachabilityFlags()
-        if let reachability = reachability,
-           SCNetworkReachabilityGetFlags(reachability, &flags) {
-            let isReachable = flags.contains(.reachable)
-            print("🔍   - Internet reachable: \(isReachable ? "✅" : "❌")")
+        // Use modern Network framework for reachability check
+        if #available(macOS 10.14, *) {
+            let monitor = NWPathMonitor()
+            let queue = DispatchQueue(label: "NetworkMonitor")
+            monitor.pathUpdateHandler = { path in
+                let isReachable = path.status == .satisfied
+                print("🔍   - Internet reachable: \(isReachable ? "✅" : "❌")")
+                monitor.cancel()
+            }
+            monitor.start(queue: queue)
         } else {
-            print("🔍   - Could not check network reachability")
+            print("🔍   - Network reachability check not available on this macOS version")
         }
         
         // Check firewall status

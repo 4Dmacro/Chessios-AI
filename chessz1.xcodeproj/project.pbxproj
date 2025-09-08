@@ -77,6 +77,7 @@
 /* Begin PBXFileReference section */
 		FF0F269F2E4C4E41004C7507 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FF0F26A12E4C4E41004C7507 /* chess3App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = chess3App.swift; sourceTree = "<group>"; };
+		FF0F26A02E4C4E41004C7507 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		FF0F26A22E4C4E41004C7507 /* ChessAI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChessAI.swift; sourceTree = "<group>"; };
 		FF0F26A42E4C4E41004C7507 /* chessappnums.usdz */ = {isa = PBXFileReference; lastKnownFileType = file; path = chessappnums.usdz; sourceTree = "<group>"; };
 		FF0F26A62E4C4E41004C7507 /* ChessEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChessEngine.swift; sourceTree = "<group>"; };
@@ -238,6 +239,7 @@
 				FFEE12DD2E56A6660052174C /* cheesicon5.icon */,
 				FF20710A2E51C7C600A62549 /* boardfix2.usdz */,
 				FF0F269F2E4C4E41004C7507 /* Assets.xcassets */,
+				FF0F26A02E4C4E41004C7507 /* Info.plist */,
 				FF0F26A12E4C4E41004C7507 /* chess3App.swift */,
 				FF0F26A22E4C4E41004C7507 /* ChessAI.swift */,
 				FF0F26A42E4C4E41004C7507 /* chessappnums.usdz */,
@@ -825,8 +827,10 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = chess3/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LSApplicationCategoryType = "public.app-category.games";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -861,8 +865,10 @@
 				DEVELOPMENT_TEAM = Y59CXV2R58;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = chess3/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LSApplicationCategoryType = "public.app-category.games";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1177,6 +1183,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LSApplicationCategoryType = "public.app-category.games";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -1211,6 +1218,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LSApplicationCategoryType = "public.app-category.games";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -1333,7 +1341,7 @@
 				INFOPLIST_FILE = chess3ios/Info.plist;
 				"INFOPLIST_FILE[sdk=*]" = "";
 				INFOPLIST_KEY_CFBundleDisplayName = "";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.strategy-games";
+				LSApplicationCategoryType = "public.app-category.games";
 				INFOPLIST_KEY_NSHumanReadableCopyright = GCosta;
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1376,7 +1384,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = chess3ios/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.strategy-games";
+				LSApplicationCategoryType = "public.app-category.games";
 				INFOPLIST_KEY_NSHumanReadableCopyright = GCosta;
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
