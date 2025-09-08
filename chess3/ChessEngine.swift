@@ -561,9 +561,9 @@ class ChessBoard3D {
     private func wouldMoveLeaveKingInCheck(from: ChessPosition3D, to: ChessPosition3D) -> Bool {
         guard let piece = getPiece(at: from) else { return false }
         
-        // CRITICAL: Add timeout protection for validation functions
+        // CRITICAL: Add aggressive timeout protection for validation functions
         let startTime = Date()
-        let maxValidationTime: TimeInterval = 2.0 // 2 second timeout for validation
+        let maxValidationTime: TimeInterval = 0.5 // Reduced to 0.5 seconds for faster timeout
         
         // Check timeout before starting validation
         if Date().timeIntervalSince(startTime) > maxValidationTime {

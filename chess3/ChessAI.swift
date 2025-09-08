@@ -228,6 +228,12 @@ class ChessAI {
         // Get all valid moves (not just pawns)
         let allMoves = getAllValidMoves(for: aiColor)
         
+        // Check timeout after move generation
+        if Date().timeIntervalSince(startTime) > maxCalculationTime {
+            print("⚠️ AI timeout after move generation - choosing first available move")
+            return allMoves.first
+        }
+        
         guard !allMoves.isEmpty else {
             print("🤖 AI has no valid moves available")
             return nil
@@ -268,11 +274,21 @@ class ChessAI {
                     // CRITICAL: Exclude moves that would allow valuable pieces to be captured by less valuable pieces
                     let movingPieceValue = pieceValues[piece.type] ?? 0
                     if movingPieceValue >= 3 { // Queen, rook, bishop, knight
+                        // Check timeout before expensive enemy piece analysis
+                        if Date().timeIntervalSince(startTime) > maxCalculationTime {
+                            print("⚠️ AI timeout during move filtering - allowing move")
+                            return true
+                        }
+                        
                         // Check if this move would allow our piece to be captured by a less valuable enemy piece
                         let enemyColor = aiColor.opposite
                         let enemyPieces = board.getPieces(of: enemyColor)
                         
-                        for enemyPiece in enemyPieces {
+                        // Limit enemy piece checks to prevent infinite loops
+                        let maxEnemyChecks = min(enemyPieces.count, 5) // Only check first 5 enemy pieces
+                        for (index, enemyPiece) in enemyPieces.enumerated() {
+                            if index >= maxEnemyChecks { break } // Prevent infinite loops
+                            
                             let enemyValue = pieceValues[enemyPiece.type] ?? 0
                             if enemyValue < movingPieceValue { // Enemy piece is less valuable
                                 // Check if enemy can capture our piece after this move
@@ -306,6 +322,12 @@ class ChessAI {
         if filteredMoves.isEmpty {
             print("🤖 AI Warning: All moves filtered out - using all moves as fallback")
             filteredMoves = allMoves
+        }
+        
+        // Check timeout before move evaluation
+        if Date().timeIntervalSince(startTime) > maxCalculationTime {
+            print("⚠️ AI timeout before move evaluation - choosing first available move")
+            return filteredMoves.first ?? allMoves.first
         }
         
         // CRITICAL: Prioritize captures over strategic rules, but be smart about it

@@ -2910,11 +2910,13 @@ class ChessPieceController: ObservableObject {
         // Human move confirmed - AI can now take its turn immediately
         print("⏰ Human move confirmed - AI can now take its turn")
         
-        // Send pending GameKit move after confirmation timer expires
-        print("🎮 GameKit: confirmMove() - about to send pending move")
-        if let chessGame = chessGame {
+        // Send pending GameKit move after confirmation timer expires (only in Game Center mode)
+        if let chessGame = chessGame, chessGame.aiModeActive == false {
+            print("🎮 GameKit: confirmMove() - about to send pending move")
             print("🎮 GameKit: confirmMove() - chessGame found, calling sendPendingGameKitMove()")
             chessGame.sendPendingGameKitMove()
+        } else if let chessGame = chessGame, chessGame.aiModeActive == true {
+            print("🎮 GameKit: Skipping GameKit move send - AI mode is active")
         } else {
             print("🎮 GameKit: confirmMove() - chessGame is nil!")
         }

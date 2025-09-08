@@ -2612,7 +2612,29 @@ class ChessGameManager: ObservableObject {
     
     // MARK: - Game State Queries
     func getPieceAtPosition(_ position: ChessPosition3D) -> ChessPiece3D? {
-        return chessBoard.getPiece(at: position)
+        let piece = chessBoard.getPiece(at: position)
+        
+        // CRITICAL: Add validation to detect piece type corruption
+        if let piece = piece {
+            // Check if the piece position matches the requested position
+            if piece.position != position {
+                print("🚨 CRITICAL: Piece position mismatch! Piece at \(piece.position.stringValue) but requested \(position.stringValue)")
+                print("🚨 This indicates serious piece tracking corruption!")
+                
+                // Try to find the correct piece at the requested position
+                for (pos, p) in chessBoard.pieces {
+                    if pos == position {
+                        print("🚨 Found correct piece at \(position.stringValue): \(p.color) \(p.type)")
+                        return p
+                    }
+                }
+                
+                print("🚨 No piece found at requested position \(position.stringValue)")
+                return nil
+            }
+        }
+        
+        return piece
     }
     
     func isPositionValidMove(_ position: ChessPosition3D) -> Bool {
@@ -3158,40 +3180,40 @@ class ChessGameManager: ObservableObject {
             }
         }
         
-        // Track which pieces have been moved to avoid duplicates
-        var movedPieces: Set<ChessPosition3D> = []
+        // Track which pieces have been moved to avoid duplicates (no longer needed with current chess engine state)
+        // var movedPieces: Set<ChessPosition3D> = []
         
         // Create a new chess board that will contain ALL pieces
         var newChessBoard: [ChessPosition3D: ChessPiece3D] = [:]
         
-        // First, add all original pieces to their original positions
-        for (position, piece) in originalPieces {
+        // CRITICAL FIX: Use current chess engine state as source of truth, not original pieces
+        // Start with the current chess engine state (which has the correct current positions)
+        for (position, piece) in chessBoard.pieces {
             newChessBoard[position] = piece
         }
+        
+        print("🔄 Using current chess engine state as base (not original pieces)")
+        print("🔄 Current chess engine has \(chessBoard.pieces.count) pieces")
         
         // Then, update positions for pieces that are found in USDZ
         for (position, pieceNode) in usdzPieces {
             if let pieceInfo = determinePieceFromNode(pieceNode, at: position) {
-                // Find an available piece of the same type and color that hasn't been moved yet
-                let availablePositions = pieceInfo.color == .white ? 
-                    whitePieces[pieceInfo.type] ?? [] : 
-                    blackPieces[pieceInfo.type] ?? []
-                
-                if let originalPosition = availablePositions.first(where: { !movedPieces.contains($0) }),
-                   let originalPiece = originalPieces[originalPosition] {
-                    
-                    // Update the piece's position to match the USDZ piece
-                    let movedPiece = originalPiece.moved(to: position)
-                    newChessBoard[position] = movedPiece
-                    // Remove from original position only if it's different
-                    if originalPosition != position {
-                        newChessBoard.removeValue(forKey: originalPosition)
-                    }
-                    movedPieces.insert(originalPosition)
-                    
-                    print("♟️ Updated \(pieceInfo.color) \(pieceInfo.type) position from \(originalPosition.stringValue) to \(position.stringValue)")
+                // CRITICAL: Use the current chess engine piece, not original pieces
+                if let currentPiece = chessBoard.pieces[position] {
+                    // The piece is already at the correct position in the chess engine
+                    print("♟️ Piece already correctly positioned: \(currentPiece.color) \(currentPiece.type) at \(position.stringValue)")
                 } else {
-                    print("⚠️ No available \(pieceInfo.color) \(pieceInfo.type) to move to \(position.stringValue)")
+                    // Look for this piece type in the current chess engine state
+                    let matchingPieces = chessBoard.pieces.filter { $0.value.type == pieceInfo.type && $0.value.color == pieceInfo.color }
+                    if let (oldPosition, piece) = matchingPieces.first {
+                        // Move the piece to the new position
+                        let movedPiece = piece.moved(to: position)
+                        newChessBoard[position] = movedPiece
+                        newChessBoard.removeValue(forKey: oldPosition)
+                        print("♟️ Moved \(pieceInfo.color) \(pieceInfo.type) from \(oldPosition.stringValue) to \(position.stringValue)")
+                    } else {
+                        print("⚠️ No matching \(pieceInfo.color) \(pieceInfo.type) found in current chess engine")
+                    }
                 }
             }
         }
@@ -4014,9 +4036,17 @@ class ChessGameManager: ObservableObject {
                     print("🤖 AI: Updating visual piece position")
                     // Get the updated piece from the chess engine (it now has the new position)
                     if let updatedPiece = chessBoard.getPiece(at: move.to) {
+                        print("🤖 AI: Found updated piece at destination: \(updatedPiece.color) \(updatedPiece.type) at \(updatedPiece.position.stringValue)")
                         updateSpecificPiecePosition(updatedPiece, from: move.from)
                     } else {
                         print("❌ AI: Could not find updated piece at destination \(move.to.stringValue)")
+                        print("❌ AI: This indicates a serious piece tracking issue!")
+                        
+                        // Debug: Print all pieces at the destination position
+                        print("🔍 AI Debug: All pieces in chess engine:")
+                        for (pos, p) in chessBoard.pieces {
+                            print("  - \(p.color) \(p.type) at \(pos.stringValue)")
+                        }
                     }
                     
                     // CRITICAL: Update game state after AI move
