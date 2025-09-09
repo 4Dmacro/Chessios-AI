@@ -33,6 +33,7 @@ struct ContentView: View {
     @State private var lastPinchScale: CGFloat = 1.0
     @State private var showAIWarning = false // For AI warning message
     @State private var showGameCenterPopover = false // For Game Center popover
+    @State private var showRules = false // For rules popover
     
     @EnvironmentObject var gameKitManager: GameKitManager
     
@@ -192,6 +193,7 @@ struct ContentView: View {
         .ignoresSafeArea()
         .onAppear {
             setupChessGame()
+            
         }
         .onChange(of: gameKitManager.playerColor) { _, newColor in
             // Rotate board when GameKit player color changes
@@ -201,6 +203,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $chessGame.showPromotionChoice) {
             PromotionChoiceView(chessGame: chessGame)
+        }
+        .popover(isPresented: $showRules) {
+            ChessRulesView(isPresented: $showRules)
         }
     }
     
@@ -405,6 +410,21 @@ struct ContentView: View {
             ChessPieceControllerView(controller: pieceController)
                 .scaleEffect(uiScale)
                 .position(x: geometry.size.width - 100, y: geometry.size.height / 2) // Move 15mm (about 30px) to the right
+            
+            // Rules Button - Bottom Right Corner
+            Button("📖 Rules and Instructions") {
+                showRules = true
+            }
+            .buttonStyle(PlainButtonStyle())
+            .font(.caption)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(Color.blue.opacity(0.4))
+            .foregroundColor(.white)
+            .cornerRadius(6)
+            
+        
+            .position(x: geometry.size.width - 100, y: geometry.size.height - 60)
             
             // Move Confirmation UI (overlay when move is pending)
             if pieceController.isMovePending {
@@ -695,6 +715,20 @@ struct ContentView: View {
                     .scaleEffect(uiScale)
                     .position(x: geometry.size.width - 115, y: geometry.size.height / 2.3) // Move further left to bring fully on screen
                 
+                // Rules Button - Bottom Right Corner (iPhone)
+                Button("📖 Rules and Instructions") {
+                    showRules = true
+                }
+                .buttonStyle(PlainButtonStyle())
+                .font(.caption2)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.blue.opacity(0.3))
+                .foregroundColor(.white)
+                .cornerRadius(6)
+                
+                .position(x: geometry.size.width - 80, y: geometry.size.height - 50)
+                
                 // Move Confirmation UI (overlay when move is pending)
                 if pieceController.isMovePending {
                     // Debug: Log timer UI visibility
@@ -768,7 +802,7 @@ struct ContentView: View {
         // Create camera
         cameraNode.camera = SCNCamera()
         cameraNode.camera?.fieldOfView = 60  // Set field of view for better perspective
-        cameraNode.position = SCNVector3(0, 8, 16)  // Match macOS positioning for better lighting
+        cameraNode.position = SCNVector3(0, 6, 16)  // Match macOS positioning for better lighting
         scene.rootNode.addChildNode(cameraNode)
         
         print("📷 Camera positioned at: \(cameraNode.position)")

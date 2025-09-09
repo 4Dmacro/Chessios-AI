@@ -36,7 +36,7 @@ struct MultiplayerView: View {
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         .foregroundColor(.white)
-                        .background(Color.blue)
+                        .background(Color.blue.opacity(0.4))
                         
                         // Force re-authentication button for macOS Game Center issues
                         if gameKitManager.isAuthenticated && GKLocalPlayer.local.displayName.isEmpty {

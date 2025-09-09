@@ -741,7 +741,7 @@
 				LSApplicationCategoryType = "public.app-category.games";
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = a.chess3D.macos;
+				PRODUCT_BUNDLE_IDENTIFIER = a.chess3D;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
@@ -779,7 +779,7 @@
 				LSApplicationCategoryType = "public.app-category.games";
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = a.chess3D.macos;
+				PRODUCT_BUNDLE_IDENTIFIER = a.chess3D;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;

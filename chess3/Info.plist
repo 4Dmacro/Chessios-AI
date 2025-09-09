@@ -7,7 +7,7 @@
 	<key>CFBundleExecutable</key>
 	<string>chess3</string>
 	<key>CFBundleIdentifier</key>
-	<string>a.chess3D.macos</string>
+	<string>a.chess3D</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>

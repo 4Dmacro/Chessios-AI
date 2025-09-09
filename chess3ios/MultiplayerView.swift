@@ -219,7 +219,7 @@ struct MultiplayerView: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 2)
-                            .background(Color.blue)
+                            .background(Color.blue.opacity(0.4))
                             .cornerRadius(6)
                             
                             Button("✕ Clear") {
@@ -229,7 +229,7 @@ struct MultiplayerView: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Color.gray)
+                            .background(Color.gray.opacity(0.6))
                             .cornerRadius(6)
                         }
                     }

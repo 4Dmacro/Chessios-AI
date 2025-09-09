@@ -1,4 +1,4 @@
-//
+ //
 //  ContentView.swift
 //  chess2
 //
@@ -30,6 +30,7 @@ struct ContentView: View {
     @State private var cancellables = Set<AnyCancellable>()
     @State private var showAIStats = false
     @State private var showAIWarning = false // For AI warning message
+    @State private var showRules = false // For rules popover
     // Add this property to ContentView
     @EnvironmentObject var gameKitManager: GameKitManager
     
@@ -477,6 +478,21 @@ struct ContentView: View {
                     
                     Spacer()
                     
+                    // Rules Button
+                    Button("📖 Rules and Instructions") {
+                        showRules = true
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.blue.opacity(0.3))
+                    .foregroundColor(.white)
+                    .cornerRadius(6)
+                  //  .overlay(
+                   //     RoundedRectangle(cornerRadius: 8)
+                     //       .stroke(Color.blue, lineWidth: 1)
+                    
+                    
                     // Game State Display
                     Text(chessGame.gameState)
                         .font(.headline)
@@ -720,6 +736,7 @@ struct ContentView: View {
                 print("🤖 AI timer stopped on app start")
             }
             
+            
             // CRITICAL FIX: Only start AI timer if AI mode is active
             if chessGame.aiModeActive {
                 print("🤖 AI mode is active - starting AI timer")
@@ -764,6 +781,9 @@ struct ContentView: View {
         .sheet(isPresented: $chessGame.showPromotionChoice) {
             PromotionChoiceView(chessGame: chessGame)
         }
+        .popover(isPresented: $showRules) {
+            ChessRulesView(isPresented: $showRules)
+        }
         .onChange(of: gameKitManager.playerColor) { _, newColor in
             // Rotate board when GameKit player color changes
             if gameKitManager.matchState == .connected {
@@ -777,7 +797,7 @@ struct ContentView: View {
     private func setupScene() {
         // Create camera
         cameraNode.camera = SCNCamera()
-        cameraNode.position = SCNVector3(0, 8, 16)
+        cameraNode.position = SCNVector3(0, 6, 14)
         scene.rootNode.addChildNode(cameraNode)
         
         print("📷 Camera positioned at: \(cameraNode.position)")

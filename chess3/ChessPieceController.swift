@@ -68,7 +68,7 @@ class ChessPieceController: ObservableObject {
     
     // Timer state for move confirmation
     @Published var isMovePending: Bool = false
-    @Published var moveConfirmationTimeRemaining: Double = 5.0
+    @Published var moveConfirmationTimeRemaining: Double = 6.0
     @Published var pendingMoveFrom: ChessPosition3D?
     @Published var pendingMoveTo: ChessPosition3D?
     @Published var pendingPieceNode: SCNNode?
