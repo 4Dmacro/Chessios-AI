@@ -716,10 +716,10 @@ struct ContentView: View {
                     .position(x: geometry.size.width - 115, y: geometry.size.height / 2.3) // Move further left to bring fully on screen
                 
                 // Rules Button - Bottom Right Corner (iPhone)
-                Button("📖 Rules and Instructions") {
+                Button("Rules and Instructions") {
                     showRules = true
                 }
-                .buttonStyle(PlainButtonStyle())
+               // .buttonStyle(PlainButtonStyle())
                 .font(.caption2)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)

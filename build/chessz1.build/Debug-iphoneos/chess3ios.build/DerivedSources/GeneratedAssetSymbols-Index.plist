@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>colors</key>
+	<array/>
+	<key>images</key>
+	<array>
+		<dict>
+			<key>catalogPath</key>
+			<string>/Users/garethcosta/Xcode projects/chessz1/chess3ios/Assets.xcassets</string>
+			<key>objcSymbol</key>
+			<string>ACImageNameChessicon120</string>
+			<key>relativePath</key>
+			<string>./chessicon120.imageset</string>
+			<key>swiftSymbol</key>
+			<string>chessicon120</string>
+		</dict>
+		<dict>
+			<key>catalogPath</key>
+			<string>/Users/garethcosta/Xcode projects/chessz1/chess3ios/Assets.xcassets</string>
+			<key>objcSymbol</key>
+			<string>ACImageNameChessicon152</string>
+			<key>relativePath</key>
+			<string>./chessicon152.imageset</string>
+			<key>swiftSymbol</key>
+			<string>chessicon152</string>
+		</dict>
+		<dict>
+			<key>catalogPath</key>
+			<string>/Users/garethcosta/Xcode projects/chessz1/chess3ios/Assets.xcassets</string>
+			<key>objcSymbol</key>
+			<string>ACImageNameChessicon24</string>
+			<key>relativePath</key>
+			<string>./chessicon24.imageset</string>
+			<key>swiftSymbol</key>
+			<string>chessicon24</string>
+		</dict>
+	</array>
+	<key>symbols</key>
+	<array/>
+</dict>
+</plist>

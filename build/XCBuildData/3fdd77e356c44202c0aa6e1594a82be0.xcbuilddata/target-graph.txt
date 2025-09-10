@@ -1,0 +1,2 @@
+Target dependency graph (1 target)
+Target 'chess3ios' in project 'chessz1' (no dependencies)

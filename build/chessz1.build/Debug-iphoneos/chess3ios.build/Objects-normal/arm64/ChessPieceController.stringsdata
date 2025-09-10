@@ -1,0 +1,168 @@
+{
+  "source": "/Users/garethcosta/Xcode projects/chessz1/chess3ios/ChessPieceController.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "CHECK! Your king is under attack!",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 3271
+        }
+      },
+      {
+        "comment": "",
+        "key": "Knight Mode: Click two arrows for L-shape move",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 3286
+        }
+      },
+      {
+        "comment": "",
+        "key": "Moves: %lld",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 3306
+        }
+      },
+      {
+        "comment": "",
+        "key": "Knight Movement (2-step)",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 3300
+        }
+      },
+      {
+        "comment": "",
+        "key": "Movement Controls",
+        "location": {
+          "startingColumn": 71,
+          "startingLine": 3300
+        }
+      },
+      {
+        "comment": "",
+        "key": "Castling",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 3318
+        }
+      },
+      {
+        "comment": "",
+        "key": "Kingside",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 3333
+        }
+      },
+      {
+        "comment": "",
+        "key": "O-O",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 3330
+        }
+      },
+      {
+        "comment": "",
+        "key": "Queenside",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 3350
+        }
+      },
+      {
+        "comment": "",
+        "key": "O-O-O",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 3347
+        }
+      },
+      {
+        "comment": "",
+        "key": "Distance:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 3366
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 3375
+        }
+      },
+      {
+        "comment": "",
+        "key": "3D Diagonal: Direct moves with Z component",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 3398
+        }
+      },
+      {
+        "comment": "",
+        "key": "Plane Diagonals: Forward/Back Up/Down and Left/Right Up/Down",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 3505
+        }
+      },
+      {
+        "comment": "",
+        "key": "3D Up",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 3433
+        }
+      },
+      {
+        "comment": "",
+        "key": "3D Down",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 3477
+        }
+      },
+      {
+        "comment": "",
+        "key": "Up         Down",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 3670
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@ %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 4013
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pawns",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 4029
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pieces",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 4039
+        }
+      }
+    ]
+  },
+  "version": 1
+}

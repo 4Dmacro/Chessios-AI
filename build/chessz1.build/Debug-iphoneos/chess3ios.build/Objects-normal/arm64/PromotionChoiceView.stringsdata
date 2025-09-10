@@ -1,0 +1,24 @@
+{
+  "source": "/Users/garethcosta/Xcode projects/chessz1/chess3ios/PromotionChoiceView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Choose Promotion Piece",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 18
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select which piece your pawn should promote to:",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 29
+        }
+      }
+    ]
+  },
+  "version": 1
+}

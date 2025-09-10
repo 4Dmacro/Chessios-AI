@@ -1,0 +1,512 @@
+{
+  "source": "/Users/garethcosta/Xcode projects/chessz1/chess3ios/ContentView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "AI play mode is still in development, the exponential number of move possibilities makes it prone to crash, especially when in check. It is still useful to learn from.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 127
+        }
+      },
+      {
+        "comment": "",
+        "key": "🤖 AI Learning Statistics",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 158
+        }
+      },
+      {
+        "comment": "",
+        "key": "✕",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 165
+        }
+      },
+      {
+        "comment": "",
+        "key": "📖 Rules and Instructions",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 415
+        }
+      },
+      {
+        "comment": "",
+        "key": "🤖 AI Thinking...",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 268
+        }
+      },
+      {
+        "comment": "",
+        "key": "🤖 vs AI",
+        "location": {
+          "startingColumn": 75,
+          "startingLine": 268
+        }
+      },
+      {
+        "comment": "",
+        "key": "New Game",
+        "location": {
+          "startingColumn": 67,
+          "startingLine": 237
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loading...",
+        "location": {
+          "startingColumn": 80,
+          "startingLine": 237
+        }
+      },
+      {
+        "comment": "",
+        "key": "Play",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 248
+        }
+      },
+      {
+        "comment": "",
+        "key": "Learn",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 256
+        }
+      },
+      {
+        "comment": "",
+        "key": "📊 AI Stats",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 315
+        }
+      },
+      {
+        "comment": "",
+        "key": "🔄 Reset AI",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 322
+        }
+      },
+      {
+        "comment": "",
+        "key": "Camera Controls",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 337
+        }
+      },
+      {
+        "comment": "",
+        "key": "↑ Boards Up",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 343
+        }
+      },
+      {
+        "comment": "",
+        "key": "↓ Boards Down",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 351
+        }
+      },
+      {
+        "comment": "",
+        "key": "🔍 Zoom In",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 359
+        }
+      },
+      {
+        "comment": "",
+        "key": "🔍 Zoom Out",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 367
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset Camera",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 386
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ → %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 457
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 463
+        }
+      },
+      {
+        "comment": "",
+        "key": "Confirm",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 437
+        }
+      },
+      {
+        "comment": "",
+        "key": "%llds",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 443
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rules and Instructions",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 719
+        }
+      },
+      {
+        "comment": "",
+        "key": "🤖 AI Thinking...",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 548
+        }
+      },
+      {
+        "comment": "",
+        "key": "🤖 vs AI",
+        "location": {
+          "startingColumn": 79,
+          "startingLine": 548
+        }
+      },
+      {
+        "comment": "",
+        "key": "New Game",
+        "location": {
+          "startingColumn": 67,
+          "startingLine": 503
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loading...",
+        "location": {
+          "startingColumn": 80,
+          "startingLine": 503
+        }
+      },
+      {
+        "comment": "",
+        "key": "Play",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 515
+        }
+      },
+      {
+        "comment": "",
+        "key": "Learn",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 527
+        }
+      },
+      {
+        "comment": "",
+        "key": "📊",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 602
+        }
+      },
+      {
+        "comment": "",
+        "key": "🔄",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 609
+        }
+      },
+      {
+        "comment": "",
+        "key": "↑ Boards Up",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 631
+        }
+      },
+      {
+        "comment": "",
+        "key": "↓ Boards Down",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 642
+        }
+      },
+      {
+        "comment": "",
+        "key": "🔍 Zoom+",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 653
+        }
+      },
+      {
+        "comment": "",
+        "key": "🔍 Zoom-",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 664
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset View",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 675
+        }
+      },
+      {
+        "comment": "",
+        "key": "GC",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 696
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ → %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 760
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 766
+        }
+      },
+      {
+        "comment": "",
+        "key": "Confirm",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 740
+        }
+      },
+      {
+        "comment": "",
+        "key": "%llds",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 746
+        }
+      },
+      {
+        "comment": "",
+        "key": "Game Center",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1738
+        }
+      },
+      {
+        "comment": "",
+        "key": "Match: %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1807
+        }
+      },
+      {
+        "comment": "",
+        "key": "Connected",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 1746
+        }
+      },
+      {
+        "comment": "",
+        "key": "Disconnected",
+        "location": {
+          "startingColumn": 69,
+          "startingLine": 1746
+        }
+      },
+      {
+        "comment": "",
+        "key": "You are:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1754
+        }
+      },
+      {
+        "comment": "",
+        "key": "Host Game",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 1769
+        }
+      },
+      {
+        "comment": "",
+        "key": "Join Game",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 1780
+        }
+      },
+      {
+        "comment": "",
+        "key": "Flip Board",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1793
+        }
+      },
+      {
+        "comment": "",
+        "key": "🔌 Disconnect",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1816
+        }
+      },
+      {
+        "comment": "",
+        "key": "🔄 Reset Invitation",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1829
+        }
+      },
+      {
+        "comment": "",
+        "key": "🔄 Reconnect",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1842
+        }
+      },
+      {
+        "comment": "",
+        "key": "✕ Clear Error",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1855
+        }
+      },
+      {
+        "comment": "",
+        "key": "📨 Recall Invitations",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1868
+        }
+      },
+      {
+        "comment": "",
+        "key": "Stored Invitations",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1938
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Stored Invitations",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1907
+        }
+      },
+      {
+        "comment": "",
+        "key": "All invitations have been processed or cleared",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1910
+        }
+      },
+      {
+        "comment": "",
+        "key": "Clear All",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1925
+        }
+      },
+      {
+        "comment": "",
+        "key": "Close",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1931
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1942
+        }
+      },
+      {
+        "comment": "",
+        "key": "Accept",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 1969
+        }
+      },
+      {
+        "comment": "",
+        "key": "From: %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1960
+        }
+      },
+      {
+        "comment": "",
+        "key": "ID: %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1962
+        }
+      }
+    ]
+  },
+  "version": 1
+}

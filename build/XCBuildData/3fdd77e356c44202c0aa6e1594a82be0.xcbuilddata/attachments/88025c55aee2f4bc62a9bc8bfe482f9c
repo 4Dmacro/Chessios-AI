@@ -1,0 +1,129 @@
+{
+  "" : {
+    "diagnostics" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/chess3ios-primary.dia",
+    "emit-module-dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/chess3ios-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/chess3ios-primary-emit-module.dia",
+    "pch" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/chess3ios-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/chess3ios-primary.swiftdeps"
+  },
+  "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/GeneratedAssetSymbols~partial.swiftmodule"
+  },
+  "/Users/garethcosta/Xcode projects/chessz1/chess3ios/ChessAI.swift" : {
+    "const-values" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessAI.swiftconstvalues",
+    "dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessAI.d",
+    "diagnostics" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessAI.dia",
+    "index-unit-output-path" : "/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessAI.o",
+    "llvm-bc" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessAI.bc",
+    "object" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessAI.o",
+    "swift-dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessAI.swiftdeps",
+    "swiftmodule" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessAI~partial.swiftmodule"
+  },
+  "/Users/garethcosta/Xcode projects/chessz1/chess3ios/ChessEngine.swift" : {
+    "const-values" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessEngine.swiftconstvalues",
+    "dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessEngine.d",
+    "diagnostics" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessEngine.dia",
+    "index-unit-output-path" : "/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessEngine.o",
+    "llvm-bc" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessEngine.bc",
+    "object" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessEngine.o",
+    "swift-dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessEngine.swiftdeps",
+    "swiftmodule" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessEngine~partial.swiftmodule"
+  },
+  "/Users/garethcosta/Xcode projects/chessz1/chess3ios/ChessGameManager.swift" : {
+    "const-values" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessGameManager.swiftconstvalues",
+    "dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessGameManager.d",
+    "diagnostics" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessGameManager.dia",
+    "index-unit-output-path" : "/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessGameManager.o",
+    "llvm-bc" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessGameManager.bc",
+    "object" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessGameManager.o",
+    "swift-dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessGameManager.swiftdeps",
+    "swiftmodule" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessGameManager~partial.swiftmodule"
+  },
+  "/Users/garethcosta/Xcode projects/chessz1/chess3ios/ChessPieceController.swift" : {
+    "const-values" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessPieceController.swiftconstvalues",
+    "dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessPieceController.d",
+    "diagnostics" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessPieceController.dia",
+    "index-unit-output-path" : "/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessPieceController.o",
+    "llvm-bc" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessPieceController.bc",
+    "object" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessPieceController.o",
+    "swift-dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessPieceController.swiftdeps",
+    "swiftmodule" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessPieceController~partial.swiftmodule"
+  },
+  "/Users/garethcosta/Xcode projects/chessz1/chess3ios/ChessRulesView.swift" : {
+    "const-values" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessRulesView.swiftconstvalues",
+    "dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessRulesView.d",
+    "diagnostics" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessRulesView.dia",
+    "index-unit-output-path" : "/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessRulesView.o",
+    "llvm-bc" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessRulesView.bc",
+    "object" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessRulesView.o",
+    "swift-dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessRulesView.swiftdeps",
+    "swiftmodule" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ChessRulesView~partial.swiftmodule"
+  },
+  "/Users/garethcosta/Xcode projects/chessz1/chess3ios/ContentView.swift" : {
+    "const-values" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ContentView.swiftconstvalues",
+    "dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ContentView.d",
+    "diagnostics" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ContentView.dia",
+    "index-unit-output-path" : "/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ContentView.o",
+    "llvm-bc" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ContentView.bc",
+    "object" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ContentView.o",
+    "swift-dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ContentView.swiftdeps",
+    "swiftmodule" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ContentView~partial.swiftmodule"
+  },
+  "/Users/garethcosta/Xcode projects/chessz1/chess3ios/GameKitManager.swift" : {
+    "const-values" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/GameKitManager.swiftconstvalues",
+    "dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/GameKitManager.d",
+    "diagnostics" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/GameKitManager.dia",
+    "index-unit-output-path" : "/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/GameKitManager.o",
+    "llvm-bc" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/GameKitManager.bc",
+    "object" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/GameKitManager.o",
+    "swift-dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/GameKitManager.swiftdeps",
+    "swiftmodule" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/GameKitManager~partial.swiftmodule"
+  },
+  "/Users/garethcosta/Xcode projects/chessz1/chess3ios/MultiplayerView.swift" : {
+    "const-values" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/MultiplayerView.swiftconstvalues",
+    "dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/MultiplayerView.d",
+    "diagnostics" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/MultiplayerView.dia",
+    "index-unit-output-path" : "/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/MultiplayerView.o",
+    "llvm-bc" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/MultiplayerView.bc",
+    "object" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/MultiplayerView.o",
+    "swift-dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/MultiplayerView.swiftdeps",
+    "swiftmodule" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/MultiplayerView~partial.swiftmodule"
+  },
+  "/Users/garethcosta/Xcode projects/chessz1/chess3ios/PromotionChoiceView.swift" : {
+    "const-values" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/PromotionChoiceView.swiftconstvalues",
+    "dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/PromotionChoiceView.d",
+    "diagnostics" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/PromotionChoiceView.dia",
+    "index-unit-output-path" : "/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/PromotionChoiceView.o",
+    "llvm-bc" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/PromotionChoiceView.bc",
+    "object" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/PromotionChoiceView.o",
+    "swift-dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/PromotionChoiceView.swiftdeps",
+    "swiftmodule" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/PromotionChoiceView~partial.swiftmodule"
+  },
+  "/Users/garethcosta/Xcode projects/chessz1/chess3ios/ScreenSpaceSelection.swift" : {
+    "const-values" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ScreenSpaceSelection.swiftconstvalues",
+    "dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ScreenSpaceSelection.d",
+    "diagnostics" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ScreenSpaceSelection.dia",
+    "index-unit-output-path" : "/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ScreenSpaceSelection.o",
+    "llvm-bc" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ScreenSpaceSelection.bc",
+    "object" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ScreenSpaceSelection.o",
+    "swift-dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ScreenSpaceSelection.swiftdeps",
+    "swiftmodule" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/ScreenSpaceSelection~partial.swiftmodule"
+  },
+  "/Users/garethcosta/Xcode projects/chessz1/chess3ios/chess3iosApp.swift" : {
+    "const-values" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/chess3iosApp.swiftconstvalues",
+    "dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/chess3iosApp.d",
+    "diagnostics" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/chess3iosApp.dia",
+    "index-unit-output-path" : "/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/chess3iosApp.o",
+    "llvm-bc" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/chess3iosApp.bc",
+    "object" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/chess3iosApp.o",
+    "swift-dependencies" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/chess3iosApp.swiftdeps",
+    "swiftmodule" : "/Users/garethcosta/Xcode projects/chessz1/build/chessz1.build/Debug-iphoneos/chess3ios.build/Objects-normal/arm64/chess3iosApp~partial.swiftmodule"
+  }
+}

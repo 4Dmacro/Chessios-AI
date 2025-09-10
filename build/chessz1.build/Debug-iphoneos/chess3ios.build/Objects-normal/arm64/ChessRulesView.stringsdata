@@ -1,0 +1,424 @@
+{
+  "source": "/Users/garethcosta/Xcode projects/chessz1/chess3ios/ChessRulesView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "3D Chess Rules and Instructions",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 19
+        }
+      },
+      {
+        "comment": "",
+        "key": "General Rules",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 25
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Chess 3D is closely based on the rules of traditional 2D chess",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 29
+        }
+      },
+      {
+        "comment": "",
+        "key": "• There are eight 64-square boards for a total of 512 squares for pieces to move to",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 30
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Red pieces are traditional “white” pieces and blue pieces are “black” pieces for visual clarity in the computer rendered 3D scene",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 31
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Rank 1-8 ( 3D x-component) and File a-h (3D y-component) are the same as traditional chess. The eight vertically stacked boards are numbered i - viii (3D z-component). The current square location of the piece is listed as - z, file(y), rank(X)  - eg. iii g4",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 32
+        }
+      },
+      {
+        "comment": "",
+        "key": "• All the pieces move in the same basic way as in traditional chess but they can also have a vertical component (z-direction in 3D axes) to the basic traditional chess move. All pieces can move up or down within normal piece-specific constraints if they are on higher board level than z = i. See more below",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 33
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Piece captures work in traditional 2D-move directions and 3D-move directions",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 34
+        }
+      },
+      {
+        "comment": "",
+        "key": "• There are currently 44 pieces in a Chess 3D game",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 35
+        }
+      },
+      {
+        "comment": "",
+        "key": "• On level z = i the piece layout is the same as traditional chess with 16 pieces including king and queen",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 36
+        }
+      },
+      {
+        "comment": "",
+        "key": "• There are another 16 “extended pawns” on z = ii",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 37
+        }
+      },
+      {
+        "comment": "",
+        "key": "• On levels v - viii there are a further 12 “aerial” pieces - two bishops, one rook, one knight and eight pawns positioned three pieces per level. See below",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 38
+        }
+      },
+      {
+        "comment": "",
+        "key": "• The piece layout may change in the future depending on player feedback",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 39
+        }
+      },
+      {
+        "comment": "",
+        "key": "Basic Movement",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 44
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Each piece can move in its traditional 2D pattern plus vertical movement component",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 48
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Pawns move forward one square or up/down one level and capture with a diagonal x-component, either traditional 2D capture or a 3D capture with changes in z,y,x",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Pawns on levels z = i and ii can open with a two-square move forwards or up. Aerial pawns (z = v-viii) can only move one square for the first move",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 50
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Rooks move horizontally, vertically, and can change levels in straight lines",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Bishops can move diagonally in 3D - z,y,x changes using orange move-arrows, or they and can change z-levels diagonally in 2D planes - z,x or z,y - using the purple move-arrows",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Knights move in two-click L-shapes and can jump to different levels, with first click the two-square move direction, followed by the one-square move direction.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 53
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Queens combine rook and bishop movement in 3D space",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 54
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Kings move one square in any direction including up/down",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 55
+        }
+      },
+      {
+        "comment": "",
+        "key": "Special Rules",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 59
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Castling: King and rook can castle on level z = i if they haven't moved and the path is clear",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 63
+        }
+      },
+      {
+        "comment": "",
+        "key": "• En Passant: Pawns can capture diagonally forward if opponent pawn moved two spaces on z = i only",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 64
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Pawn Promotion: Pawns promote to queen, rook, bishop, or knight when reaching the opposite end on levels z = i and viii only",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "",
+        "key": "3D Specific Rules",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 71
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Pieces can attack across different levels if they have line of sight",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 75
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Pawns can capture with diagonal forward, up or down moves",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Vertical-component movement counts as one move, not separate from horizontal",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 77
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Pieces cannot move through other pieces (except knights)",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 78
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Board rotates to show different perspectives during gameplay",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 79
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Captured pieces are moved to graveyard areas on the sides",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "Game Modes",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 84
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Play Mode: Standard chess gameplay for two players on one device",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 88
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Learn Mode: Practice moves in succession on red/white pieces without changes to black",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 89
+        }
+      },
+      {
+        "comment": "",
+        "key": "• AI Opponent: Play against computer",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Multiplayer: Play against other players via Apple Game Center",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 91
+        }
+      },
+      {
+        "comment": "",
+        "key": "Controls",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 95
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Tap pieces to select, tap distance to select squares moved, tap move arrows for direction",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 99
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Red, green and yellow arrows are for traditional 2D moves, blue arrows for vertical z-moves, orange arrows for full 3D moves and purple arrows for 2D vertical-plane moves",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 100
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Drag to rotate board view",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 101
+        }
+      },
+      {
+        "comment": "",
+        "key": "• iOS - Pinch to zoom in/out on controls only, use buttons to zoom in and out on the boards and pieces",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 102
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Use camera controls to adjust zoom and board height, and reset to default position",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 103
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Cancel moves within 5 seconds or they will be confirmed and the play turn will rotate",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 104
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Press New Game to reset the boards",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 105
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Press Flip boards in Game Centre mode to rotate black/white player",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 106
+        }
+      },
+      {
+        "comment": "",
+        "key": "Learn More",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 110
+        }
+      },
+      {
+        "comment": "",
+        "key": "• Contact us: 3dchesscube@gmail.com",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 122
+        }
+      },
+      {
+        "comment": "",
+        "key": "• This game is the copyright of GR Costa, patent pending",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 124
+        }
+      },
+      {
+        "comment": "",
+        "key": "Visit our Youtube channel for tutorials",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 114
+        }
+      },
+      {
+        "comment": "",
+        "key": "Follow us on X",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 118
+        }
+      }
+    ]
+  },
+  "version": 1
+}

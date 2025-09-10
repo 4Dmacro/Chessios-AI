@@ -1,0 +1,120 @@
+{
+  "source": "/Users/garethcosta/Xcode projects/chessz1/chess3ios/MultiplayerView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Game Center",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 34
+        }
+      },
+      {
+        "comment": "",
+        "key": "Game Center",
+        "location": {
+          "startingColumn": 74,
+          "startingLine": 34
+        }
+      },
+      {
+        "comment": "",
+        "key": "Host Game",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "",
+        "key": "Join Game",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "",
+        "key": "Flip Board",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 89
+        }
+      },
+      {
+        "comment": "",
+        "key": "Host Game",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 103
+        }
+      },
+      {
+        "comment": "",
+        "key": "Join Game",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 114
+        }
+      },
+      {
+        "comment": "",
+        "key": "Flip Board",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 127
+        }
+      },
+      {
+        "comment": "",
+        "key": "🔌 Disconnect",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 155
+        }
+      },
+      {
+        "comment": "",
+        "key": "🔄 Reset Invitation",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 167
+        }
+      },
+      {
+        "comment": "",
+        "key": "Assigning color...",
+        "location": {
+          "startingColumn": 68,
+          "startingLine": 191
+        }
+      },
+      {
+        "comment": "",
+        "key": "You are %@",
+        "location": {
+          "startingColumn": 91,
+          "startingLine": 191
+        }
+      },
+      {
+        "comment": "",
+        "key": "🔄 Reconnect",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 215
+        }
+      },
+      {
+        "comment": "",
+        "key": "✕ Clear",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 225
+        }
+      }
+    ]
+  },
+  "version": 1
+}
