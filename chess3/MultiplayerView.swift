@@ -187,7 +187,7 @@ struct MultiplayerView: View {
                 HStack {
                     Image(systemName: "person.circle.fill")
                         .foregroundColor(gameKitManager.playerColor == .white ? .white : .black)
-                    Text(gameKitManager.playerColor == .none ? "Assigning color..." : "You are \(gameKitManager.playerColor.rawValue)")
+                    Text(gameKitManager.playerColor == .none ? "Assigning color..." : "You are \(getPlayerDisplayColor(gameKitManager.playerColor))")
                         .font(.caption)
                         .foregroundColor(gameKitManager.playerColor == .white ? .white : .gray)
                     Spacer()
@@ -258,15 +258,16 @@ struct MultiplayerView: View {
                     .controlSize(.small)
                     .foregroundColor(.white)
                     .background(gameKitManager.listStoredInvitations().isEmpty ? Color.purple.opacity(0.6) : Color.purple)
+                    .cornerRadius(4)
                     
                     // Manual System Check Button (also visible in error states)
-                    Button("🔍 Check System") {
-                        gameKitManager.manuallyCheckForInvitations()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .foregroundColor(.white)
-                    .background(Color.blue)
+               //     Button("🔍 Check System") {
+              //          gameKitManager.manuallyCheckForInvitations()
+              //      }
+              ///      .buttonStyle(.borderedProminent)
+              //      .controlSize(.small)
+              //      .foregroundColor(.white)
+              //      .background(Color.blue)
                 }
                 .padding(.horizontal)
             }
@@ -402,6 +403,18 @@ struct InvitationRecallMenuView: View {
         }
         .padding()
         .frame(maxWidth:300, minHeight: 300)
+    }
+}
+
+// Helper function to get display color text (maps white/black to red/blue)
+func getPlayerDisplayColor(_ color: PieceColor) -> String {
+    switch color {
+    case .white:
+        return "Red"
+    case .black:
+        return "Blue"
+    case .none:
+        return "Unknown"
     }
 }
 

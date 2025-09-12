@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
+	<key>CFBundleDisplayName</key>
+	<string>Chess 3D</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>This app uses local network for Game Center multiplayer chess games.</string>
 	<key>NSBonjourServices</key>

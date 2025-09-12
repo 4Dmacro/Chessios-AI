@@ -29,6 +29,16 @@ class ChessGameManager: ObservableObject {
     @Published var validMoves: [ChessPosition3D] = []
     @Published var gameState: String = "White's turn"
     @Published var invalidMoveMessage: String = ""
+    
+    // Display text for the turn button (maps white/black to red/blue)
+    var turnDisplayText: String {
+        if gameState.contains("White") {
+            return "Red's Turn"
+        } else if gameState.contains("Black") {
+            return "Blue's Turn"
+        }
+        return gameState
+    }
     @Published var isGameActive = false
     @Published var isInMoveOperation: Bool = false
     @Published var gameMode: GameMode = .play

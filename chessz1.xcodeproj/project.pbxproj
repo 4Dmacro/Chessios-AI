@@ -1243,7 +1243,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = chess3ios/Info.plist;
 				"INFOPLIST_FILE[sdk=*]" = "";
-				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_CFBundleDisplayName = "Chess 3D";
 				INFOPLIST_KEY_NSHumanReadableCopyright = GCosta;
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1286,7 +1286,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = chess3ios/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_CFBundleDisplayName = "Chess 3D";
 				INFOPLIST_KEY_NSHumanReadableCopyright = GCosta;
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

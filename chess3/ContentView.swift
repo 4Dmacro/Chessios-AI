@@ -30,6 +30,7 @@ struct ContentView: View {
     @State private var cancellables = Set<AnyCancellable>()
     @State private var showAIStats = false
     @State private var showAIWarning = false // For AI warning message
+    @State private var showColorExplanation = true // For color explanation message
     @State private var showRules = false // For rules popover
     // Add this property to ContentView
     @EnvironmentObject var gameKitManager: GameKitManager
@@ -85,11 +86,11 @@ struct ContentView: View {
                             lowerCamera()
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .font(.caption2)
+                        .font(.caption.bold())
                         .padding(.horizontal, 4)
                         .padding(.vertical, 6)
-                        .background(.ultraThinMaterial.opacity(0.3))
-                        .foregroundColor(.white)
+                        .background(.ultraThinMaterial.opacity(0.2))
+                        .foregroundColor(.blue)
                         .cornerRadius(8)
                         
                         // Raise Camera button (to see lower Z-levels)
@@ -97,11 +98,11 @@ struct ContentView: View {
                             raiseCamera()
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .font(.caption2)
+                        .font(.caption.bold())
                         .padding(.horizontal, 4)
                         .padding(.vertical, 6)
-                        .background(.ultraThinMaterial.opacity(0.3))
-                        .foregroundColor(.white)
+                        .background(.ultraThinMaterial.opacity(0.2))
+                        .foregroundColor(.blue)
                         .cornerRadius(8)
                         
                         // Zoom In button
@@ -115,11 +116,11 @@ struct ContentView: View {
                             zoomIn()
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .font(.caption2)
+                        .font(.caption.bold())
                         .padding(.horizontal, 4)
                         .padding(.vertical, 6)
                         .background(.ultraThinMaterial.opacity(0.3))
-                        .foregroundColor(.white)
+                        .foregroundColor(.green)
                         .cornerRadius(8)
                         
                         // Zoom Out button
@@ -133,11 +134,11 @@ struct ContentView: View {
                             zoomOut()
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .font(.caption2)
+                        .font(.caption.bold())
                         .padding(.horizontal, 4)
                         .padding(.vertical, 6)
                         .background(.ultraThinMaterial.opacity(0.3))
-                        .foregroundColor(.white)
+                        .foregroundColor(.green)
                         .cornerRadius(8)
                         
                         // Reset View button
@@ -173,9 +174,9 @@ struct ContentView: View {
                         HStack(spacing: 4) {
                             // White captured pieces (left side)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("White:")
+                                Text("Red:")
                                     .font(.caption2)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(.red)
                                     .fontWeight(.semibold)
                                 
                                 let capturedWhitePieces = chessGame.getCapturedPieces().filter { $0.color == .white }
@@ -193,14 +194,14 @@ struct ContentView: View {
                             }
                             .padding(.horizontal, 4)
                             .padding(.vertical, 4)
-                            .background(.ultraThinMaterial)
+                            .background(.ultraThinMaterial.opacity(0.4))
                             .cornerRadius(6)
                             
                             // Black captured pieces (right side)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Black:")
+                                Text("Blue:")
                                     .font(.caption2)
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.blue)
                                     .fontWeight(.semibold)
                                 
                                 let capturedBlackPieces = chessGame.getCapturedPieces().filter { $0.color == .black }
@@ -218,7 +219,7 @@ struct ContentView: View {
                             }
                             .padding(.horizontal, 4)
                             .padding(.vertical, 4)
-                            .background(.ultraThinMaterial)
+                            .background(.ultraThinMaterial.opacity(0.4))
                             .cornerRadius(6)
                         }
                     }
@@ -494,7 +495,7 @@ struct ContentView: View {
                     
                     
                     // Game State Display
-                    Text(chessGame.gameState)
+                    Text(chessGame.turnDisplayText)
                         .font(.headline)
                         .foregroundColor(.white)
                         .padding(.horizontal, 16)
@@ -711,6 +712,7 @@ struct ContentView: View {
                 }
             }
         )
+        .overlay(colorExplanationOverlay)
         .onAppear {
             setupScene()
             loadChessBoardAndPieces()
@@ -727,6 +729,11 @@ struct ContentView: View {
             print("🎮 ContentView: Game Center connection setup complete")
             print("🎮 ContentView: Current match state: \(gameKitManager.matchState)")
             print("🎮 ContentView: Is authenticated: \(gameKitManager.isAuthenticated)")
+            
+            // Hide color explanation after 6 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
+                showColorExplanation = false
+            }
             
             // Ensure AI mode is properly reset on app start
             if !chessGame.aiModeActive {
@@ -788,6 +795,28 @@ struct ContentView: View {
             // Rotate board when GameKit player color changes
             if gameKitManager.matchState == .connected {
                 chessGame.rotateBoardForGameKitPlayer(playerColor: newColor)
+            }
+        }
+    }
+    
+    // MARK: - Computed Properties
+    
+    private var colorExplanationOverlay: some View {
+        Group {
+            if showColorExplanation {
+                Text("For visual clarity, red is traditional chess white and blue is black")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(Color.yellow.opacity(0.5))
+                    .cornerRadius(8)
+                    .frame(maxWidth: 500)
+                    .position(x: 400, y: 100) // Same position as AI warning
+                    .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.3), value: showColorExplanation)
             }
         }
     }

@@ -20,6 +20,11 @@ enum MoveDirection {
 }
 
 class ChessPieceController: ObservableObject {
+    // Helper function to get display color text (maps white/black to red/blue)
+    func getPieceDisplayColor(_ color: PieceColor) -> String {
+        return color == .white ? "Red" : "Blue"
+    }
+    
     // Helper function to remap directions for player perspective
     private func playerPerspectiveDirection(_ direction: MoveDirection, for color: PieceColor) -> MoveDirection {
         switch direction {
@@ -4010,7 +4015,7 @@ struct ChessPieceControllerView: View {
             if let pos = controller.selectedPiecePosition,
                let chessGame = controller.chessGame,
                let piece = chessGame.getPieceAtPosition(pos) {
-                Text("\(piece.color.rawValue.capitalized) \(piece.type.rawValue.capitalized) \(pos.stringValue)")
+                Text("\(controller.getPieceDisplayColor(piece.color)) \(piece.type.rawValue.capitalized) \(pos.stringValue)")
                     .font(.caption2)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)

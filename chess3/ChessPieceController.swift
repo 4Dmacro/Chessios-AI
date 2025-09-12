@@ -20,6 +20,11 @@ enum MoveDirection {
 }
 
 class ChessPieceController: ObservableObject {
+    // Helper function to get display color text (maps white/black to red/blue)
+    func getPieceDisplayColor(_ color: PieceColor) -> String {
+        return color == .white ? "Red" : "Blue"
+    }
+    
     // Helper function to remap directions for player perspective
     private func playerPerspectiveDirection(_ direction: MoveDirection, for color: PieceColor) -> MoveDirection {
         switch direction {
@@ -2766,12 +2771,9 @@ class ChessPieceController: ObservableObject {
         }
         moveConfirmationTimer = nil
         
-        // Reset timer state
-        isMovePending = false
+        // Reset timer state (but don't clear pending state variables here)
+        // They are handled by the calling method (cancelMove or confirmMove)
         moveConfirmationTimeRemaining = 0
-        pendingMoveFrom = nil
-        pendingMoveTo = nil
-        pendingPieceNode = nil
     }
     
     // Public method to cleanup timer when needed
@@ -2937,14 +2939,11 @@ class ChessPieceController: ObservableObject {
         // CRITICAL: Set flag first to prevent timer callbacks from executing
         isMovePending = false
         
-        // Stop timer with proper cleanup
-        cleanupMoveConfirmationTimer()
-        
         // CRITICAL: Clear move confirmation in progress flag
         isMoveConfirmationInProgress = false
         print("⏰ Move confirmation cancelled - AI can now proceed")
         
-        // Reset piece to original position
+        // Reset piece to original position BEFORE cleaning up timer state
         if let pieceNode = pendingPieceNode,
            let fromPosition = pendingMoveFrom,
            let toPosition = pendingMoveTo,
@@ -2972,6 +2971,9 @@ class ChessPieceController: ObservableObject {
             
             print("🔄 Piece reset to original position: \(fromPosition.stringValue)")
         }
+        
+        // Stop timer with proper cleanup AFTER using the pending state variables
+        cleanupMoveConfirmationTimer()
         
         // Clear pending state
         moveConfirmationTimeRemaining = 5.0
@@ -4035,7 +4037,7 @@ struct ChessPieceControllerView: View {
             if let pos = controller.selectedPiecePosition,
                let chessGame = controller.chessGame,
                let piece = chessGame.getPieceAtPosition(pos) {
-                Text("\(piece.color.rawValue.capitalized) \(piece.type.rawValue.capitalized) \(pos.stringValue)")
+                Text("\(controller.getPieceDisplayColor(piece.color)) \(piece.type.rawValue.capitalized) \(pos.stringValue)")
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)

@@ -188,7 +188,7 @@ struct MultiplayerView: View {
                         Image(systemName: "person.circle.fill")
                             .foregroundColor(gameKitManager.playerColor == .white ? .white : .black)
                             .font(isIPhone ? .caption2 : .caption)
-                        Text(gameKitManager.playerColor == .none ? "Assigning color..." : "You are \(gameKitManager.playerColor.rawValue)")
+                        Text(gameKitManager.playerColor == .none ? "Assigning color..." : "You are \(getPlayerDisplayColor(gameKitManager.playerColor))")
                             .font(isIPhone ? .caption2 : .caption)
                             .foregroundColor(gameKitManager.playerColor == .white ? .white : .gray)
                         Spacer()
@@ -196,7 +196,7 @@ struct MultiplayerView: View {
                     .padding(.horizontal, isIPhone ? 4 : 8)
                     .padding(.vertical, isIPhone ? 2 : 4)
                     .frame(maxWidth: 140)
-                    .background(gameKitManager.playerColor == .white ? Color.white.opacity(0.3) : Color.black.opacity(0.2))
+                    .background(gameKitManager.playerColor == .white ? Color.white.opacity(0.4) : Color.black.opacity(0.4))
                     .cornerRadius(isIPhone ? 4 : 8)
                 }
                 
@@ -297,9 +297,21 @@ struct MultiplayerView: View {
             }
         }
     }
-    
-    #Preview {
-        MultiplayerView()
-            .environmentObject(GameKitManager())
+
+// Helper function to get display color text (maps white/black to red/blue)
+func getPlayerDisplayColor(_ color: PieceColor) -> String {
+    switch color {
+    case .white:
+        return "Red"
+    case .black:
+        return "Blue"
+    case .none:
+        return "Unknown"
     }
+}
+
+#Preview {
+    MultiplayerView()
+        .environmentObject(GameKitManager())
+}
 

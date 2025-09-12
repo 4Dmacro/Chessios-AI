@@ -32,6 +32,7 @@ struct ContentView: View {
     @State private var uiScale: CGFloat = UIDevice.current.userInterfaceIdiom == .phone ? 0.7 : 1.2 // Smaller default for iPhone
     @State private var lastPinchScale: CGFloat = 1.0
     @State private var showAIWarning = false // For AI warning message
+    @State private var showColorExplanation = true // For color explanation message
     @State private var showGameCenterPopover = false // For Game Center popover
     @State private var showRules = false // For rules popover
     
@@ -139,6 +140,9 @@ struct ContentView: View {
                     .animation(.easeInOut(duration: 0.3), value: showAIWarning)
                 }
                 
+                // Color Explanation Message
+                colorExplanationOverlay
+                
                 // iPhone Layout
                 if isIPhone {
                     iPhoneLayout
@@ -209,7 +213,27 @@ struct ContentView: View {
         }
     }
     
+    // MARK: - Computed Properties
     
+    private var colorExplanationOverlay: some View {
+        Group {
+            if showColorExplanation {
+                Text("For visual clarity, red is traditional chess white and blue is black")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(Color.yellow.opacity(0.5))
+                    .cornerRadius(8)
+                    .frame(maxWidth: 400)
+                    .position(x: UIScreen.main.bounds.width / 2, y: 120)
+                    .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.3), value: showColorExplanation)
+            }
+        }
+    }
     
     // MARK: - iPad Layout (Full)
     private var iPadLayout: some View {
@@ -286,7 +310,7 @@ struct ContentView: View {
                     .disabled(chessGame.aiModeActive)
                     
                     // Game State Display
-                    Text(chessGame.gameState)
+                    Text(chessGame.turnDisplayText)
                         .font(.caption)
                         .foregroundColor(.white)
                         .scaleEffect(uiScale)
@@ -343,33 +367,29 @@ struct ContentView: View {
                     Button("↑ Boards Up") {
                         lowerCamera()
                     }
-                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.35))
+                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.35, foregroundColor: .blue))
                     .font(.caption)
-                    .foregroundColor(.white)
                     .scaleEffect(uiScale)
                     
                     Button("↓ Boards Down") {
                         raiseCamera()
                     }
-                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.35))
+                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.35, foregroundColor: .blue))
                     .font(.caption)
-                    .foregroundColor(.white)
                     .scaleEffect(uiScale)
                     
                     Button("🔍 Zoom In") {
                         zoomIn()
                     }
-                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.35))
+                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.35, foregroundColor: .green))
                     .font(.caption)
-                    .foregroundColor(.white)
                     .scaleEffect(uiScale)
                     
                     Button("🔍 Zoom Out") {
                         zoomOut()
                     }
-                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.35))
+                    .buttonStyle(AdaptiveButtonStyle(opacity: 0.35, foregroundColor: .green))
                     .font(.caption)
-                    .foregroundColor(.white)
                     .scaleEffect(uiScale)
                 }
                 
@@ -569,7 +589,7 @@ struct ContentView: View {
                 
                     
                     // Game State Display
-                    Text(chessGame.gameState)
+                    Text(chessGame.turnDisplayText)
                         .font(.caption)
                         .foregroundColor(.white)
                         .scaleEffect(uiScale)
@@ -632,7 +652,7 @@ struct ContentView: View {
                         lowerCamera()
                     }
                     .font(.caption2)
-                            .foregroundColor(.white)
+                    .foregroundColor(.blue)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
                     .background(.regularMaterial.opacity(0.3))
@@ -643,7 +663,7 @@ struct ContentView: View {
                         raiseCamera()
                     }
                     .font(.caption2)
-                    .foregroundColor(.white)
+                    .foregroundColor(.blue)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
                     .background(.regularMaterial.opacity(0.3))
@@ -654,7 +674,7 @@ struct ContentView: View {
                         zoomIn()
                     }
                     .font(.caption2)
-                                    .foregroundColor(.white)
+                    .foregroundColor(.green)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
                     .background(.regularMaterial.opacity(0.3))
@@ -665,7 +685,7 @@ struct ContentView: View {
                         zoomOut()
                     }
                     .font(.caption2)
-                    .foregroundColor(.white)
+                    .foregroundColor(.green)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
                     .background(.regularMaterial.opacity(0.3))
@@ -676,7 +696,7 @@ struct ContentView: View {
                         resetCamera()
                     }
                     .font(.caption2)
-                        .foregroundColor(.white)
+                    .foregroundColor(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
                     .background(.regularMaterial.opacity(0.3))
@@ -790,6 +810,11 @@ struct ContentView: View {
     private func setupChessGame() {
         setupScene()
         setupChessInteraction()
+        
+        // Hide color explanation after 6 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
+            showColorExplanation = false
+        }
         
         // Set up AI timer
                         startAITimer()
@@ -1700,13 +1725,14 @@ struct ContentView: View {
 
 struct AdaptiveButtonStyle: ButtonStyle {
     var opacity: Double = 1.0
+    var foregroundColor: Color = .white
     
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
             .background(.ultraThinMaterial.opacity(opacity))
-            .foregroundColor(.white)
+            .foregroundColor(foregroundColor)
             .cornerRadius(8)
             .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
     }
