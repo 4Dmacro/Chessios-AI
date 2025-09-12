@@ -3252,7 +3252,7 @@ struct ChessPieceControllerView: View {
     private var selectedPieceInfo: some View {
         VStack(spacing: 4) {
             // Game mode selector
-
+           
             
             // Current player indicator at the top
             // Text("Current Player: \(currentPlayerPieces ? "White" : "Black")")
@@ -3305,6 +3305,7 @@ struct ChessPieceControllerView: View {
                 .background(Color.red.opacity(0.2))
                 .cornerRadius(6)
             }
+          
             
             if controller.knightMode {
                 HStack {
@@ -3326,7 +3327,7 @@ struct ChessPieceControllerView: View {
         
         VStack(spacing: 2) {
             Spacer(minLength: 5)
-            Text(controller.knightMode ? "Knight Movement (2-step)" : "Movement Controls")
+            Text("Movement Controls")
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundColor(.white)
