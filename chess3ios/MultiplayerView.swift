@@ -60,34 +60,9 @@ struct MultiplayerView: View {
             
             // Host/Join Buttons - Always visible
             Group {
-                // Debug: Always show device type
-                Text("Device: \(isIPhone ? "iPhone" : "iPad") - \(UIDevice.current.userInterfaceIdiom.rawValue)")
-                    .font(.caption)
-                    .foregroundColor(.red)
-                    .padding(4)
-                    .background(Color.yellow.opacity(0.3))
-                    .cornerRadius(4)
-                
-                // Debug: Always show test button
-                Button("TEST BUTTON") {
-                    print("Test button tapped!")
-                }
-                .font(.caption2)
-                .foregroundColor(.white)
-                .padding(4)
-                .background(Color.red)
-                .cornerRadius(4)
-                
                 if isIPhone {
                     // iPhone: Use compact horizontal layout to fit in popup
                     VStack(spacing: 2) {
-                        // Debug: Show we're in iPhone layout
-                        Text("IPHONE LAYOUT")
-                            .font(.caption2)
-                            .foregroundColor(.white)
-                            .padding(2)
-                            .background(Color.green)
-                            .cornerRadius(2)
                         // First row: Host and Join
                         HStack(spacing: 3) {
                             Button("Host") {
@@ -143,13 +118,6 @@ struct MultiplayerView: View {
                 } else {
                     // iPad: Use vertical layout for consistency
                     VStack(spacing: 4) {
-                        // Debug: Show we're in iPad layout
-                        Text("IPAD LAYOUT")
-                            .font(.caption2)
-                            .foregroundColor(.white)
-                            .padding(2)
-                            .background(Color.blue)
-                            .cornerRadius(2)
                         Button("Host Game") {
                             gameKitManager.hostMatch()
                         }
