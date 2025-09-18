@@ -438,58 +438,35 @@ class GameKitManager: NSObject, ObservableObject {
         // Determine if this player is the host
         let localPlayerID = GKLocalPlayer.local.gamePlayerID
         
+        // CORRECT LOGIC: Distinguish between invitation-based and auto-match scenarios
         if let invitation = currentInvitation {
+            // This is an invitation-based match (Host → Invite Friends)
             let senderID = invitation.sender.gamePlayerID
             let localID = localPlayerID
             isHost = senderID == localID
-            print("🎮 GameKit: Invitation match - Sender ID: \(senderID), Local ID: \(localID), isHost: \(isHost)")
+            print("🎮 GameKit: Invitation-based match - Sender ID: \(senderID), Local ID: \(localID), isHost: \(isHost)")
             print("🎮 GameKit: Sender displayName: \(invitation.sender.displayName)")
             print("🎮 GameKit: Local displayName: \(GKLocalPlayer.local.displayName)")
             print("🎮 GameKit: Host determination: senderID == localID = \(senderID == localID)")
             
-            // Additional debugging for invitation flow
             if isHost {
-                print("🎮 GameKit: This device is the invitation SENDER (will be host/white)")
+                print("🎮 GameKit: This device sent the invitation (will be host/white)")
             } else {
-                print("🎮 GameKit: This device is the invitation RECEIVER (will be guest/black)")
-            }
-        } else if match.players.count >= 1 { // For auto-match, use deterministic method when we have other players
-            // If we have an invitation, don't use auto-match logic
-            if currentInvitation != nil {
-                print("🎮 GameKit: Auto-match logic skipped - invitation present")
-                return
-            }
-            
-            // For auto-match, determine host based on who initiated the match
-            // Use isMatchInitiator flag for host determination
-            // For now, we'll use the invitation logic if available, otherwise fall back to ID-based logic
-            
-            if currentInvitation != nil {
-                // We have an invitation, so we're the receiver (guest/black)
-                isHost = false
-                print("🎮 GameKit: Auto-match with invitation - this device is receiver (guest/black)")
-            } else {
-                // No invitation, use isMatchInitiator flag for host determination
-                isHost = isMatchInitiator
-                print("🎮 GameKit: Auto-match - isMatchInitiator: \(isMatchInitiator), isHost: \(isHost)")
-                
-                if isHost {
-                    print("🎮 GameKit: This device initiated the match - assigned as host (white)")
-                } else {
-                    print("🎮 GameKit: This device joined the match - assigned as guest (black)")
-                }
+                print("🎮 GameKit: This device received the invitation (will be guest/black)")
             }
         } else {
-            // If no players connected yet, use isMatchInitiator flag
-            // But only if we don't have an invitation
-            if currentInvitation == nil {
-                isHost = isMatchInitiator
-                print("🎮 GameKit: Auto-match - No other players yet, isMatchInitiator: \(isMatchInitiator), isHost: \(isHost)")
+            // This is an auto-match scenario (Host → Auto Match)
+            isHost = isMatchInitiator
+            print("🎮 GameKit: Auto-match scenario - isMatchInitiator: \(isMatchInitiator), isHost: \(isHost)")
+            
+            if isHost {
+                print("🎮 GameKit: This device initiated auto-match (will be host/white)")
             } else {
-                print("🎮 GameKit: Auto-match logic skipped - invitation present")
-                return
+                print("🎮 GameKit: This device joined auto-match (will be guest/black)")
             }
         }
+        
+        // Host determination is now complete above
         
         DispatchQueue.main.async {
             self.playerColor = self.isHost ? .white : .black

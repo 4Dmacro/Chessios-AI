@@ -452,35 +452,32 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
         // For invitations, we need to determine host based on who sent vs who received
         // For auto-match, we'll use a deterministic method based on player IDs
         
-        // For auto-match, we can determine host even with 1 player connected
-        // The first player to connect becomes the host
+        // CORRECT LOGIC: Distinguish between invitation-based and auto-match scenarios
         if let invitation = currentInvitation {
-            // For invitations, the sender is the host
+            // This is an invitation-based match (Host → Invite Friends)
             let senderID = invitation.sender.gamePlayerID
             let localID = localPlayerID
             isHost = senderID == localID
-            print("🎮 GameKit: Invitation match - Sender ID: \(senderID), Local ID: \(localID), isHost: \(isHost)")
+            print("🎮 GameKit: Invitation-based match - Sender ID: \(senderID), Local ID: \(localID), isHost: \(isHost)")
             print("🎮 GameKit: Sender displayName: \(invitation.sender.displayName)")
             print("🎮 GameKit: Local displayName: \(GKLocalPlayer.local.displayName)")
             print("🎮 GameKit: Host determination: senderID == localID = \(senderID == localID)")
-        } else if match.players.count >= 1 {
-            // For auto-match, determine host based on who initiated the match
-            // The device that initiated the match (hostMatch) becomes the host (white)
-            // The device that joined the match (joinMatch) becomes the guest (black)
-            
-            // Use the isMatchInitiator flag to determine host
-            isHost = isMatchInitiator
-            print("🎮 GameKit: Auto-match - isMatchInitiator: \(isMatchInitiator), isHost: \(isHost)")
             
             if isHost {
-                print("🎮 GameKit: This device initiated the match - assigned as host (white)")
+                print("🎮 GameKit: This device sent the invitation (will be host/white)")
             } else {
-                print("🎮 GameKit: This device joined the match - assigned as guest (black)")
+                print("🎮 GameKit: This device received the invitation (will be guest/black)")
             }
         } else {
-            // If no players connected yet, this player is the host
-            print("🎮 GameKit: Auto-match - No other players yet, isHost: true")
-            isHost = true
+            // This is an auto-match scenario (Host → Auto Match)
+            isHost = isMatchInitiator
+            print("🎮 GameKit: Auto-match scenario - isMatchInitiator: \(isMatchInitiator), isHost: \(isHost)")
+            
+            if isHost {
+                print("🎮 GameKit: This device initiated auto-match (will be host/white)")
+            } else {
+                print("🎮 GameKit: This device joined auto-match (will be guest/black)")
+            }
         }
         
         DispatchQueue.main.async {
