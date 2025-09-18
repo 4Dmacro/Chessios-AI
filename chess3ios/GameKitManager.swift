@@ -138,8 +138,8 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
         // Clear any previous error messages
         errorMessage = ""
         
-        // Set flag to indicate this is a quick match (not invitation-based)
-        isMatchInitiator = false
+        // Set flag to indicate this device initiated the quick match (will be host)
+        isMatchInitiator = true
         
         // Use the modern auto-match approach
         performAutoMatch()
@@ -513,14 +513,14 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
             print("🔄 GameKit: UI should now show 'You are \(self.playerColor.rawValue)'")
             
             // Send board flip command to connected device
-            // CRITICAL: Send the OPPOSITE color so the other device becomes the opposite
+            // CRITICAL: Send the color we want the other device to become (opposite of our new color)
             if let match = self.currentMatch {
-                let oppositeColor = self.playerColor == .white ? "black" : "white"
-                let flipCommand = "FLIP_BOARD:\(oppositeColor)"
+                let targetColorForOtherPlayer = self.playerColor == .white ? "black" : "white"
+                let flipCommand = "FLIP_BOARD:\(targetColorForOtherPlayer)"
                 if let data = flipCommand.data(using: .utf8) {
                     do {
                         try match.sendData(toAllPlayers: data, with: .reliable)
-                        print("🔄 GameKit: Sent board flip command: \(flipCommand) - other device will become \(oppositeColor)")
+                        print("🔄 GameKit: Sent board flip command: \(flipCommand) - other device will become \(targetColorForOtherPlayer)")
                     } catch {
                         print("❌ GameKit: Failed to send board flip command: \(error)")
                     }
@@ -779,15 +779,23 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
                     if self.playerColor == .none {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             self.assignPlayerColors()
-                            // Clear invitation after color assignment
-                            self.currentInvitation = nil
-                            print("🎮 GameKit: Invitation cleared after color assignment (delegate)")
+                            // Only clear invitation when both players have connected
+                            if match.players.count >= 2 {
+                                self.currentInvitation = nil
+                                print("🎮 GameKit: Invitation cleared after both players connected (delegate)")
+                            } else {
+                                print("🎮 GameKit: Invitation kept - waiting for second player to connect")
+                            }
                         }
                     } else {
                         print("🎮 GameKit: Colors already assigned (\(self.playerColor.rawValue)), skipping duplicate assignment")
-                        // Clear invitation even if colors are already assigned
-                        self.currentInvitation = nil
-                        print("🎮 GameKit: Invitation cleared (colors already assigned)")
+                        // Only clear invitation when both players have connected
+                        if match.players.count >= 2 {
+                            self.currentInvitation = nil
+                            print("🎮 GameKit: Invitation cleared (both players connected)")
+                        } else {
+                            print("🎮 GameKit: Invitation kept - waiting for second player to connect")
+                        }
                     }
                 } else {
                     // For auto-match, assign colors immediately when a player connects

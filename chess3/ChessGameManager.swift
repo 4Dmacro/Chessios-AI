@@ -298,8 +298,8 @@ class ChessGameManager: ObservableObject {
             rotateBoardForGameKitPlayer(playerColor: gameKitManager.playerColor)
         } else {
             print("🔄 ChessGameManager: No GameKit match - using standard rotation logic")
-            // Notify the piece controller to handle the rotation
-            pieceController?.rotateBoardForTurn(currentTurn: currentTurn)
+        // Notify the piece controller to handle the rotation
+        pieceController?.rotateBoardForTurn(currentTurn: currentTurn)
         }
     }
     
@@ -1217,7 +1217,7 @@ class ChessGameManager: ObservableObject {
                     print("🎮 GameKit: Chess board current turn: \(currentTurn.rawValue)")
                     print("🎮 GameKit: Debug - isLocalMove: \(isLocalMove), matchState: \(gameKitManager.matchState)")
                 } else {
-                    gameState = chessBoard.getGameStateForHuman()
+                gameState = chessBoard.getGameStateForHuman()
                     print("🎮 GameKit: Using standard game state: \(gameState)")
                 }
             } else {
@@ -2124,16 +2124,16 @@ class ChessGameManager: ObservableObject {
                     continue
                 }
                 
-                print("🔄 Found USDZ piece for \(piece.color) \(piece.type) at \(position.stringValue): \(usdzPiece.name ?? "unknown")")
-                print("🔄 USDZ piece world position: \(usdzPiece.worldPosition)")
-                print("🔄 Expected position for \(position.stringValue): \(boardToWorldPosition(file: position.file, rank: position.rank, z: position.z))")
-                
+            print("🔄 Found USDZ piece for \(piece.color) \(piece.type) at \(position.stringValue): \(usdzPiece.name ?? "unknown")")
+            print("🔄 USDZ piece world position: \(usdzPiece.worldPosition)")
+            print("🔄 Expected position for \(position.stringValue): \(boardToWorldPosition(file: position.file, rank: position.rank, z: position.z))")
+            
                 usdzPieces[position] = usdzPiece
                 pieceNodes[position] = usdzPiece
                 usdzPieceToPosition[usdzPiece] = position
                 print("🔄 Resynced: \(piece.color) \(piece.type) at \(position.stringValue) -> \(usdzPiece.name ?? "unknown")")
                 
-                // Move to correct position if needed
+                    // Move to correct position if needed
                 let expectedWorldPos = boardToWorldPosition(file: position.file, rank: position.rank, z: position.z)
                 let actualWorldPos = usdzPiece.position
                 let distance = sqrt(
@@ -2146,9 +2146,9 @@ class ChessGameManager: ObservableObject {
                     print("✅ Moved \(usdzPiece.name ?? "unknown") to correct position")
                 }
             } else {
-                // Only warn if the piece is not a captured piece
+                    // Only warn if the piece is not a captured piece
                 let isCaptured = capturedPieces.contains(where: { $0.position == position && $0.type == piece.type && $0.color == piece.color })
-                if !isCaptured {
+                    if !isCaptured {
                     trulyMissing.append((position, piece))
                 }
             }
@@ -3222,10 +3222,10 @@ class ChessGameManager: ObservableObject {
                     if let (oldPosition, piece) = matchingPieces.first {
                         // Move the piece to the new position
                         let movedPiece = piece.moved(to: position)
-                        newChessBoard[position] = movedPiece
+                    newChessBoard[position] = movedPiece
                         newChessBoard.removeValue(forKey: oldPosition)
                         print("♟️ Moved \(pieceInfo.color) \(pieceInfo.type) from \(oldPosition.stringValue) to \(position.stringValue)")
-                    } else {
+                } else {
                         print("⚠️ No matching \(pieceInfo.color) \(pieceInfo.type) found in current chess engine")
                     }
                 }
@@ -3784,33 +3784,33 @@ class ChessGameManager: ObservableObject {
             let maxAttempts = 3
             
             while attempts < maxAttempts {
-                let emergencyMove = selectEmergencyMove(for: aiColor)
-                if let move = emergencyMove {
+            let emergencyMove = selectEmergencyMove(for: aiColor)
+            if let move = emergencyMove {
                     print("🤖 AI: Emergency move attempt \(attempts + 1): \(move.from.stringValue) -> \(move.to.stringValue)")
+                
+                // CRITICAL: Validate the emergency move before executing
+                if let piece = chessBoard.getPiece(at: move.from) {
+                    let validMoves = chessBoard.getValidMoves(for: piece)
+                    let isValidMove = validMoves.contains { $0.to == move.to }
                     
-                    // CRITICAL: Validate the emergency move before executing
-                    if let piece = chessBoard.getPiece(at: move.from) {
-                        let validMoves = chessBoard.getValidMoves(for: piece)
-                        let isValidMove = validMoves.contains { $0.to == move.to }
-                        
-                        if isValidMove {
-                            print("🤖 AI: Emergency move validated - executing immediately")
-                            // For emergency moves, execute immediately to prevent getting stuck
-                            DispatchQueue.main.async {
-                                self.executeAIMove(move)
-                            }
+                                    if isValidMove {
+                    print("🤖 AI: Emergency move validated - executing immediately")
+                    // For emergency moves, execute immediately to prevent getting stuck
+                    DispatchQueue.main.async {
+                        self.executeAIMove(move)
+                    }
                             return
-                        } else {
+                } else {
                             print("❌ AI: Emergency move attempt \(attempts + 1) is not valid")
                             attempts += 1
-                        }
-                    } else {
+                }
+                } else {
                         print("❌ AI: Emergency move piece not found")
                         attempts += 1
-                    }
-                } else {
-                    print("🤖 AI: No emergency move available - checkmate!")
-                    isAIMoveInProgress = false
+                }
+            } else {
+                print("🤖 AI: No emergency move available - checkmate!")
+                isAIMoveInProgress = false
                     return
                 }
             }
@@ -4036,7 +4036,7 @@ class ChessGameManager: ObservableObject {
                 let success = chessBoard.makeMove(ChessMove3D(piece: piece, from: move.from, to: move.to, capturedPiece: pieceAtTo), changeTurn: true)
                 print("🤖 AI: Direct move execution result: \(success)")
                 
-                if success {
+                                    if success {
                     // CRITICAL: The chess engine already handled the capture, so we just need to update visual tracking
                     if let capturedPiece = pieceAtTo {
                         print("🤖 AI: Chess engine captured piece: \(capturedPiece.color) \(capturedPiece.type)")
@@ -4090,7 +4090,7 @@ class ChessGameManager: ObservableObject {
                     // Update piece lists to reflect the new turn
                     pieceController?.updatePieceLists()
                     
-                    print("🤖 AI: Move completed: \(move.from.stringValue) -> \(move.to.stringValue)")
+                        print("🤖 AI: Move completed: \(move.from.stringValue) -> \(move.to.stringValue)")
                     
                     // CRITICAL: Track AI moves to detect loops
                     secondLastAIMoveObject = lastAIMoveObject

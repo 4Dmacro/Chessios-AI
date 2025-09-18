@@ -1779,7 +1779,7 @@ struct GameCenterPopoverView: View {
                 HStack {
                     Text("You are:")
                         .font(.subheadline)
-                    Text(gameKitManager.playerColor == .none ? "..." : gameKitManager.playerColor.rawValue)
+                    Text(gameKitManager.playerColor == .none ? "..." : (gameKitManager.playerColor == .white ? "Red" : "Blue"))
                         .font(.subheadline)
                         .fontWeight(.bold)
                         .foregroundColor(gameKitManager.playerColor == .white ? .white : .black)

@@ -259,7 +259,7 @@ class GameKitManager: NSObject, ObservableObject {
         // Clear any previous error messages
         errorMessage = ""
         
-        // Use the modern auto-match approach
+        // Use the modern auto-match approach (same as iOS)
         performAutoMatch()
     }
     
@@ -270,6 +270,10 @@ class GameKitManager: NSObject, ObservableObject {
         }
         
         print("🎮 GameKit: Starting join match (auto-match mode)")
+        
+        // Mark this device as NOT the match initiator (guest)
+        isMatchInitiator = false
+        print("🎮 GameKit: This device marked as match joiner (will be guest/black)")
         
         // Clear any previous error messages
         errorMessage = ""
@@ -291,8 +295,8 @@ class GameKitManager: NSObject, ObservableObject {
         // Clear any previous error messages
         errorMessage = ""
         
-        // Set flag to indicate this is a quick match (not invitation-based)
-        isMatchInitiator = false
+        // Set flag to indicate this device initiated the quick match (will be host)
+        isMatchInitiator = true
         
         // Use the modern auto-match approach
         performAutoMatch()
@@ -493,6 +497,12 @@ class GameKitManager: NSObject, ObservableObject {
             print("🎮 GameKit: Host determination - Local ID: \(localPlayerID), Other ID: \(match.players.first?.gamePlayerID ?? "none")")
             print("🎮 GameKit: Color assignment complete - this device is \(self.playerColor.rawValue)")
             print("🎮 GameKit: UI should now show 'You are \(self.playerColor.rawValue)'")
+            
+            // Rotate the board to match the player's perspective
+            if let chessGameManager = self.chessGameManager {
+                // Call the ChessGameManager's rotateBoardForGameKitPlayer function
+                chessGameManager.rotateBoardForGameKitPlayer(playerColor: self.playerColor)
+            }
         }
     }
     
@@ -507,14 +517,14 @@ class GameKitManager: NSObject, ObservableObject {
             print("🔄 GameKit: UI should now show 'You are \(self.playerColor.rawValue)'")
             
             // Send board flip command to connected device
-            // CRITICAL: Send the OPPOSITE color so the other device becomes the opposite
+            // CRITICAL: Send the color we want the other device to become (opposite of our new color)
             if let match = self.currentMatch {
-                let oppositeColor = self.playerColor == .white ? "black" : "white"
-                let flipCommand = "FLIP_BOARD:\(oppositeColor)"
+                let targetColorForOtherPlayer = self.playerColor == .white ? "black" : "white"
+                let flipCommand = "FLIP_BOARD:\(targetColorForOtherPlayer)"
                 if let data = flipCommand.data(using: .utf8) {
                     do {
                         try match.sendData(toAllPlayers: data, with: .reliable)
-                        print("🔄 GameKit: Sent board flip command: \(flipCommand) - other device will become \(oppositeColor)")
+                        print("🔄 GameKit: Sent board flip command: \(flipCommand) - other device will become \(targetColorForOtherPlayer)")
                     } catch {
                         print("❌ GameKit: Failed to send board flip command: \(error)")
                     }
@@ -910,11 +920,15 @@ extension GameKitManager {
                         if match.players.count > 0 {
                             print("🎮 GameKit: Players connected, proceeding with color assignment")
                             self.assignPlayerColors()
-                            // Clear invitation after color assignment
-                            self.currentInvitation = nil
-                            // Also remove from stored invitations since it's been successfully used
-                            self.pendingInvitations.removeAll { $0.sender.gamePlayerID == invite.sender.gamePlayerID }
-                            print("🎮 GameKit: Invitation cleared after successful color assignment (accept)")
+                            // Only clear invitation when both players have connected
+                            if match.players.count >= 2 {
+                                self.currentInvitation = nil
+                                // Also remove from stored invitations since it's been successfully used
+                                self.pendingInvitations.removeAll { $0.sender.gamePlayerID == invite.sender.gamePlayerID }
+                                print("🎮 GameKit: Invitation cleared after both players connected (accept)")
+                            } else {
+                                print("🎮 GameKit: Invitation kept - waiting for second player to connect")
+                            }
                         } else {
                             print("⚠️ GameKit: No players connected yet, waiting longer...")
                             // Try again in another second
@@ -922,9 +936,15 @@ extension GameKitManager {
                                 if match.players.count > 0 {
                                     print("🎮 GameKit: Players now connected, proceeding with color assignment")
                                     self.assignPlayerColors()
-                                    self.currentInvitation = nil
-                                    // Also remove from stored invitations since it's been successfully used
-                                    self.pendingInvitations.removeAll { $0.sender.gamePlayerID == invite.sender.gamePlayerID }
+                                    // Only clear invitation when both players have connected
+                                    if match.players.count >= 2 {
+                                        self.currentInvitation = nil
+                                        // Also remove from stored invitations since it's been successfully used
+                                        self.pendingInvitations.removeAll { $0.sender.gamePlayerID == invite.sender.gamePlayerID }
+                                        print("🎮 GameKit: Invitation cleared after both players connected (retry)")
+                                    } else {
+                                        print("🎮 GameKit: Invitation kept - waiting for second player to connect")
+                                    }
                                 } else {
                                     print("❌ GameKit: Still no players connected after delay")
                                     self.errorMessage = "Failed to establish connection with host"
