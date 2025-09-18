@@ -32,9 +32,6 @@ class GameKitManager: NSObject, ObservableObject {
     private var currentInvitation: GKInvite?
     @Published var pendingInvitations: [GKInvite] = [] // Store pending invitations for recall
     
-    // Track if this device initiated the match (for host determination)
-    private var isMatchInitiator: Bool = false
-    
     // Reference to the chess game manager for move processing
     private var chessGameManager: ChessGameManager?
     
@@ -252,10 +249,6 @@ class GameKitManager: NSObject, ObservableObject {
         
         print("🎮 GameKit: Starting host match (auto-match mode)")
         
-        // Mark this device as the match initiator (host)
-        isMatchInitiator = true
-        print("🎮 GameKit: This device marked as match initiator (will be host/white)")
-        
         // Clear any previous error messages
         errorMessage = ""
         
@@ -277,26 +270,6 @@ class GameKitManager: NSObject, ObservableObject {
         
         // Clear any previous error messages
         errorMessage = ""
-        
-        // Use the modern auto-match approach
-        performAutoMatch()
-    }
-    
-    // MARK: - Quick Match for Random Players
-    
-    func quickMatch() {
-        guard isFullyAuthenticated else {
-            print("❌ GameKit: Player not fully authenticated (displayName: \(GKLocalPlayer.local.displayName))")
-            return
-        }
-        
-        print("🎮 GameKit: Starting quick match for random players")
-        
-        // Clear any previous error messages
-        errorMessage = ""
-        
-        // Set flag to indicate this device initiated the quick match (will be host)
-        isMatchInitiator = true
         
         // Use the modern auto-match approach
         performAutoMatch()
@@ -458,7 +431,7 @@ class GameKitManager: NSObject, ObservableObject {
             }
             
             // For auto-match, determine host based on who initiated the match
-            // Use isMatchInitiator flag for host determination
+            // Since macOS doesn't have isMatchInitiator, we'll use a different approach
             // For now, we'll use the invitation logic if available, otherwise fall back to ID-based logic
             
             if currentInvitation != nil {
@@ -466,22 +439,29 @@ class GameKitManager: NSObject, ObservableObject {
                 isHost = false
                 print("🎮 GameKit: Auto-match with invitation - this device is receiver (guest/black)")
             } else {
-                // No invitation, use isMatchInitiator flag for host determination
-                isHost = isMatchInitiator
-                print("🎮 GameKit: Auto-match - isMatchInitiator: \(isMatchInitiator), isHost: \(isHost)")
-                
-                if isHost {
-                    print("🎮 GameKit: This device initiated the match - assigned as host (white)")
+                // No invitation, use ID-based logic as fallback
+                let otherPlayer = match.players.first { $0.gamePlayerID != localPlayerID }
+                if let otherPlayer = otherPlayer {
+                    let otherPlayerID = otherPlayer.gamePlayerID
+                    isHost = localPlayerID < otherPlayerID
+                    print("🎮 GameKit: Auto-match fallback - Local ID: \(localPlayerID), Other ID: \(otherPlayerID), isHost: \(isHost)")
+                    
+                    if isHost {
+                        print("🎮 GameKit: This device is first to connect - assigned as host (white)")
+                    } else {
+                        print("🎮 GameKit: This device is second to connect - assigned as guest (black)")
+                    }
                 } else {
-                    print("🎮 GameKit: This device joined the match - assigned as guest (black)")
+                    print("⚠️ GameKit: Could not find other player in match")
+                    isHost = true
                 }
             }
         } else {
-            // If no players connected yet, use isMatchInitiator flag
+            // If no players connected yet, this player is the host
             // But only if we don't have an invitation
             if currentInvitation == nil {
-                isHost = isMatchInitiator
-                print("🎮 GameKit: Auto-match - No other players yet, isMatchInitiator: \(isMatchInitiator), isHost: \(isHost)")
+                print("🎮 GameKit: Auto-match - No other players yet, isHost: true")
+                isHost = true
             } else {
                 print("🎮 GameKit: Auto-match logic skipped - invitation present")
                 return

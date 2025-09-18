@@ -151,14 +151,6 @@ struct MultiplayerView: View {
                     .cornerRadius(6)
                     .disabled(gameKitManager.isJoining)
                     
-                    Button("🎯 Quick Match") {
-                        gameKitManager.quickMatch()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .background(Color.orange .opacity(0.6))
-                    .cornerRadius(6)
-                    .disabled(gameKitManager.isJoining)
-                    
                     // Invitation Recall Button - Always visible
                     Button("📨 Check Invitations\(gameKitManager.hasStoredInvitations ? " (\(gameKitManager.pendingInvitations.count))" : "")") {
                         showInvitationRecallMenu()

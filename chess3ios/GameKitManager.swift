@@ -125,26 +125,6 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
         performAutoMatch()
     }
     
-    // MARK: - Quick Match for Random Players
-    
-    func quickMatch() {
-        guard isAuthenticated else {
-            errorMessage = "Not authenticated with Game Center"
-            return
-        }
-        
-        print("🎮 GameKit: Starting quick match for random players")
-        
-        // Clear any previous error messages
-        errorMessage = ""
-        
-        // Set flag to indicate this device initiated the quick match (will be host)
-        isMatchInitiator = true
-        
-        // Use the modern auto-match approach
-        performAutoMatch()
-    }
-    
     private func performAutoMatch() {
         DispatchQueue.main.async {
             print("🎮 GameKit: Creating auto-match request")
@@ -170,19 +150,21 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
                 return
             }
             
-            // Additional safety check for all devices
-            print("📱 \(UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone") detected - applying safety checks")
-            
-            // Ensure we're on the main thread and the view controller is ready
-            guard Thread.isMainThread else {
-                self.errorMessage = "Must be called on main thread"
-                return
-            }
-            
-            // Check if the view controller is in a valid state
-            guard rootViewController.view.window != nil else {
-                self.errorMessage = "View controller not ready for presentation"
-                return
+            // Additional iPad-specific safety check
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                print("📱 iPad detected - applying additional safety checks")
+                
+                // Ensure we're on the main thread and the view controller is ready
+                guard Thread.isMainThread else {
+                    self.errorMessage = "Must be called on main thread"
+                    return
+                }
+                
+                // Check if the view controller is in a valid state
+                guard rootViewController.view.window != nil else {
+                    self.errorMessage = "View controller not ready for presentation"
+                    return
+                }
             }
             
             // Check if we can present
@@ -255,19 +237,21 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
                 return
             }
             
-            // Additional safety check for all devices
-            print("📱 \(UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone") detected - applying safety checks")
-            
-            // Ensure we're on the main thread and the view controller is ready
-            guard Thread.isMainThread else {
-                self.errorMessage = "Must be called on main thread"
-                return
-            }
-            
-            // Check if the view controller is in a valid state
-            guard rootViewController.view.window != nil else {
-                self.errorMessage = "View controller not ready for presentation"
-                return
+            // Additional iPad-specific safety check
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                print("📱 iPad detected - applying additional safety checks")
+                
+                // Ensure we're on the main thread and the view controller is ready
+                guard Thread.isMainThread else {
+                    self.errorMessage = "Must be called on main thread"
+                    return
+                }
+                
+                // Check if the view controller is in a valid state
+                guard rootViewController.view.window != nil else {
+                    self.errorMessage = "View controller not ready for presentation"
+                    return
+                }
             }
             
             // Check if we can present

@@ -727,7 +727,7 @@ struct ContentView: View {
                 .popover(isPresented: $showGameCenterPopover) {
                     GameCenterPopoverView()
                         .environmentObject(gameKitManager)
-                        .frame(width: 300, height: 250)
+                        .frame(width: 250, height: 200)
                 }
                 
                 // Piece controller at absolute right edge
@@ -1811,17 +1811,6 @@ struct GameCenterPopoverView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
                 .background(gameKitManager.isAuthenticated ? Color.blue : Color.gray)
-                .cornerRadius(8)
-                .disabled(!gameKitManager.isAuthenticated)
-                
-                Button("🎯 Quick Match") {
-                    gameKitManager.quickMatch()
-                }
-                .font(.subheadline)
-                .foregroundColor(.white)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(gameKitManager.isAuthenticated ? Color.orange : Color.gray)
                 .cornerRadius(8)
                 .disabled(!gameKitManager.isAuthenticated)
                 
