@@ -416,7 +416,7 @@ struct ContentView: View {
                 //    .padding(.vertical, 8)
                 //    .cornerRadius(12)
                     
-                    Spacer(minLength: 10)
+                    Spacer(minLength: 60)
                     
                     // Multiplayer Controls
                     MultiplayerView()

@@ -166,6 +166,7 @@ struct MultiplayerView: View {
                     }
                 }
             }
+           
             
             // Match Status
             if gameKitManager.matchState != .none {

@@ -211,7 +211,7 @@ struct MultiplayerView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(gameKitManager.playerColor == .white ? Color.red.opacity(0.5) : Color.blue.opacity(0.5))
+                .background(gameKitManager.playerColor == .white ? Color.red.opacity(0.6) : Color.blue.opacity(0.6))
                 .cornerRadius(8)
                 .padding(.horizontal)
             }
