@@ -326,19 +326,22 @@ class GameKitManager: NSObject, ObservableObject {
                     print("🎮 GameKit: Match state set to searching")
                     
                     // Add timeout for matchmaking to prevent infinite searching
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 60.0) { [weak matchmaker] in
+                    DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 60.0) { [weak matchmaker, weak self] in
+                        guard let self = self else { return }
                         if self.matchState == .searching {
                             print("⏰ GameKit: Matchmaking timeout after 60 seconds")
-                            matchmaker?.dismiss(nil)
-                            self.matchState = .none
-                            self.errorMessage = "Matchmaking timed out. No other players found. Make sure both devices are searching at the same time."
-                            
-                            // Show timeout alert
-                            let alert = NSAlert()
-                            alert.messageText = "Matchmaking Timeout"
-                            alert.informativeText = "No other players found after 60 seconds. Make sure both devices are searching for a match at the same time."
-                            alert.addButton(withTitle: "OK")
-                            alert.runModal()
+                            DispatchQueue.main.async {
+                                matchmaker?.dismiss(nil)
+                                self.matchState = .none
+                                self.errorMessage = "Matchmaking timed out. No other players found. Make sure both devices are searching at the same time."
+                                
+                                // Show timeout alert
+                                let alert = NSAlert()
+                                alert.messageText = "Matchmaking Timeout"
+                                alert.informativeText = "No other players found after 60 seconds. Make sure both devices are searching for a match at the same time."
+                                alert.addButton(withTitle: "OK")
+                                alert.runModal()
+                            }
                         }
                     }
                 } else {
