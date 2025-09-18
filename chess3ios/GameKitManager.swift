@@ -628,6 +628,48 @@ class GameKitManager: NSObject, ObservableObject, GKMatchDelegate {
         print("🎮 GameKit: Invitation state reset, ready for new invitation")
     }
     
+    func forceResetGameCenter() {
+        print("🔄 GameKit: Force resetting Game Center completely")
+        
+        // Disconnect from current match
+        currentMatch?.disconnect()
+        currentMatch = nil
+        
+        // Clear all state
+        matchState = .none
+        playerColor = .none
+        isHost = false
+        currentInvitation = nil
+        errorMessage = ""
+        
+        // Force Game Center to reset its internal state
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            print("🔄 GameKit: Clearing Game Center internal state")
+            // This forces Game Center to clear its internal state
+            GKLocalPlayer.local.authenticateHandler = nil
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                print("🔄 GameKit: Re-authenticating after force reset")
+                self.authenticatePlayer()
+            }
+        }
+    }
+    
+    func resetNetworkState() {
+        print("🔄 GameKit: Resetting network state")
+        
+        // Reset network state
+        if let match = currentMatch {
+            match.disconnect()
+        }
+        currentMatch = nil
+        
+        // Wait for network cleanup
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            print("🔄 GameKit: Network cleanup complete, ready for reconnection")
+            // Network state is now reset and ready for new connections
+        }
+    }
+    
     // MARK: - Invitation Recall System
     
     private var pendingInvitations: [GKInvite] = [] // Store pending invitations for recall

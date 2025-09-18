@@ -225,7 +225,7 @@ struct MultiplayerView: View {
                 .padding(.horizontal, isIPhone ? 4 : 8)
                 .padding(.vertical, isIPhone ? 2 : 4)
                 .frame(maxWidth: 140)
-                .background(gameKitManager.playerColor == .white ? Color.white.opacity(0.4) : Color.black.opacity(0.4))
+                .background(gameKitManager.playerColor == .white ? Color.red.opacity(0.5) : Color.blue.opacity(0.5))
                 .cornerRadius(isIPhone ? 4 : 8)
             }
             
@@ -251,15 +251,25 @@ struct MultiplayerView: View {
                         .background(Color.blue.opacity(0.4))
                         .cornerRadius(6)
                         
-                        Button("✕ Clear") {
-                            gameKitManager.clearErrorMessages()
+                        Button("Force GC Reset") {
+                            gameKitManager.forceResetGameCenter()
                         }
                         .font(isIPhone ? .caption2 : .caption)
                         .foregroundColor(.white)
                         .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.gray.opacity(0.6))
+                        .padding(.vertical, 2)
+                        .background(Color.orange.opacity(0.6))
                         .cornerRadius(6)
+                        
+                     //   Button("✕ Clear") {
+                     //       gameKitManager.clearErrorMessages()
+                     //   }
+                      //  .font(isIPhone ? .caption2 : .caption)
+                      //  .foregroundColor(.white)
+                      //  .padding(.horizontal, 8)
+                      //  .padding(.vertical, 4)
+                      //  .background(Color.gray.opacity(0.6))
+                      //  .cornerRadius(6)
                     }
                 }
                 .frame(maxWidth: 140)
