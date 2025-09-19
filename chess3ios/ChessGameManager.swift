@@ -88,6 +88,10 @@ class ChessGameManager: ObservableObject {
     private var consecutiveFailedMoves: Int = 0
     @Published var isVisualMoveInProgress: Bool = false
     
+    // Game Center opponent move properties
+    @Published var lastOpponentMove: String = ""
+    @Published var showOpponentMoveHighlight = false
+    
     // Promotion properties
     private var pendingPromotion: (from: ChessPosition3D, to: ChessPosition3D, piece: ChessPiece3D)?
     
@@ -225,6 +229,7 @@ class ChessGameManager: ObservableObject {
     
     func processReceivedMove(_ moveString: String) {
         print("🎮 GameKit: Processing received move: \(moveString)")
+        print("🎮 GameKit: Current opponent move state - showOpponentMoveHighlight: \(showOpponentMoveHighlight), lastOpponentMove: '\(lastOpponentMove)'")
         
         // CRITICAL: Check for GameKit commands first (like promotion and castling)
         if moveString.hasPrefix("PROMOTION:") {
@@ -372,6 +377,25 @@ class ChessGameManager: ObservableObject {
             if success {
                 print("✅ GameKit: Received 3D move executed successfully")
                 
+                // Get the piece that was moved to create opponent move description
+                if let movedPiece = chessBoard.getPiece(at: coordinates.to) {
+                    let moveDescription = "\(getDisplayColor(for: movedPiece.color)) \(movedPiece.type.rawValue.capitalized) \(coordinates.from.stringValue) → \(coordinates.to.stringValue)"
+                    print("🎮 GameKit: Setting opponent move description (3D move): \(moveDescription)")
+                    
+                    DispatchQueue.main.async {
+                        self.lastOpponentMove = moveDescription
+                        self.showOpponentMoveHighlight = true
+                        print("🎮 GameKit: Set lastOpponentMove='\(self.lastOpponentMove)', showOpponentMoveHighlight=\(self.showOpponentMoveHighlight)")
+                        
+                        // Auto-clear the opponent move display after 5 seconds
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                            self.clearOpponentMoveDisplay()
+                        }
+                    }
+                } else {
+                    print("❌ GameKit: Could not find moved piece at \(coordinates.to.stringValue) for 3D move - opponent move description not created")
+                }
+                
                 // CRITICAL: Synchronize game state after receiving a 3D move
                 DispatchQueue.main.async {
                     // Update game state to reflect the new turn
@@ -427,6 +451,26 @@ class ChessGameManager: ObservableObject {
                         let success = tryMoveWithoutTurnValidation(from: from, to: to)
                         if success {
                             print("✅ GameKit: Purple arrow move executed successfully")
+                            
+                            // Get the piece that was moved to create opponent move description
+                            if let movedPiece = chessBoard.getPiece(at: to) {
+                                let moveDescription = "\(getDisplayColor(for: movedPiece.color)) \(movedPiece.type.rawValue.capitalized) \(from.stringValue) → \(to.stringValue)"
+                                print("🎮 GameKit: Setting opponent move description (purple arrow): \(moveDescription)")
+                                
+                                DispatchQueue.main.async {
+                                    self.lastOpponentMove = moveDescription
+                                    self.showOpponentMoveHighlight = true
+                                    print("🎮 GameKit: Set lastOpponentMove='\(self.lastOpponentMove)', showOpponentMoveHighlight=\(self.showOpponentMoveHighlight)")
+                                    
+                                    // Auto-clear the opponent move display after 5 seconds
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                                        self.clearOpponentMoveDisplay()
+                                    }
+                                }
+                            } else {
+                                print("❌ GameKit: Could not find moved piece at \(to.stringValue) for purple arrow move - opponent move description not created")
+                            }
+                            
                             // Synchronize game state
                             DispatchQueue.main.async {
                                 let currentTurn = self.chessBoard.getCurrentTurn()
@@ -466,6 +510,26 @@ class ChessGameManager: ObservableObject {
             
             if success {
                 print("✅ GameKit: Received move executed successfully")
+                print("🎮 GameKit: About to create opponent move description for move from \(coordinates.from.stringValue) to \(coordinates.to.stringValue)")
+                
+                // Get the piece that was moved to create opponent move description
+                if let movedPiece = chessBoard.getPiece(at: coordinates.to) {
+                    let moveDescription = "\(getDisplayColor(for: movedPiece.color)) \(movedPiece.type.rawValue.capitalized) \(coordinates.from.stringValue) → \(coordinates.to.stringValue)"
+                    print("🎮 GameKit: Setting opponent move description: \(moveDescription)")
+                    
+                    DispatchQueue.main.async {
+                        self.lastOpponentMove = moveDescription
+                        self.showOpponentMoveHighlight = true
+                        print("🎮 GameKit: Set lastOpponentMove='\(self.lastOpponentMove)', showOpponentMoveHighlight=\(self.showOpponentMoveHighlight)")
+                        
+                        // Auto-clear the opponent move display after 5 seconds
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                            self.clearOpponentMoveDisplay()
+                        }
+                    }
+                } else {
+                    print("❌ GameKit: Could not find moved piece at \(coordinates.to.stringValue) - opponent move description not created")
+                }
                 
                 // CRITICAL: Synchronize game state after receiving a move
                 DispatchQueue.main.async {
@@ -705,6 +769,10 @@ class ChessGameManager: ObservableObject {
         if let ai = objc_getAssociatedObject(self, &AssociatedKeys.aiPlayer) as? ChessAI {
             ai.resetMoveTracking()
         }
+        
+        // Clear move displays
+        clearAIMoveDisplay()
+        clearOpponentMoveDisplay()
         
         // CRITICAL: Complete scene reset - clear everything and rebuild from scratch
         performCompleteSceneReset()
@@ -1324,6 +1392,9 @@ class ChessGameManager: ObservableObject {
             if !isProcessingReceivedMove && !isAIMoveInProgress {
                 isLocalMove = true
                 print("🎮 GameKit: Marking move as local move - isLocalMove set to true")
+                
+                // Clear opponent move display when local player makes a move
+                clearOpponentMoveDisplay()
             } else if isAIMoveInProgress {
                 print("🤖 AI: AI move detected - not marking as local move")
             }
@@ -4321,7 +4392,7 @@ class ChessGameManager: ObservableObject {
                         }
                     
                     // Record the AI move for display
-                    let moveDescription = "\(piece.color.rawValue.capitalized) \(piece.type.rawValue.capitalized) \(move.from.stringValue) → \(move.to.stringValue)"
+                    let moveDescription = "\(getDisplayColor(for: piece.color)) \(piece.type.rawValue.capitalized) \(move.from.stringValue) → \(move.to.stringValue)"
                     print("🤖 AI: Setting move description: \(moveDescription)")
                     DispatchQueue.main.async {
                         self.lastAIMove = moveDescription
@@ -4571,6 +4642,24 @@ class ChessGameManager: ObservableObject {
         showAIMoveHighlight = false
         lastAIMovePiece = nil
         print("🤖 AI: Cleared AI move display")
+    }
+    
+    func clearOpponentMoveDisplay() {
+        lastOpponentMove = ""
+        showOpponentMoveHighlight = false
+        print("🎮 GameKit: Cleared opponent move display")
+    }
+    
+    // Helper function to convert piece colors to display colors (Red/Blue instead of White/Black)
+    private func getDisplayColor(for pieceColor: PieceColor) -> String {
+        switch pieceColor {
+        case .white:
+            return "Red"
+        case .black:
+            return "Blue"
+        case .none:
+            return "Unknown"
+        }
     }
     
     func executeChessEngineMoveOnly(from: ChessPosition3D, to: ChessPosition3D) -> Bool {

@@ -691,8 +691,9 @@ class ChessPieceController: ObservableObject {
             knightMode = (piece.type == .knight)
             knightFirstMove = nil
             
-            // Clear AI move display when a piece is selected
+            // Clear move displays when a piece is selected
             chessGame.clearAIMoveDisplay()
+            // Don't clear opponent move display when selecting a piece - let it stay visible until local move is made
             
                 print("🎯 ChessPieceController: About to call highlightSelectedPiece()")
             // Highlight the selected piece
@@ -3264,8 +3265,27 @@ struct ChessPieceControllerView: View {
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 4)
-                .background(Color.black)
+                .background(Color.green.opacity(0.5))
                 .cornerRadius(6)
+            }
+            
+            // Game Center opponent move display
+            if let chessGame = controller.chessGame, chessGame.showOpponentMoveHighlight && !chessGame.lastOpponentMove.isEmpty {
+                HStack {
+                    Image(systemName: "person.circle")
+                        .foregroundColor(.white)
+                    Text(chessGame.lastOpponentMove)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 4)
+                .background(Color.green.opacity(0.5))
+                .cornerRadius(6)
+                .onAppear {
+                    print("🎮 UI: Displaying opponent move: '\(chessGame.lastOpponentMove)'")
+                }
             }
             
             // Check warning (only show when a piece is selected)

@@ -25,6 +25,10 @@ class GameKitManager: NSObject, ObservableObject {
     @Published var playerColor: PieceColor = .none // Current player's color
     @Published var isHost: Bool = false // Whether this player is the host
     @Published var canFlipBoard: Bool = false // Whether board flipping is allowed
+    
+    // Game Center opponent move properties
+    @Published var lastOpponentMove: String = ""
+    @Published var showOpponentMoveHighlight = false
     @Published var errorMessage: String = ""
     @Published var isAuthenticating = false
     
@@ -255,6 +259,24 @@ class GameKitManager: NSObject, ObservableObject {
             }
         }
         return nil
+    }
+    
+    // Helper function to convert piece colors to display colors (Red/Blue instead of White/Black)
+    private func getDisplayColor(for pieceColor: PieceColor) -> String {
+        switch pieceColor {
+        case .white:
+            return "Red"
+        case .black:
+            return "Blue"
+        case .none:
+            return "Unknown"
+        }
+    }
+    
+    func clearOpponentMoveDisplay() {
+        lastOpponentMove = ""
+        showOpponentMoveHighlight = false
+        print("🎮 GameKit: Cleared opponent move display")
     }
     
     func hostMatch() {

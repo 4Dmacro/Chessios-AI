@@ -166,7 +166,7 @@ struct MultiplayerView: View {
                     .disabled(gameKitManager.isJoining)
                     
                     // Force Reset Game Center Button for reconnection issues
-                    Button("⚡ Reset Game Center") {
+                    Button("⚡ Reset GC") {
                         gameKitManager.forceResetGameCenter()
                     }
                     .foregroundColor(.white)

@@ -672,8 +672,9 @@ class ChessPieceController: ObservableObject {
             knightMode = (piece.type == .knight)
             knightFirstMove = nil
             
-            // Clear AI move display when a piece is selected
+            // Clear move displays when a piece is selected
             chessGame.clearAIMoveDisplay()
+            chessGame.clearOpponentMoveDisplay()
             
                 print("🎯 ChessPieceController: About to call highlightSelectedPiece()")
             // Highlight the selected piece
@@ -3197,6 +3198,7 @@ class ChessPieceController: ObservableObject {
 // SwiftUI View for the piece controller
 struct ChessPieceControllerView: View {
     @ObservedObject var controller: ChessPieceController
+    @ObservedObject var chessGame: ChessGameManager
     @State private var showWhitePieces = true
     
     // Computed property to automatically show current player's pieces
@@ -3275,7 +3277,7 @@ struct ChessPieceControllerView: View {
           //      .cornerRadius(6)
             
             // AI move display
-            if let chessGame = controller.chessGame, chessGame.showAIMoveHighlight && !chessGame.lastAIMove.isEmpty {
+            if chessGame.showAIMoveHighlight && !chessGame.lastAIMove.isEmpty {
                 HStack {
                     Image(systemName: "robot")
                         .foregroundColor(.white)
@@ -3286,7 +3288,27 @@ struct ChessPieceControllerView: View {
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 4)
-                .background(Color.black)
+                .background(Color.green.opacity(0.5))
+                .cornerRadius(6)
+                .onAppear {
+                    print("🤖 UI: Displaying AI move: '\(chessGame.lastAIMove)'")
+                }
+            }
+            
+            
+            // Game Center opponent move display
+            if chessGame.showOpponentMoveHighlight && !chessGame.lastOpponentMove.isEmpty {
+                HStack {
+                    Image(systemName: "person.circle")
+                        .foregroundColor(.white)
+                    Text(chessGame.lastOpponentMove)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 4)
+                .background(Color.green.opacity(0.5))
                 .cornerRadius(6)
             }
             

@@ -62,7 +62,7 @@ struct ContentView: View {
             // Piece Controller UI (always visible on the right side)
             HStack {
                 Spacer()
-                ChessPieceControllerView(controller: pieceController)
+                ChessPieceControllerView(controller: pieceController, chessGame: chessGame)
             }
             
 
