@@ -244,6 +244,19 @@ class GameKitManager: NSObject, ObservableObject {
         return isAuthenticated && !GKLocalPlayer.local.displayName.isEmpty
     }
     
+    var opponentName: String? {
+        guard let match = currentMatch, match.players.count > 0 else { return nil }
+        
+        // Find the opponent (not the local player)
+        let localPlayerID = GKLocalPlayer.local.gamePlayerID
+        for player in match.players {
+            if player.gamePlayerID != localPlayerID {
+                return player.displayName
+            }
+        }
+        return nil
+    }
+    
     func hostMatch() {
         guard isFullyAuthenticated else {
             print("❌ GameKit: Player not fully authenticated (displayName: \(GKLocalPlayer.local.displayName))")

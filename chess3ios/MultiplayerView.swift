@@ -326,7 +326,11 @@ struct MultiplayerView: View {
         case .searching:
             return "Searching for players..."
         case .connected:
-            return "Connected to match"
+            if let opponentName = gameKitManager.opponentName {
+                return "Connected to match with \(opponentName)"
+            } else {
+                return "Connected to match"
+            }
         case .disconnected:
             return "Disconnected"
         case .none:
