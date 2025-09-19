@@ -138,48 +138,59 @@ struct MultiplayerView: View {
                     Button("Host Game") {
                         gameKitManager.hostMatch()
                     }
-                    .buttonStyle(.borderedProminent)
-                    .background(Color.green .opacity(0.4))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 4)
+                    .background(gameKitManager.isHosting ? Color.gray : Color.green.opacity(0.4))
                     .cornerRadius(6)
                     .disabled(gameKitManager.isHosting)
                     
                     Button("Join Game") {
                         gameKitManager.joinMatch()
                     }
-                    .buttonStyle(.bordered)
-                    .background(Color.green .opacity(0.4))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 4)
+                    .background(gameKitManager.isJoining ? Color.gray : Color.blue.opacity(0.4))
                     .cornerRadius(6)
                     .disabled(gameKitManager.isJoining)
                     
-                    Button("🎯 Quick Match") {
+                    Button("Quick Match") {
                         gameKitManager.quickMatch()
                     }
-                    .buttonStyle(.borderedProminent)
-                    .background(Color.orange .opacity(0.6))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 4)
+                    .background(gameKitManager.isJoining ? Color.gray : Color.orange.opacity(0.4))
                     .cornerRadius(6)
                     .disabled(gameKitManager.isJoining)
-                    
-                    // Invitation Recall Button - Always visible
-                    Button("📨 Check Invitations\(gameKitManager.hasStoredInvitations ? " (\(gameKitManager.pendingInvitations.count))" : "")") {
-                        showInvitationRecallMenu()
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .foregroundColor(.white)
-                    .background(gameKitManager.hasStoredInvitations ? Color.purple : Color.purple.opacity(0.6))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.purple, lineWidth: gameKitManager.hasStoredInvitations ? 2 : 1)
-                    )
                     
                     // Force Reset Game Center Button for reconnection issues
                     Button("⚡ Reset Game Center") {
                         gameKitManager.forceResetGameCenter()
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
                     .foregroundColor(.white)
-                   // .background(Color.red.opacity(0.8))
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 4)
+                    .background(Color.red.opacity(0.4))
+                    .cornerRadius(6)
+                    
+                    // Invitation Recall Button - Always visible
+                    Button("Check Invites\(gameKitManager.hasStoredInvitations ? " (\(gameKitManager.pendingInvitations.count))" : "")") {
+                        showInvitationRecallMenu()
+                    }
+                  //  .buttonStyle(.bordered)
+                   // .controlSize(.small)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 4)
+                    .background(gameKitManager.hasStoredInvitations ? Color.purple : Color.purple.opacity(0.4))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.purple, lineWidth: gameKitManager.hasStoredInvitations ? 2 : 1)
+                    )
+                    
+                  
                     
                     // Manual Invitation Check Button
                   //  Button("🔍 Check System") {

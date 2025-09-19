@@ -140,7 +140,7 @@ struct MultiplayerView: View {
                         .cornerRadius(8)
                         .disabled(!gameKitManager.isAuthenticated)
                         
-                        Button("🎯 Quick Match") {
+                        Button("Quick Match") {
                             gameKitManager.quickMatch()
                         }
                         .font(.caption)
