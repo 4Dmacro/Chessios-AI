@@ -151,6 +151,16 @@ struct MultiplayerView: View {
                         .cornerRadius(8)
                         .disabled(!gameKitManager.isAuthenticated)
                         
+                        Button("Force GC Reset") {
+                            gameKitManager.forceResetGameCenter()
+                        }
+                        .font(isIPhone ? .caption2 : .caption)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(Color.yellow.opacity(0.6))
+                        .cornerRadius(6)
+                        
                         // Flip Board Button (only show when connected)
                         if gameKitManager.canFlipBoard {
                             Button("Flip Board") {
@@ -162,6 +172,8 @@ struct MultiplayerView: View {
                             .padding(.vertical, 4)
                             .background(Color.orange .opacity(0.6))
                             .cornerRadius(8)
+                            
+                           
                         }
                     }
                 }
@@ -252,15 +264,7 @@ struct MultiplayerView: View {
                         .background(Color.blue.opacity(0.4))
                         .cornerRadius(6)
                         
-                        Button("Force GC Reset") {
-                            gameKitManager.forceResetGameCenter()
-                        }
-                        .font(isIPhone ? .caption2 : .caption)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(Color.orange.opacity(0.6))
-                        .cornerRadius(6)
+                       
                         
                      //   Button("✕ Clear") {
                      //       gameKitManager.clearErrorMessages()

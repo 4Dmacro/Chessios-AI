@@ -22,6 +22,18 @@ struct ChessRulesView: View {
                     .foregroundColor(.primary)
                 
                 Group {
+                    
+                    Text("Quick Start")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    
+                    Text("• Tap pieces to select, tap distance to select squares moved, tap move arrows for direction - the piece will move automatically thereafter")
+                    Text("• iPhone and iPad - Pinch to zoom in/out on Movement, Game Centre and Camera controls")
+                    Text("• Use camera controls to adjust zoom and board height, and reset to default position")
+                    Text("• Play Mode: Standard chess gameplay for two players on one device and use Learn mode to move red pieces only to understand the controls")
+            
+                    
+                    
                     Text("General Rules")
                         .font(.headline)
                         .fontWeight(.semibold)

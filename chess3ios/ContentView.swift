@@ -424,12 +424,12 @@ struct ContentView: View {
                 }
             }
             .padding(.leading, 5)
-            .position(x: 100, y: geometry.size.height / 2 - 5) // Position left controls higher up for iPad
+            .position(x: 75, y: geometry.size.height / 2 - 5) // Position left controls higher up for iPad
             
             // Right Side Controls - Movement Controls
             ChessPieceControllerView(controller: pieceController)
                 .scaleEffect(uiScale)
-                .position(x: geometry.size.width - 100, y: geometry.size.height / 2) // Move 15mm (about 30px) to the right
+                .position(x: geometry.size.width - 98, y: geometry.size.height / 2) // Move 15mm (about 30px) to the right
             
             // Rules Button - Bottom Right Corner
             Button("📖 Rules and Instructions") {
@@ -827,7 +827,12 @@ struct ContentView: View {
         // Create camera
         cameraNode.camera = SCNCamera()
         cameraNode.camera?.fieldOfView = 60  // Set field of view for better perspective
-        cameraNode.position = SCNVector3(0, 6, 16)  // Match macOS positioning for better lighting
+        // Set different camera positions for iPhone vs iPad
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            cameraNode.position = SCNVector3(1, 6, 15)  // iPad: further back for better view
+        } else {
+            cameraNode.position = SCNVector3(1, 6, 13)  // iPhone: closer for better detail
+        }
         scene.rootNode.addChildNode(cameraNode)
         
         print("📷 Camera positioned at: \(cameraNode.position)")
