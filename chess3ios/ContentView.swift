@@ -494,7 +494,7 @@ struct ContentView: View {
                     .background(Color.red.opacity(0.2)) // Temporary bright background for debugging
                     .cornerRadius(8)
                                         .frame(width: 120)
-                    .position(x: geometry.size.width - 100, y: geometry.size.height / 2 - 420) // Position above piece controller
+                    .position(x: geometry.size.width - 250, y: geometry.size.height / 2 - 50) // Position above piece controller
                     .zIndex(1000) // Ensure timer is on top
             }
         }
@@ -797,7 +797,7 @@ struct ContentView: View {
                     .background(Color.red.opacity(0.6)) // Temporary bright background for debugging
                     .cornerRadius(8)
                     .frame(width: 120)
-                    .position(x: geometry.size.width - 115, y: geometry.size.height / 2.3 - 150) // Position above piece controller
+                    .position(x: geometry.size.width - 250, y: geometry.size.height / 2.3 - 10) // Position above piece controller
                     .zIndex(1000) // Ensure timer is on top
                 }
             }

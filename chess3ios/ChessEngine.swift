@@ -1817,12 +1817,32 @@ class ChessBoard3D {
             return canAttack
             
         case .queen:
-            // Queens attack in straight lines or diagonally
+            // Queens attack in straight lines or diagonally (including 3D)
             let fileDiff = abs(targetPosition.file - piece.position.file)
             let rankDiff = abs(targetPosition.rank - piece.position.rank)
+            let zDiff = abs(targetPosition.z - piece.position.z)
             
-            return ((targetPosition.file == piece.position.file || targetPosition.rank == piece.position.rank) ||
-                    (fileDiff == rankDiff)) && !isPathBlocked(from: piece.position, to: targetPosition)
+            // Check for straight line attacks (same file, rank, or Z)
+            let straightLineAttack = (targetPosition.file == piece.position.file || 
+                                    targetPosition.rank == piece.position.rank || 
+                                    targetPosition.z == piece.position.z)
+            
+            // Check for diagonal attacks (2D and 3D)
+            let diagonal2D = (fileDiff == rankDiff && zDiff == 0)
+            let diagonal3D = (fileDiff == rankDiff && fileDiff == zDiff && fileDiff > 0)
+            
+            let canAttack = (straightLineAttack || diagonal2D || diagonal3D)
+            let pathClear = !isPathBlocked(from: piece.position, to: targetPosition)
+            
+            // Debug logging for queen attacks (only when debugging specific issues)
+            if fileDiff <= 2 && rankDiff <= 2 && zDiff <= 2 {
+                print("🔍 Queen attack check: \(piece.color) queen at \(piece.position.stringValue) -> \(targetPosition.stringValue)")
+                print("🔍 Queen attack: fileDiff=\(fileDiff), rankDiff=\(rankDiff), zDiff=\(zDiff)")
+                print("🔍 Queen attack: straightLine=\(straightLineAttack), diagonal2D=\(diagonal2D), diagonal3D=\(diagonal3D)")
+                print("🔍 Queen attack: canAttack=\(canAttack), pathClear=\(pathClear)")
+            }
+            
+            return canAttack && pathClear
             
         case .king:
             // Kings attack adjacent squares in 3D
@@ -1880,7 +1900,6 @@ class ChessBoard3D {
             currentRank += rankStep
             currentZ += zStep
         }
-        
         return false
     }
     

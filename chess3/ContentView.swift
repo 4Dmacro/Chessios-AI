@@ -244,60 +244,6 @@ struct ContentView: View {
             
 
             
-            // Move Confirmation UI (overlay when move is pending)
-            if pieceController.isMovePending {
-                HStack {
-                    
-                    Spacer()
-                    // Move confirmation panel (positioned outside movement controls)
-                    VStack(spacing: 8) {
-                        // Countdown timer
-                        HStack {
-                            Text("Confirm")
-                                .font(.caption)
-                                .foregroundColor(.white)
-                            
-                            Spacer()
-                            
-                            Text("\(Int(pieceController.moveConfirmationTimeRemaining))s")
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .monospacedDigit()
-                        }
-                        
-                        // Progress bar
-                        ProgressView(value: pieceController.moveConfirmationTimeRemaining, total: 5.0)
-                            .progressViewStyle(LinearProgressViewStyle(tint: .red))
-                            .scaleEffect(y: 1.5)
-                        
-                        // Move details
-                        if let from = pieceController.pendingMoveFrom,
-                           let to = pieceController.pendingMoveTo {
-                            Text("\(from.stringValue) → \(to.stringValue)")
-                                .font(.caption2)
-                                .foregroundColor(.white)
-                        }
-                        
-                        // Cancel button
-                        Button("Cancel") {
-                            pieceController.cancelMove()
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 4)
-                        .background(Color.red)
-                        .foregroundColor(.white)
-                        .cornerRadius(6)
-                        .font(.caption)
-                    }
-                    .padding(12)
-                    .background(.ultraThinMaterial)
-                    .cornerRadius(8)
-                    .frame(width: 120)
-                    .padding(.trailing, 320) // Position timer outside movement controls area
-                    
-                }
-                .padding(.top, 10)
-            }
             
             // AI Move Countdown UI (overlay when AI move is pending)
             // REMOVED: This yellow timer is redundant - the red timer handles all move confirmation
@@ -478,6 +424,53 @@ struct ContentView: View {
                     }
                     
                     Spacer()
+                    
+                    // Move Confirmation UI (when move is pending)
+                    if pieceController.isMovePending {
+                        VStack(spacing: 4) {
+                            // Countdown timer
+                            HStack {
+                                Text("Confirm")
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                                
+                                Spacer()
+                                
+                                Text("\(Int(pieceController.moveConfirmationTimeRemaining))s")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                                    .monospacedDigit()
+                            }
+                            
+                            // Progress bar
+                            ProgressView(value: pieceController.moveConfirmationTimeRemaining, total: 5.0)
+                                .progressViewStyle(LinearProgressViewStyle(tint: .red))
+                                .scaleEffect(y: 1.2)
+                            
+                            // Move details
+                            if let from = pieceController.pendingMoveFrom,
+                               let to = pieceController.pendingMoveTo {
+                                Text("\(from.stringValue) → \(to.stringValue)")
+                                    .font(.caption2)
+                                    .foregroundColor(.white)
+                            }
+                            
+                            // Cancel button
+                            Button("Cancel") {
+                                pieceController.cancelMove()
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 3)
+                            .background(Color.red)
+                            .foregroundColor(.white)
+                            .cornerRadius(6)
+                            .font(.caption)
+                        }
+                        .padding(8)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(8)
+                        .frame(maxWidth: 160)
+                    }
                     
                     // Rules Button
                     Button("📖 Rules and Instructions") {

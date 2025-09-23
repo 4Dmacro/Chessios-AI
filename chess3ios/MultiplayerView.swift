@@ -64,13 +64,13 @@ struct MultiplayerView: View {
                     // iPhone: Use compact horizontal layout to fit in popup
                     VStack(spacing: 2) {
                         // First row: Host and Join
-                        HStack(spacing: 3) {
+                      //  HStack(spacing: 3) {
                             Button("Host") {
                                 gameKitManager.hostMatch()
                             }
                             .font(.caption2)
                             .foregroundColor(.white)
-                            .padding(.horizontal, 3)
+                            .padding(.horizontal, 1)
                             .padding(.vertical, 1)
                             .background(gameKitManager.isAuthenticated ? Color.blue : Color.gray)
                             .cornerRadius(2)
@@ -81,25 +81,36 @@ struct MultiplayerView: View {
                             }
                             .font(.caption2)
                             .foregroundColor(.white)
-                            .padding(.horizontal, 3)
+                            .padding(.horizontal, 1)
                             .padding(.vertical, 1)
                             .background(gameKitManager.isAuthenticated ? Color.blue : Color.gray)
                             .cornerRadius(2)
                             .disabled(!gameKitManager.isAuthenticated)
-                        }
+                      //  }
                         
                         // Second row: Quick Match and Flip Board
-                        HStack(spacing: 3) {
+                     //   HStack(spacing: 3) {
                             Button("🎯 Quick Match") {
                                 gameKitManager.quickMatch()
                             }
                             .font(.caption2)
                             .foregroundColor(.white)
-                            .padding(.horizontal, 4)
+                            .padding(.horizontal, 2)
                             .padding(.vertical, 2)
                             .background(Color.purple)
                             .cornerRadius(3)
                             .disabled(!gameKitManager.isAuthenticated)
+                            
+                            Button("Force GC Reset") {
+                                gameKitManager.forceResetGameCenter()
+                            }
+                            .font(isIPhone ? .caption2 : .caption)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(Color.yellow.opacity(0.6))
+                            .cornerRadius(6)
+                            
                             
                             // Flip Board Button (only show when connected)
                             if gameKitManager.canFlipBoard {
@@ -108,11 +119,11 @@ struct MultiplayerView: View {
                                 }
                                 .font(.caption2)
                                 .foregroundColor(.white)
-                                .padding(.horizontal, 4)
+                                .padding(.horizontal, 2)
                                 .padding(.vertical, 2)
                                 .background(Color.orange)
                                 .cornerRadius(3)
-                            }
+                        //    }
                         }
                     }
                 } else {
@@ -121,7 +132,7 @@ struct MultiplayerView: View {
                         Button("Host Game") {
                             gameKitManager.hostMatch()
                         }
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundColor(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -140,17 +151,6 @@ struct MultiplayerView: View {
                         .cornerRadius(8)
                         .disabled(!gameKitManager.isAuthenticated)
                         
-                        Button("Quick Match") {
-                            gameKitManager.quickMatch()
-                        }
-                        .font(.caption)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(gameKitManager.isAuthenticated ? Color.orange.opacity(0.6) : Color.gray)
-                        .cornerRadius(8)
-                        .disabled(!gameKitManager.isAuthenticated)
-                        
                         Button("Force GC Reset") {
                             gameKitManager.forceResetGameCenter()
                         }
@@ -161,17 +161,31 @@ struct MultiplayerView: View {
                         .background(Color.yellow.opacity(0.6))
                         .cornerRadius(6)
                         
+                        Button("Quick Match") {
+                            gameKitManager.quickMatch()
+                        }
+                        .font(.caption2)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(gameKitManager.isAuthenticated ? Color.orange.opacity(0.6) : Color.gray)
+                        .cornerRadius(8)
+                        .disabled(!gameKitManager.isAuthenticated)
+                        
+                       
                         // Flip Board Button (only show when connected)
                         if gameKitManager.canFlipBoard {
                             Button("Flip Board") {
                                 gameKitManager.flipBoard()
                             }
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundColor(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .background(Color.orange .opacity(0.6))
                             .cornerRadius(8)
+                         
+                          
                             
                            
                         }
@@ -199,7 +213,7 @@ struct MultiplayerView: View {
                     }
                     .font(isIPhone ? .caption2 : .caption)
                     .foregroundColor(.white)
-                    .padding(.horizontal, 6)
+                    .padding(.horizontal, 4)
                     .padding(.vertical, 2)
                     .background(Color.red)
                     .cornerRadius(4)
@@ -211,7 +225,7 @@ struct MultiplayerView: View {
                         }
                         .font(isIPhone ? .caption2 : .caption)
                         .foregroundColor(.white)
-                        .padding(.horizontal, 6)
+                        .padding(.horizontal, 4)
                         .padding(.vertical, 2)
                         .background(Color.orange)
                         .cornerRadius(4)
@@ -253,7 +267,7 @@ struct MultiplayerView: View {
                         .background(Color(.systemRed).opacity(0.1))
                         .cornerRadius(isIPhone ? 4 : 8)
                     
-                    HStack(spacing: 4) {
+                  //  HStack(spacing: 4) {
                         Button("🔄 Reconnect") {
                             gameKitManager.reconnectToGameCenter()
                         }
@@ -275,7 +289,7 @@ struct MultiplayerView: View {
                       //  .padding(.vertical, 4)
                       //  .background(Color.gray.opacity(0.6))
                       //  .cornerRadius(6)
-                    }
+                  //  }
                 }
                 .frame(maxWidth: 140)
             }

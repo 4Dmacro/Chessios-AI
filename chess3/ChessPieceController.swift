@@ -1047,12 +1047,14 @@ class ChessPieceController: ObservableObject {
             
             // Check if king is in check and validate the move resolves it
             if chessGame.isKingInCheck() {
-                // MANUAL MODE FIX: Removed AI-like check resolution validation
-                // In manual mode, we don't need to validate that moves resolve check
-                // The player should be able to make any legal move, even if it doesn't resolve check
-                // The system will detect checkmate if no legal moves are available
-                // TODO: If AI mode needs check resolution validation, add: if chessGame.aiModeActive { ... }
-                print("🔍 King is in check - allowing any legal move in manual mode")
+                print("🔍 King is in check - validating move resolves check")
+                // CRITICAL: When king is in check, the move MUST resolve the check
+                if !doesMoveResolveCheck(from: currentPosition, to: newPosition) {
+                    print("❌ Move does not resolve check - invalid move")
+                    chessGame.showInvalidMoveMessage("Must resolve check!")
+                    return
+                }
+                print("✅ Move resolves check - valid")
             }
             
             // IMPORTANT: Capture the turn BEFORE tryMove (which changes the turn)
@@ -1544,14 +1546,15 @@ class ChessPieceController: ObservableObject {
             return false
         }
         
-        // MANUAL MODE FIX: Removed AI-like check resolution validation
-        // In manual mode, we don't validate that moves resolve check
-        // The player should be able to make any legal move, even if it doesn't resolve check
-        // The system will detect checkmate if no legal moves are available
-        // TODO: If AI mode needs check resolution validation, add: if chessGame.aiModeActive { ... }
+        // CRITICAL: When king is in check, validate that the move resolves the check
         guard let chessGame = chessGame else { return false }
         if chessGame.chessBoard.isCheck(color: piece.color, suppressDebug: true) {
-            print("🔍 King is in check - allowing any legal move in manual mode")
+            print("🔍 King is in check - validating move resolves check")
+            if !doesMoveResolveCheck(from: from, to: to) {
+                print("❌ Move does not resolve check - invalid move")
+                return false
+            }
+            print("✅ Move resolves check - valid")
         }
         
         print("✅ Move is valid")
@@ -2115,12 +2118,14 @@ class ChessPieceController: ObservableObject {
             
             // Check if king is in check and validate the move resolves it
             if chessGame.isKingInCheck() {
-                // MANUAL MODE FIX: Removed AI-like check resolution validation
-                // In manual mode, we don't need to validate that moves resolve check
-                // The player should be able to make any legal move, even if it doesn't resolve check
-                // The system will detect checkmate if no legal moves are available
-                // TODO: If AI mode needs check resolution validation, add: if chessGame.aiModeActive { ... }
-                print("🔍 King is in check - allowing any legal move in manual mode")
+                print("🔍 King is in check - validating move resolves check")
+                // CRITICAL: When king is in check, the move MUST resolve the check
+                if !doesMoveResolveCheck(from: originalPosition, to: newPosition) {
+                    print("❌ Move does not resolve check - invalid move")
+                    chessGame.showInvalidMoveMessage("Must resolve check!")
+                    return
+                }
+                print("✅ Move resolves check - valid")
             }
             
             // IMPORTANT: Capture the turn and piece BEFORE tryMove (which changes the turn and moves the piece)

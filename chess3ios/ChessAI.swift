@@ -3687,9 +3687,21 @@ class ChessAI {
                    || (fileDiff == rankDiff && fileDiff == zDiff && fileDiff > 0) // 3D diagonal
             
         case .queen:
-            // Queen combines rook and bishop moves
-            return canPieceAttackSquare(ChessPiece3D(type: .rook, color: piece.color, position: piece.position), targetSquare: targetSquare) ||
-                   canPieceAttackSquare(ChessPiece3D(type: .bishop, color: piece.color, position: piece.position), targetSquare: targetSquare)
+            // Queen combines rook and bishop moves (including 3D)
+            let fileDiff = abs(targetSquare.file - piece.position.file)
+            let rankDiff = abs(targetSquare.rank - piece.position.rank)
+            let zDiff = abs(targetSquare.z - piece.position.z)
+            
+            // Check for straight line attacks (same file, rank, or Z)
+            let straightLineAttack = (targetSquare.file == piece.position.file || 
+                                    targetSquare.rank == piece.position.rank || 
+                                    targetSquare.z == piece.position.z)
+            
+            // Check for diagonal attacks (2D and 3D)
+            let diagonal2D = (fileDiff == rankDiff && zDiff == 0)
+            let diagonal3D = (fileDiff == rankDiff && fileDiff == zDiff && fileDiff > 0)
+            
+            return straightLineAttack || diagonal2D || diagonal3D
             
         case .knight:
             // Knights move in L-shape
