@@ -436,7 +436,7 @@ struct ContentView: View {
                 showRules = true
             }
             .buttonStyle(PlainButtonStyle())
-            .font(.caption)
+            .font(.caption2)
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
             .background(Color.blue.opacity(0.4))
@@ -702,9 +702,29 @@ struct ContentView: View {
                     .background(.regularMaterial.opacity(0.3))
                         .cornerRadius(8)
                     .scaleEffect(uiScale)
+                    
+                    // Rules Button - Bottom Right Corner (iPhone)
+                    Button {
+                        showRules = true
+                    } label: {
+                        VStack(spacing: 0) {
+                            Text("Rules &")
+                            Text("Instructions")
+                        }
+                    }
+                   // .buttonStyle(PlainButtonStyle())
+                    .font(.caption2)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.blue.opacity(0.3))
+                    .foregroundColor(.white)
+                    .cornerRadius(6)
+                    .scaleEffect(uiScale)
                 }
                 .padding(.bottom, 240) // Add bottom padding to avoid rounded corners
                 .position(x: 50, y: geometry.size.height - 50) // Much closer to center, still on left side
+                
+                
                 
                 // Compact Game Center Button (below camera controls)
                 Button(action: {
@@ -735,19 +755,7 @@ struct ContentView: View {
                     .scaleEffect(uiScale)
                     .position(x: geometry.size.width - 115, y: geometry.size.height / 2.3) // Move further left to bring fully on screen
                 
-                // Rules Button - Bottom Right Corner (iPhone)
-                Button("Rules and Instructions") {
-                    showRules = true
-                }
-               // .buttonStyle(PlainButtonStyle())
-                .font(.caption2)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color.blue.opacity(0.3))
-                .foregroundColor(.white)
-                .cornerRadius(6)
-                
-                .position(x: geometry.size.width - 80, y: geometry.size.height - 50)
+              
                 
                 // Move Confirmation UI (overlay when move is pending)
                 if pieceController.isMovePending {
