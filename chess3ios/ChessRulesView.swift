@@ -123,7 +123,11 @@ struct ChessRulesView: View {
                         .font(.headline)
                         .fontWeight(.semibold)
                     
-                    Link("Visit our Youtube channel for tutorials", destination: URL(string: "https://studio.youtube.com/channel/UCpAyiD9_XSkWPk7YObMUIfQ/editing/profile#:~:text=Chess3D")!)
+                    Link("Visit our Website for more information", destination: URL(string: "https://www.3dchesscubed.com/")!)
+                        .foregroundColor(.blue)
+                        .underline()
+                    
+                    Link("Visit our Youtube channel for tutorials", destination: URL(string: "https://www.youtube.com/channel/UCpAyiD9_XSkWPk7YObMUIfQ")!)
                         .foregroundColor(.blue)
                         .underline()
                     
