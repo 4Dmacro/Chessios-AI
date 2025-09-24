@@ -506,7 +506,7 @@ struct ContentView: View {
         GeometryReader { geometry in
             ZStack {
                 // Game Controls - Above Camera Controls
-                VStack(spacing: 4) {
+                VStack(spacing: 2) {
                     // New Game button
                     Button(action: {
                         if chessGame.isInitialLoadingComplete {
@@ -590,11 +590,11 @@ struct ContentView: View {
                     
                     // Game State Display
                     Text(chessGame.turnDisplayText)
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundColor(.white)
                         .scaleEffect(uiScale)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 4)
+                        .padding(.horizontal, 1)
+                        .padding(.vertical, 2)
                         .background(chessGame.gameState.contains("Checkmate") ? Color.red.opacity(0.8) :
                                    chessGame.gameState.contains("White") ? Color.red.opacity(0.6) : 
                                    chessGame.gameState.contains("Black") ? Color.blue.opacity(0.6) : Color.clear)
@@ -635,8 +635,8 @@ struct ContentView: View {
                         }
                     }
                 }
-                .padding(.top, 20)
-                .position(x: 50, y: 60) // Position above camera controls
+                .padding(.top, 7)
+                .position(x: 67, y: 60) // Position above camera controls
                 
         
                 
@@ -653,43 +653,43 @@ struct ContentView: View {
                     }
                     .font(.caption2)
                     .foregroundColor(.blue)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .background(.regularMaterial.opacity(0.3))
-                    .cornerRadius(8)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 4)
+                    .background(.regularMaterial.opacity(0.4))
+                    .cornerRadius(4)
                     .scaleEffect(uiScale)
                     
-                    Button("↓ Boards Down") {
+                    Button(" ↓ Boards Down") {
                         raiseCamera()
                     }
                     .font(.caption2)
                     .foregroundColor(.blue)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .background(.regularMaterial.opacity(0.3))
-                    .cornerRadius(8)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 4)
+                    .background(.regularMaterial.opacity(0.4))
+                    .cornerRadius(4)
                     .scaleEffect(uiScale)
                     
-                    Button("🔍 Zoom+") {
+                    Button("🔍 Zoom +") {
                         zoomIn()
                     }
                     .font(.caption2)
                     .foregroundColor(.green)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .background(.regularMaterial.opacity(0.3))
-                    .cornerRadius(8)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 4)
+                    .background(.regularMaterial.opacity(0.4))
+                    .cornerRadius(4)
                     .scaleEffect(uiScale)
                     
-                    Button("🔍 Zoom-") {
+                    Button("🔍 Zoom -") {
                         zoomOut()
                     }
                     .font(.caption2)
                     .foregroundColor(.green)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .background(.regularMaterial.opacity(0.3))
-                    .cornerRadius(8)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 4)
+                    .background(.regularMaterial.opacity(0.4))
+                    .cornerRadius(4)
                     .scaleEffect(uiScale)
                     
                     Button("Reset View") {
@@ -697,10 +697,10 @@ struct ContentView: View {
                     }
                     .font(.caption2)
                     .foregroundColor(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .background(.regularMaterial.opacity(0.3))
-                        .cornerRadius(8)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 4)
+                    .background(.regularMaterial.opacity(0.4))
+                        .cornerRadius(4)
                     .scaleEffect(uiScale)
                     
                     // Rules Button - Bottom Right Corner (iPhone)
@@ -714,15 +714,15 @@ struct ContentView: View {
                     }
                    // .buttonStyle(PlainButtonStyle())
                     .font(.caption2)
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, 4)
                     .padding(.vertical, 4)
                     .background(Color.blue.opacity(0.3))
                     .foregroundColor(.white)
-                    .cornerRadius(6)
+                    .cornerRadius(4)
                     .scaleEffect(uiScale)
                 }
                 .padding(.bottom, 240) // Add bottom padding to avoid rounded corners
-                .position(x: 50, y: geometry.size.height - 50) // Much closer to center, still on left side
+                .position(x: 65, y: geometry.size.height - 50) // Much closer to center, still on left side
                 
                 
                 
@@ -743,7 +743,7 @@ struct ContentView: View {
                     .cornerRadius(4)
                 }
                 .scaleEffect(uiScale)
-                .position(x: 50, y: geometry.size.height - 50)
+                .position(x: 65, y: geometry.size.height - 50)
                 .popover(isPresented: $showGameCenterPopover) {
                     GameCenterPopoverView()
                         .environmentObject(gameKitManager)
