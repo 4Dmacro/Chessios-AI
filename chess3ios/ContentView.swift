@@ -753,7 +753,7 @@ struct ContentView: View {
                 // Piece controller at absolute right edge
                 ChessPieceControllerView(controller: pieceController)
                     .scaleEffect(uiScale)
-                    .position(x: geometry.size.width - 115, y: geometry.size.height / 2.3) // Move further left to bring fully on screen
+                    .position(x: geometry.size.width - 125, y: geometry.size.height / 2.3) // Move further left to bring fully on screen
                 
               
                 

@@ -3337,7 +3337,7 @@ struct ChessPieceControllerView: View {
     
     private var movementControls: some View {
         VStack(spacing: 5) {
-            Text(controller.knightMode ? "Knight Movement (2-step)" : "Movement Controls")
+            Text( "Movement Controls")
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundColor(.white)
@@ -3473,7 +3473,7 @@ struct ChessPieceControllerView: View {
                             Text("3D Up")
                                 .font(.caption2)
                                 .foregroundColor(.orange)
-                            HStack(spacing: 8) {
+                            HStack(spacing: 0) {
                                 Button(action: { controller.moveUpZBackLeft = true }) {
                                     Image(systemName: "arrow.down.left.circle.fill")
                                         .font(.title3)
@@ -3495,7 +3495,7 @@ struct ChessPieceControllerView: View {
                     VStack(spacing: 4) {
                         // Third row: up/forward + back (left/right) - grey fill
                         VStack(spacing: 4) {
-                            HStack(spacing: 4) {
+                            HStack(spacing: 2) {
                                 Button(action: { controller.moveDownZForwardLeft = true }) {
                                     Image(systemName: "arrow.up.left.circle")
                                         .font(.title3)
@@ -3513,11 +3513,11 @@ struct ChessPieceControllerView: View {
                         }
                         
                         // Fourth row: down/back + forward (left/right) - grey fill
-                        VStack(spacing: 4) {
-                            Text("3D Down")
+                        VStack(spacing: 1) {
+                            Text("Down")
                                 .font(.caption2)
                                 .foregroundColor(.orange)
-                            HStack(spacing: 4) {
+                            HStack(spacing: (8)) {
                                 Button(action: { controller.moveDownZLeft = true }) {
                                     Image(systemName: "arrow.down.left.circle")
                                         .font(.title3)
@@ -3863,7 +3863,7 @@ struct ChessPieceControllerView: View {
                                 }
                             }
                         }
-                        .padding(.horizontal, 6)
+                        .padding(.horizontal, 2)
                     }
                 }
      //
@@ -3900,7 +3900,7 @@ struct ChessPieceControllerView: View {
                     .buttonStyle(PlainButtonStyle())
                     .padding(.vertical, 6)
                 }
-                .padding(.horizontal, 8)
+                .padding(.horizontal, 2)
                 
                 // 2D Movement Controls (color-coded) - Use knight logic when in knight mode
                 VStack(spacing: 6) {
@@ -4034,11 +4034,11 @@ struct ChessPieceControllerView: View {
                 .buttonStyle(PlainButtonStyle())
             }
                 }
-                .padding(.horizontal, 8)
+                .padding(.horizontal, 12)
                 }
             }
         }
-        .padding(4)
+        .padding(8)
        // .background(Color.white.opacity(0.1))
        // .cornerRadius(8)
         }
