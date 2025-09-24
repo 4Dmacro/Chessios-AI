@@ -584,7 +584,13 @@ class ChessGameManager: ObservableObject {
             print("🎮 GameKit: Model rotated to \(playerColor.rawValue) perspective")
             print("🎮 GameKit: New model rotation: \(modelNode.eulerAngles) radians")
         } else {
-            print("❌ GameKit: No model node found for rotation")
+            print("❌ GameKit: No model node found for rotation - scheduling retry")
+            // Retry after a short delay to allow scene setup to complete
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                print("🎮 GameKit: Retrying board rotation for \(playerColor.rawValue) player")
+                self.rotateBoardForGameKitPlayer(playerColor: playerColor)
+            }
+            return // Don't continue with piece controller updates until rotation succeeds
         }
         
         // Also notify the piece controller to update piece positions and lists
