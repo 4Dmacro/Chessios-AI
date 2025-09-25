@@ -111,23 +111,7 @@ struct MultiplayerView: View {
                                     .foregroundColor(.orange)
                             }
                             
-                          //  HStack(spacing: 4) {
-                           //     Button("🔄 Reset Match") {
-                           //         gameKitManager.resetMatch()
-                            //    }
-                            //    .buttonStyle(.bordered)
-                            //    .controlSize(.small)
-                            //    .foregroundColor(.white)
-                             //   .background(Color.orange)
-                                
-                          //      Button("🔄 Reconnect to Match") {
-                            //        gameKitManager.reconnectToMatch()
-                            //    }
-                            //    .buttonStyle(.borderedProminent)
-                             //   .controlSize(.small)
-                            //    .foregroundColor(.white)
-                            //    .background(Color.blue)
-                           // }
+                        
                         }
                         .padding(.horizontal)
                         .padding(.vertical, 4)
@@ -145,15 +129,7 @@ struct MultiplayerView: View {
                     .cornerRadius(6)
                     .disabled(gameKitManager.isHosting)
                     
-                    Button("Join Game") {
-                        gameKitManager.joinMatch()
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 4)
-                    .background(gameKitManager.isJoining ? Color.gray : Color.blue.opacity(0.4))
-                    .cornerRadius(6)
-                    .disabled(gameKitManager.isJoining)
+                  
                     
                     Button("Quick Match") {
                         gameKitManager.quickMatch()
@@ -191,19 +167,7 @@ struct MultiplayerView: View {
                     )
                     
                   
-                    
-                    // Manual Invitation Check Button
-                  //  Button("🔍 Check System") {
-                  //      gameKitManager.manuallyCheckForInvitations()
-                  //  }
-                  //  .buttonStyle(.bordered)
-                  //  .controlSize(.small)
-                  //  .foregroundColor(.white)
-                  //  .background(Color.blue.opacity(0.6))
-                  //  .overlay(
-                  //      RoundedRectangle(cornerRadius: 4)
-                   //         .stroke(Color.blue, lineWidth: 1)
-                  //  )
+               
                 }
                 .padding(.horizontal)
             }
@@ -269,42 +233,8 @@ struct MultiplayerView: View {
                     .foregroundColor(.white)
                     .background(Color.blue)
                     
-                    // Reset Invitation Button for failed invitations
-                //    Button("🔄 Reset Invitation") {
-                  //      gameKitManager.resetInvitationState()
-                  //  }
-                  //  .buttonStyle(.borderedProminent)
-                  //  .controlSize(.small)
-                 //   .foregroundColor(.white)
-                 //   .background(Color.orange)
-                    
-                    // Force Reset Game Center Button for reconnection issues
-                //    Button("⚡ Force Reset Game Center") {
-               //         gameKitManager.forceResetGameCenter()
-               //     }
-                //    .buttonStyle(.borderedProminent)
-                //    .controlSize(.small)
-                //    .foregroundColor(.white)
-                //    .background(Color.red.opacity(0.8))
-                    
-                    // Check Invitations Button (also visible in error states)
-                  //  Button("📨 Check //Invitations\(gameKitManager.listStoredInvitations().isEmpty ? "" : " (\(gameKitManager.listStoredInvitations().count))")") {
-                 //       showInvitationRecallMenu()
-                 //   }
-                  //  .buttonStyle(.borderedProminent)
-                  //  .controlSize(.small)
-                 //   .foregroundColor(.white)
-                 //   .background(gameKitManager.listStoredInvitations().isEmpty ? Color.purple.opacity(0.6) : Color.purple)
-                 //   .cornerRadius(4)
-                    
-                    // Manual System Check Button (also visible in error states)
-               //     Button("🔍 Check System") {
-              //          gameKitManager.manuallyCheckForInvitations()
-              //      }
-              ///      .buttonStyle(.borderedProminent)
-              //      .controlSize(.small)
-              //      .foregroundColor(.white)
-              //      .background(Color.blue)
+               
+                 
                 }
                 .padding(.horizontal)
             }

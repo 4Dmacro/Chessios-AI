@@ -2564,11 +2564,7 @@ class ChessPieceController: ObservableObject {
         if let chessGame = chessGame,
            let modelNode = chessGame.getModelNode() {
              
-            //AI Mode Rotation (ChessPieceController.swift):
-           // White position: SCNVector3(-Float.pi * 5/12, Float.pi/12, 0) (X-axis + Y-axis)
-          //  Black position: SCNVector3(-Float.pi * 5/12 - Float.pi/6, Float.pi + Float.pi/12, 0) (X-axis + Y-axis + 180° Y)
-            // In AI mode, always keep the board oriented for the human player's perspective
-            // (white pieces at bottom, black pieces at top) regardless of whose turn it is
+           
             if chessGame.aiModeActive {
                 // AI mode: Rotate based on whose turn it is for better visibility
                 if currentTurn == .black {
@@ -3258,28 +3254,7 @@ struct ChessPieceControllerView: View {
     
     private var selectedPieceInfo: some View {
         VStack(spacing: 4) {
-            // Game mode selector
-           
             
-            // Current player indicator at the top
-            // Text("Current Player: \(currentPlayerPieces ? "White" : "Black")")
-            //     .font(.headline)
-            //     .fontWeight(.bold)
-            //     .padding()
-            //     .frame(maxWidth: .infinity)
-            //     .background(currentPlayerPieces ? Color.white.opacity(0.8) : Color.black.opacity(0.8))
-            //     .foregroundColor(currentPlayerPieces ? .black : .white)
-            //     .cornerRadius(8)
-            
-            // Selected piece box
-           // Text(controller.selectedPieceName)
-            //    .font(.subheadline)
-           //     .fontWeight(.semibold)
-           //     .foregroundColor(.primary)
-           //     .padding(.horizontal)
-           //     .padding(.vertical, 4)
-          //      .background(controller.selectedPiecePosition != nil ? //Color.yellow.opacity(0.8) : Color.gray.opacity(0.3))
-          //      .cornerRadius(6)
             
             // AI move display
             if chessGame.showAIMoveHighlight && !chessGame.lastAIMove.isEmpty {

@@ -242,64 +242,6 @@ struct ContentView: View {
                 Spacer(minLength: 10)
             }
             
-
-            
-            
-            // AI Move Countdown UI (overlay when AI move is pending)
-            // REMOVED: This yellow timer is redundant - the red timer handles all move confirmation
-            // The AI will take its turn immediately after the red timer confirms the human move
-            // if chessGame.isAIMovePending {
-            //     HStack {
-            //         Spacer()
-            //
-            //         // AI move countdown panel (positioned outside movement controls)
-            //         VStack(spacing: 8) {
-            //             // Countdown timer
-            //             HStack {
-            //                 Text("AI Move")
-            //                 .font(.caption)
-            //                 .foregroundColor(.white)
-            //
-            //             Spacer()
-            //
-            //             Text("\(Int(chessGame.aiMoveConfirmationTimeRemaining))s")
-            //                 .font(.caption)
-            //                 .foregroundColor(.yellow)
-            //                 .monospacedDigit()
-            //         }
-            //
-            //         // Progress bar
-            //         ProgressView(value: chessGame.aiMoveConfirmationTimeRemaining, total: 3.0)
-            //             .progressViewStyle(LinearProgressViewStyle(tint: .yellow))
-            //             .scaleEffect(y: 1.5)
-            //
-            //         // Move details
-            //         if let move = chessGame.pendingAIMove {
-            //             Text("\(move.from.stringValue) → \(move.to.stringValue)")
-            //                 .font(.caption2)
-            //                 .foregroundColor(.white)
-            //         }
-            //
-            //         // Cancel button
-            //         Button("Cancel") {
-            //             chessGame.cancelAIMove()
-            //         }
-            //         .padding(.horizontal, 12)
-            //         .padding(.vertical, 4)
-            //         .background(Color.orange)
-            //         .foregroundColor(.white)
-            //         .cornerRadius(6)
-            //         .font(.caption)
-            //     }
-            //     .padding(12)
-            //     .background(.ultraThinMaterial)
-            //     .cornerRadius(8)
-            //     .frame(width: 120)
-            //     .padding(.trailing, 320) // Position timer outside movement controls area
-            // }
-            // .padding(.top, 10)
-            // }
-            
             // Top control bar
             VStack {
                 HStack {
@@ -537,42 +479,11 @@ struct ContentView: View {
                                     }
                                 }
                             
-                           // HStack(spacing: 12) {
-                             //   Button("🔄 Reconnect") {
-                             //       gameKitManager.reconnectToGameCenter()
-                             //   }
-                             //   .buttonStyle(PlainButtonStyle())
-                             //   .padding(.horizontal, 12)
-                             //   .padding(.vertical, 6)
-                             //   .background(Color.blue.opacity(0.6))
-                             //   .foregroundColor(.white)
-                             //   .cornerRadius(6)
-                                
-                             //   Button("✕ Clear") {
-                              //      gameKitManager.clearErrorMessages()
-                              //  }
-                              //  .buttonStyle(PlainButtonStyle())
-                              //  .padding(.horizontal, 12)
-                              //  .padding(.vertical, 6)
-                              //  .background(Color.gray.opacity(0.6))
-                              //  .foregroundColor(.white)
-                              //  .cornerRadius(6)
-                          //  }
+                          
                         }
                     }
                     
-                    // Reset View button
-                  //  Button(action: {
-                 //       resetCamera()
-                 //   }) {
-                 //       Text("Reset View")
-                 //           .foregroundColor(.white)
-                 //   }
-                 //   .buttonStyle(PlainButtonStyle())
-                 //   .padding(.horizontal, 16)
-                 //   .padding(.vertical, 8)
-                 //   .background(.regularMaterial.opacity(0.3))
-                 //   .cornerRadius(8)
+                   
                     
                     Spacer()
                     
@@ -603,15 +514,7 @@ struct ContentView: View {
                     
                     Spacer()
                     
-                    // Load USDZ File button
-                   // Button("Load USDZ File") {
-                 //       print("🔘 Load USDZ File button tapped")
-                 //       showingFilePicker = true
-                 //   }
-                  //  .padding(.horizontal, 16)
-                  //  .padding(.vertical, 8)
-                 //   .background(.ultraThinMaterial)
-                  //  .cornerRadius(8)
+                  
                 }
                 .padding()
                 .padding(.trailing, 200) // Add right padding to prevent overlap with movement controls
@@ -680,14 +583,7 @@ struct ContentView: View {
             Group {
                 if showAIWarning {
                     VStack {
-                       // Text("⚠️ AI Play Mode Warning")
-                        //    .font(.headline)
-                        //    .fontWeight(.bold)
-                         //   .foregroundColor(.white)
-                        //    .padding(.horizontal, 16)
-                         //   .padding(.vertical, 8)
-                         //   .background(Color.red.opacity(0.9))
-                          //  .cornerRadius(8)
+                       
                         
                         Text("AI play mode is still in development, the exponential number of move possibilities makes it prone to crash, especially when in check")
                             .font(.caption)
@@ -1328,29 +1224,9 @@ struct ContentView: View {
         }
     }
     
-  //  private func addCollisionToBoard(_ boardNode: SCNNode) {
-  //      for file in 0..<8 {
-   //         for rank in 0..<8 {
-   //             let squareNode = SCNNode()
-    //            squareNode.name = "Square_\(file)_\(rank)"
-                
-    //            let boxGeometry = SCNBox(width: 1.2, height: 0.2, length: 1.2, chamferRadius: 0)
-    //            squareNode.geometry = boxGeometry
-                
-    //            let transparentMaterial = SCNMaterial()
-     //           transparentMaterial.diffuse.contents = NSColor.clear
-     //           transparentMaterial.transparency = 0.0
-     //           boxGeometry.materials = [transparentMaterial]
-                
-    //            let x = Float(file) - 3.5
-     //           let y = Float(rank) - 3.5
-     //           squareNode.position = SCNVector3(x, y, 0.1)
-                
-     ///           boardNode.addChildNode(squareNode)
-     //       }
-    //    }
-   //     print("🎯 Added collision detection to chess board (64 squares)")
-   // }
+  
+     //           boardNode.addChildNode(squareNode)
+     
     
     private func loadChessBoard(into containerNode: SCNNode) -> SCNNode? {
         guard let boardUrl = Bundle.main.url(forResource: "boardfix2", withExtension: "usdz") else {

@@ -35,95 +35,61 @@ struct MultiplayerView: View {
                         .font(isIPhone ? .caption2 : .caption)
                         .foregroundColor(gameKitManager.isAuthenticated ? .green : .red)
                 }
-                // Text(gameKitManager.isAuthenticated ? "Connected" : "Disconnected")
-                //   .font(isIPhone ? .caption2 : .caption)
-                //   .foregroundColor(gameKitManager.isAuthenticated ? .green : .red)
-                
-                // Reconnect Button (show when not authenticated or when there are errors)
-                // if !gameKitManager.isAuthenticated || hasError {
-                //    Button("🔄 Reconnect") {
-                //       gameKitManager.reconnectToGameCenter()
-                //  }
-                //  .font(isIPhone ? .caption2 : .caption)
-                //  .foregroundColor(.white)
-                //  .padding(.horizontal, 6)
-                //  .padding(.vertical, 2)
-                //  .background(Color.blue)
-                //  .cornerRadius(4)
-                // }
-                // }
-                // .padding(.horizontal, isIPhone ? 2 : 8)
-                // .padding(.vertical, isIPhone ? 1 : 4)
-                // .background(Color(.systemGray6).opacity(0.3))
-                // .cornerRadius(isIPhone ? 3 : 8)
+               
+               
             }
             
             // Host/Join Buttons - Always visible
             Group {
                 if isIPhone {
-                    // iPhone: Use compact horizontal layout to fit in popup
-                    VStack(spacing: 2) {
-                        // First row: Host and Join
-                      //  HStack(spacing: 3) {
-                            Button("Host") {
-                                gameKitManager.hostMatch()
-                            }
-                            .font(.caption2)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 1)
-                            .padding(.vertical, 1)
-                            .background(gameKitManager.isAuthenticated ? Color.blue : Color.gray)
-                            .cornerRadius(2)
-                            .disabled(!gameKitManager.isAuthenticated)
-                            
-                            Button("Join") {
-                                gameKitManager.joinMatch()
-                            }
-                            .font(.caption2)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 1)
-                            .padding(.vertical, 1)
-                            .background(gameKitManager.isAuthenticated ? Color.blue : Color.gray)
-                            .cornerRadius(2)
-                            .disabled(!gameKitManager.isAuthenticated)
-                      //  }
+                    // iPhone: Use compact vertical layout to fit in popup
+                    VStack(spacing: 3) {
+                        // Host button
+                        Button("Host") {
+                            gameKitManager.hostMatch()
+                        }
+                        .font(.caption2)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(gameKitManager.isAuthenticated ? Color.blue : Color.gray)
+                        .cornerRadius(4)
+                        .disabled(!gameKitManager.isAuthenticated)
                         
-                        // Second row: Quick Match and Flip Board
-                     //   HStack(spacing: 3) {
-                            Button("🎯 Quick Match") {
-                                gameKitManager.quickMatch()
+                        // Quick Match button
+                        Button("🎯 Quick Match") {
+                            gameKitManager.quickMatch()
+                        }
+                        .font(.caption2)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(Color.purple)
+                        .cornerRadius(4)
+                        .disabled(!gameKitManager.isAuthenticated)
+                        
+                        // Force Reset button
+                        Button("Force GC Reset") {
+                            gameKitManager.forceResetGameCenter()
+                        }
+                        .font(.caption2)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(Color.yellow.opacity(0.6))
+                        .cornerRadius(4)
+                        
+                        // Flip Board Button (only show when connected)
+                        if gameKitManager.canFlipBoard {
+                            Button("Flip Board") {
+                                gameKitManager.flipBoard()
                             }
                             .font(.caption2)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 2)
-                            .padding(.vertical, 2)
-                            .background(Color.purple)
-                            .cornerRadius(3)
-                            .disabled(!gameKitManager.isAuthenticated)
-                            
-                            Button("Force GC Reset") {
-                                gameKitManager.forceResetGameCenter()
-                            }
-                            .font(isIPhone ? .caption2 : .caption)
                             .foregroundColor(.white)
                             .padding(.horizontal, 4)
                             .padding(.vertical, 2)
-                            .background(Color.yellow.opacity(0.6))
-                            .cornerRadius(6)
-                            
-                            
-                            // Flip Board Button (only show when connected)
-                            if gameKitManager.canFlipBoard {
-                                Button("Flip Board") {
-                                    gameKitManager.flipBoard()
-                                }
-                                .font(.caption2)
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 2)
-                                .padding(.vertical, 2)
-                                .background(Color.orange)
-                                .cornerRadius(3)
-                        //    }
+                            .background(Color.orange)
+                            .cornerRadius(4)
                         }
                     }
                 } else {
@@ -140,16 +106,7 @@ struct MultiplayerView: View {
                         .cornerRadius(8)
                         .disabled(!gameKitManager.isAuthenticated)
                         
-                        Button("Join Game") {
-                            gameKitManager.joinMatch()
-                        }
-                        .font(.caption)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(gameKitManager.isAuthenticated ? Color.green.opacity(0.4) : Color.gray)
-                        .cornerRadius(8)
-                        .disabled(!gameKitManager.isAuthenticated)
+                  
                         
                         Button("Force GC Reset") {
                             gameKitManager.forceResetGameCenter()
@@ -280,16 +237,6 @@ struct MultiplayerView: View {
                         
                        
                         
-                     //   Button("✕ Clear") {
-                     //       gameKitManager.clearErrorMessages()
-                     //   }
-                      //  .font(isIPhone ? .caption2 : .caption)
-                      //  .foregroundColor(.white)
-                      //  .padding(.horizontal, 8)
-                      //  .padding(.vertical, 4)
-                      //  .background(Color.gray.opacity(0.6))
-                      //  .cornerRadius(6)
-                  //  }
                 }
                 .frame(maxWidth: 140)
             }

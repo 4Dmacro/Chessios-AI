@@ -393,11 +393,7 @@ struct ContentView: View {
                     .scaleEffect(uiScale)
                 }
                 
-               // .background(.regularMaterial.opacity(0.2))
-               // .frame(maxWidth: 140)
-               // .padding(.horizontal, 8)
-              //  .padding(.vertical, 8)
-              //  .cornerRadius(12)
+              
                 
                 // Game Controls
                 VStack(spacing: 20) {
@@ -1803,21 +1799,10 @@ struct GameCenterPopoverView: View {
                 }
             }
             
-            // Host/Join Buttons
+            // Host/Game Buttons
             VStack(spacing: 8) {
                 Button("Host Game") {
                     gameKitManager.hostMatch()
-                }
-                .font(.subheadline)
-                .foregroundColor(.white)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(gameKitManager.isAuthenticated ? Color.blue : Color.gray)
-                .cornerRadius(8)
-                .disabled(!gameKitManager.isAuthenticated)
-                
-                Button("Join Game") {
-                    gameKitManager.joinMatch()
                 }
                 .font(.subheadline)
                 .foregroundColor(.white)
@@ -1837,6 +1822,16 @@ struct GameCenterPopoverView: View {
                 .background(gameKitManager.isAuthenticated ? Color.orange : Color.gray)
                 .cornerRadius(8)
                 .disabled(!gameKitManager.isAuthenticated)
+                
+                Button("Force GC Reset") {
+                    gameKitManager.forceResetGameCenter()
+                }
+                .font(.subheadline)
+                .foregroundColor(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.yellow.opacity(0.6))
+                .cornerRadius(8)
                 
                 // Flip Board Button (only show when connected)
                 if gameKitManager.canFlipBoard {
