@@ -31,7 +31,7 @@ struct ChessRulesView: View {
                     Text("• iPhone and iPad - Pinch to zoom in/out on Movement, Game Centre and Camera controls")
                     Text("• Use camera controls to adjust zoom and board height, and reset to default position")
                     Text("• Play Mode: Standard chess gameplay for two players on one device and use Learn mode to move red pieces only to understand the controls")
-            
+                    Text("• When using Game Centre mode, if you have problems connecting, close the app, sign out of Game Centre in your device Settings, sign in again and restart the app, it should reconnect and allow match connections. Press Force GC Reset if problems persist")
                     
                     
                     Text("General Rules")
