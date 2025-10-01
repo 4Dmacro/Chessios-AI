@@ -32,6 +32,8 @@ struct ContentView: View {
     @State private var showAIWarning = false // For AI warning message
     @State private var showColorExplanation = true // For color explanation message
     @State private var showRules = false // For rules popover
+    @State private var showSubscription = false // For subscription popover
+    @StateObject private var subscriptionManager = SubscriptionManager()
     // Add this property to ContentView
     @EnvironmentObject var gameKitManager: GameKitManager
     
@@ -487,6 +489,19 @@ struct ContentView: View {
                     
                     Spacer()
                     
+                    // Premium Button (show when no active subscription)
+                    if !subscriptionManager.hasActiveSubscription {
+                        Button("👑 Premium") {
+                            showSubscription = true
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(.yellow.opacity(0.6))
+                        .foregroundColor(.white)
+                        .cornerRadius(6)
+                    }
+                    
                     // AI Learning Controls (show when AI is active)
                     if chessGame.aiModeActive {
                         HStack(spacing: 8) {
@@ -676,6 +691,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $chessGame.showPromotionChoice) {
             PromotionChoiceView(chessGame: chessGame)
+        }
+        .sheet(isPresented: $showSubscription) {
+            SubscriptionView()
         }
         .popover(isPresented: $showRules) {
             ChessRulesView(isPresented: $showRules)

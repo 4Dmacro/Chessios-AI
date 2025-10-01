@@ -35,6 +35,8 @@ struct ContentView: View {
     @State private var showColorExplanation = true // For color explanation message
     @State private var showGameCenterPopover = false // For Game Center popover
     @State private var showRules = false // For rules popover
+    @State private var showSubscription = false // For subscription popover
+    @StateObject private var subscriptionManager = SubscriptionManager()
     
     @EnvironmentObject var gameKitManager: GameKitManager
     
@@ -210,6 +212,9 @@ struct ContentView: View {
         }
         .popover(isPresented: $showRules) {
             ChessRulesView(isPresented: $showRules)
+        }
+        .sheet(isPresented: $showSubscription) {
+            SubscriptionView()
         }
     }
     
@@ -698,6 +703,27 @@ struct ContentView: View {
                     .background(.regularMaterial.opacity(0.4))
                         .cornerRadius(4)
                     .scaleEffect(uiScale)
+                    
+                    // Premium Button (iPhone)
+                    if !subscriptionManager.hasActiveSubscription {
+                        Button {
+                            showSubscription = true
+                        } label: {
+                            HStack(spacing: 2) {
+                                Image(systemName: "crown.fill")
+                                    .font(.caption2)
+                                Text("Premium")
+                                    .font(.caption2)
+                            }
+                        }
+                        .font(.caption2)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 4)
+                        .background(Color.yellow.opacity(0.6))
+                        .foregroundColor(.white)
+                        .cornerRadius(4)
+                        .scaleEffect(uiScale)
+                    }
                     
                     // Rules Button - Bottom Right Corner (iPhone)
                     Button {
