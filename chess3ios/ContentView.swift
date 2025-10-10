@@ -417,12 +417,51 @@ struct ContentView: View {
                 //    .padding(.vertical, 8)
                 //    .cornerRadius(12)
                     
+                   
                     Spacer(minLength: 60)
                     
                     // Multiplayer Controls
                     MultiplayerView()
                         .scaleEffect(uiScale)
+                    
+                    Spacer(minLength: 40)
+                    
+                    // Premium Button (iPhone)
+                    if !subscriptionManager.hasActiveSubscription {
+                        Button {
+                            showSubscription = true
+                        } label: {
+                            HStack(spacing: 2) {
+                                Image(systemName: "crown.fill")
+                                    .font(.caption2)
+                                Text("Free Trial")
+                                    .font(.caption2)
+                            }
+                        }
+                        .font(.caption2)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 4)
+                        .background(Color.purple.opacity(0.4))
+                        .foregroundColor(.white)
+                        .cornerRadius(4)
+                        .scaleEffect(uiScale)
+                    }
+                    Spacer(minLength: 20)
+                    
+                    // Rules Button - Bottom Right Corner
+                    Button("📖 Rules and Instructions") {
+                        showRules = true
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .font(.caption2)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .background(Color.blue.opacity(0.4))
+                    .foregroundColor(.white)
+                    .cornerRadius(6)
+                    
                 }
+                    Spacer(minLength: 20)
             }
             .padding(.leading, 5)
             .position(x: 75, y: geometry.size.height / 2 - 5) // Position left controls higher up for iPad
@@ -433,19 +472,19 @@ struct ContentView: View {
                 .position(x: geometry.size.width - 98, y: geometry.size.height / 2) // Move 15mm (about 30px) to the right
             
             // Rules Button - Bottom Right Corner
-            Button("📖 Rules and Instructions") {
-                showRules = true
-            }
-            .buttonStyle(PlainButtonStyle())
-            .font(.caption2)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(Color.blue.opacity(0.4))
-            .foregroundColor(.white)
-            .cornerRadius(6)
+         //   Button("📖 Rules and Instructions") {
+       //         showRules = true
+       //     }
+       //     .buttonStyle(PlainButtonStyle())
+        //    .font(.caption2)
+        //    .padding(.horizontal, 8)
+        //    .padding(.vertical, 6)
+         //   .background(Color.blue.opacity(0.4))
+        //    .foregroundColor(.white)
+        //    .cornerRadius(6)
             
         
-            .position(x: geometry.size.width - 100, y: geometry.size.height - 60)
+        //    .position(x: geometry.size.width - 100, y: geometry.size.height - 60)
             
             // Move Confirmation UI (overlay when move is pending)
             if pieceController.isMovePending {
@@ -712,7 +751,7 @@ struct ContentView: View {
                             HStack(spacing: 2) {
                                 Image(systemName: "crown.fill")
                                     .font(.caption2)
-                                Text("Premium")
+                                Text("Free Trial")
                                     .font(.caption2)
                             }
                         }

@@ -8,6 +8,7 @@
 import Foundation
 import StoreKit
 import SwiftUI
+import Combine
 
 @MainActor
 class SubscriptionManager: ObservableObject {
@@ -19,8 +20,8 @@ class SubscriptionManager: ObservableObject {
     @Published var errorMessage: String?
     
     // Subscription product IDs
-    private let monthlyProductID = "com.grc.chess3d.monthly"
-    private let yearlyProductID = "com.grc.chess3d.yearly"
+    let monthlyProductID = "com.grc.chess3d.monthly"
+    let yearlyProductID = "com.grc.chess3d.yearly"
     
     private var products: [Product] = []
     private var updateListenerTask: Task<Void, Error>? = nil
@@ -61,7 +62,7 @@ class SubscriptionManager: ObservableObject {
             return
         }
         
-        for await result in Transaction.currentEntitlements {
+        for await result in StoreKit.Transaction.currentEntitlements {
             if case .verified(let transaction) = result {
                 if transaction.productID == monthlyProductID || transaction.productID == yearlyProductID {
                     await updateSubscriptionStatus(transaction: transaction)
@@ -76,7 +77,7 @@ class SubscriptionManager: ObservableObject {
         isInTrialPeriod = false
     }
     
-    private func updateSubscriptionStatus(transaction: Transaction) async {
+    private func updateSubscriptionStatus(transaction: StoreKit.Transaction) async {
         let now = Date()
         let expirationDate = transaction.expirationDate ?? now
         
@@ -86,14 +87,13 @@ class SubscriptionManager: ObservableObject {
             hasActiveSubscription = true
             
             // Check if in trial period
-            if let originalPurchaseDate = transaction.originalPurchaseDate {
-                let trialEndDate = Calendar.current.date(byAdding: .day, value: 7, to: originalPurchaseDate) ?? originalPurchaseDate
-                isInTrialPeriod = now < trialEndDate
-                
-                if isInTrialPeriod {
-                    let daysRemaining = Calendar.current.dateComponents([.day], from: now, to: trialEndDate).day ?? 0
-                    trialDaysRemaining = max(0, daysRemaining)
-                }
+            let originalPurchaseDate = transaction.originalPurchaseDate
+            let trialEndDate = Calendar.current.date(byAdding: .day, value: 7, to: originalPurchaseDate) ?? originalPurchaseDate
+            isInTrialPeriod = now < trialEndDate
+            
+            if isInTrialPeriod {
+                let daysRemaining = Calendar.current.dateComponents([.day], from: now, to: trialEndDate).day ?? 0
+                trialDaysRemaining = max(0, daysRemaining)
             }
         } else {
             // Expired subscription
@@ -193,9 +193,11 @@ class SubscriptionManager: ObservableObject {
     
     private func listenForTransactions() -> Task<Void, Error> {
         return Task.detached {
-            for await result in Transaction.updates {
+            for await result in StoreKit.Transaction.updates {
                 do {
-                    let transaction = try self.checkVerified(result)
+                    let transaction = try await MainActor.run {
+                        return try self.checkVerified(result)
+                    }
                     await transaction.finish()
                     await self.checkSubscriptionStatus()
                 } catch {

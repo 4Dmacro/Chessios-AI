@@ -491,7 +491,7 @@ struct ContentView: View {
                     
                     // Premium Button (show when no active subscription)
                     if !subscriptionManager.hasActiveSubscription {
-                        Button("👑 Premium") {
+                        Button("👑 Free Trial") {
                             showSubscription = true
                         }
                         .buttonStyle(PlainButtonStyle())
