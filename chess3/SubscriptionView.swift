@@ -22,7 +22,7 @@ struct SubscriptionView: View {
                         .font(.system(size: 48))
                         .foregroundColor(.yellow)
                     
-                    Text("Chess 3D Premium")
+                    Text("Chess 3D")
                         .font(.largeTitle)
                         .fontWeight(.bold)
                     
@@ -143,13 +143,17 @@ struct SubscriptionView: View {
                     
                     HStack(spacing: 24) {
                         Button("Terms of Service") {
-                            // Open terms
+                            if let url = URL(string: "https://www.3dchesscubed.com/terms-of-service") {
+                                NSWorkspace.shared.open(url)
+                            }
                         }
                         .font(.caption)
                         .foregroundColor(.blue)
                         
                         Button("Privacy Policy") {
-                            // Open privacy policy
+                            if let url = URL(string: "https://www.3dchesscubed.com/app-privacy-policy") {
+                                NSWorkspace.shared.open(url)
+                            }
                         }
                         .font(.caption)
                         .foregroundColor(.blue)
@@ -211,16 +215,16 @@ struct SubscriptionView: View {
                                 .font(.title2)
                                 .fontWeight(.semibold)
                             
-                            if isRecommended {
-                                Text("BEST VALUE")
-                                    .font(.caption)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Color.orange)
-                                    .cornerRadius(6)
-                            }
+                         //   if isRecommended {
+                          //      Text("BEST VALUE")
+                          //          .font(.caption)
+                           //         .fontWeight(.bold)
+                          //          .foregroundColor(.white)
+                          //          .padding(.horizontal, 8)
+                           //         .padding(.vertical, 4)
+                          //          .background(Color.orange)
+                          //          .cornerRadius(6)
+                          //  }
                             
                             Spacer()
                         }
@@ -265,16 +269,16 @@ struct SubscriptionOptionView: View {
                             .font(.title2)
                             .fontWeight(.semibold)
                         
-                        if isRecommended {
-                            Text("BEST VALUE")
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.orange)
-                                .cornerRadius(6)
-                        }
+                       // if isRecommended {
+                       //     Text("BEST VALUE")
+                        //        .font(.caption)
+                         //       .fontWeight(.bold)
+                         //       .foregroundColor(.white)
+                         //       .padding(.horizontal, 8)
+                         //       .padding(.vertical, 4)
+                         //       .background(Color.orange)
+                         //       .cornerRadius(6)
+                       // }
                         
                         Spacer()
                     }

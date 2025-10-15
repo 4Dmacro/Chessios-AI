@@ -430,6 +430,29 @@ struct ContentView: View {
                    //     RoundedRectangle(cornerRadius: 8)
                      //       .stroke(Color.blue, lineWidth: 1)
                     
+                    // Premium Button (macOS)
+                 //   if !subscriptionManager.hasActiveSubscription {
+                  //      Button("👑 Premium") {
+                  //          showSubscription = true
+                  //      }
+                  //      .buttonStyle(PlainButtonStyle())
+                  //      .padding(.horizontal, 16)
+                  //      .padding(.vertical, 8)
+                  //      .background(.yellow.opacity(0.6))
+                  //      .foregroundColor(.white)
+                  //      .cornerRadius(6)
+                 //   }
+                    
+                    // DEBUG: Reset Subscription Button (temporary for testing)
+                 //   Button("Reset Sub") {
+                 //       subscriptionManager.resetSubscriptionForTesting()
+                //    }
+                 //   .buttonStyle(PlainButtonStyle())
+                 //   .padding(.horizontal, 16)
+                 //   .padding(.vertical, 8)
+                //    .background(.red.opacity(0.6))
+                //    .foregroundColor(.white)
+                //    .cornerRadius(6)
                     
                     // Game State Display
                     Text(chessGame.turnDisplayText)
@@ -722,7 +745,7 @@ struct ContentView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 12)
-                    .background(Color.yellow.opacity(0.5))
+                    .background(Color.yellow.opacity(0.7))
                     .cornerRadius(8)
                     .frame(maxWidth: 500)
                     .position(x: 400, y: 100) // Same position as AI warning

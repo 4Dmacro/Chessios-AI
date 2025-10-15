@@ -15,33 +15,32 @@ struct SubscriptionView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                // Header
-                VStack(spacing: 8) {
-                    Image(systemName: "crown.fill")
-                        .font(.system(size: 40))
-                        .foregroundColor(.yellow)
+            ScrollView {
+                VStack(spacing: 12) {
+                    // Header
+                    VStack(spacing: 4) {
+                        Image(systemName: "crown.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.yellow)
+                        
+                        Text("Chess 3D")
+                            .font(.title3)
+                            .fontWeight(.bold)
+                        
+                        Text("Unlock all features with a free trial")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.top, 8)
                     
-                    Text("Chess 3D Premium")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    
-                    Text("Unlock all features with a free trial")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding(.top)
-                
-                // Features List
-                VStack(alignment: .leading, spacing: 12) {
-                    FeatureRow(icon: "gamecontroller.fill", text: "Full Game Center multiplayer")
-                    FeatureRow(icon: "brain.head.profile", text: "Advanced AI opponents")
-                  //  FeatureRow(icon: "cube.transparent", text: "All 3D board configurations")
-                    FeatureRow(icon: "chart.bar.fill", text: "Detailed game statistics")
-                 //   FeatureRow(icon: "paintbrush.fill", text: "Custom board themes")
-                }
-                .padding(.horizontal)
+                    // Features List
+                    VStack(alignment: .leading, spacing: 6) {
+                        FeatureRow(icon: "gamecontroller.fill", text: "Full Game Center multiplayer")
+                        FeatureRow(icon: "brain.head.profile", text: "Advanced AI opponents")
+                        FeatureRow(icon: "chart.bar.fill", text: "Detailed game statistics")
+                    }
+                    .padding(.horizontal, 16)
                 
                 // Subscription Status
                 if subscriptionManager.hasActiveSubscription {
@@ -59,9 +58,9 @@ struct SubscriptionView: View {
                     }
                 } else {
                     // Subscription Options
-                    VStack(spacing: 12) {
+                    VStack(spacing: 8) {
                         // Product Selection
-                        VStack(spacing: 8) {
+                        VStack(spacing: 6) {
                             SubscriptionOptionView(
                                 product: subscriptionManager.getMonthlyProduct(),
                                 isSelected: selectedProduct == "monthly",
@@ -78,9 +77,10 @@ struct SubscriptionView: View {
                                 selectedProduct = "yearly"
                             }
                         }
+                        .padding(.horizontal, 20)
                         
                         // Action Buttons
-                        VStack(spacing: 8) {
+                        VStack(spacing: 6) {
                             Button(action: {
                                 Task {
                                     if selectedProduct == "monthly" {
@@ -93,29 +93,33 @@ struct SubscriptionView: View {
                                 HStack {
                                     if subscriptionManager.isLoading {
                                         ProgressView()
-                                            .scaleEffect(0.8)
+                                            .scaleEffect(0.7)
                                     } else {
                                         Image(systemName: "star.fill")
+                                            .font(.caption)
                                     }
                                     Text(subscriptionManager.isInTrialPeriod ? "Continue Trial" : "Start Free Trial")
+                                        .font(.subheadline)
                                 }
-                                .font(.headline)
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
-                                .padding()
+                                .padding(.vertical, 12)
+                                .padding(.horizontal, 16)
                                 .background(Color.blue)
-                                .cornerRadius(12)
+                                .cornerRadius(8)
                             }
                             .disabled(subscriptionManager.isLoading)
+                            .padding(.horizontal, 20)
                             
                             Button("Restore Purchases") {
                                 Task {
                                     await subscriptionManager.restorePurchases()
                                 }
                             }
-                            .font(.subheadline)
+                            .font(.caption)
                             .foregroundColor(.blue)
                             .disabled(subscriptionManager.isLoading)
+                            .padding(.horizontal, 20)
                         }
                     }
                 }
@@ -123,12 +127,10 @@ struct SubscriptionView: View {
                 // Error Message
                 if let errorMessage = subscriptionManager.errorMessage {
                     Text(errorMessage)
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundColor(.red)
-                        .padding(.horizontal)
+                        .padding(.horizontal, 16)
                 }
-                
-                Spacer()
                 
                 // Terms and Privacy
                 VStack(spacing: 4) {
@@ -136,24 +138,29 @@ struct SubscriptionView: View {
                         .font(.caption2)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
+                        .padding(.horizontal, 16)
                     
-                    HStack(spacing: 16) {
+                    HStack(spacing: 12) {
                         Button("Terms of Service") {
-                            // Open terms
+                            if let url = URL(string: "https://www.3dchesscubed.com/terms-of-service") {
+                                UIApplication.shared.open(url)
+                            }
                         }
                         .font(.caption2)
                         .foregroundColor(.blue)
                         
                         Button("Privacy Policy") {
-                            // Open privacy policy
+                            if let url = URL(string: "https://www.3dchesscubed.com/app-privacy-policy") {
+                                UIApplication.shared.open(url)
+                            }
                         }
                         .font(.caption2)
                         .foregroundColor(.blue)
                     }
                 }
-                .padding(.bottom)
+                .padding(.bottom, 16)
+                }
             }
-            .padding()
             .navigationTitle("Premium")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -178,14 +185,14 @@ struct FeatureRow: View {
     let text: String
     
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.title3)
+                .font(.caption)
                 .foregroundColor(.blue)
-                .frame(width: 24)
+                .frame(width: 16)
             
             Text(text)
-                .font(.subheadline)
+                .font(.caption)
             
             Spacer()
         }
@@ -201,42 +208,44 @@ struct SubscriptionOptionView: View {
     var body: some View {
         Button(action: action) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     HStack {
                         Text(product?.displayName ?? "Loading...")
-                            .font(.headline)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
                         
-                        if isRecommended {
-                            Text("BEST VALUE")
-                                .font(.caption2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.orange)
-                                .cornerRadius(4)
-                        }
+                     //   if isRecommended {
+                      //      Text("BEST")
+                      //          .font(.caption2)
+                      //          .fontWeight(.bold)
+                      //          .foregroundColor(.white)
+                      //          .padding(.horizontal, 4)
+                       //         .padding(.vertical, 1)
+                       //         .background(Color.orange)
+                      //          .cornerRadius(3)
+                      //  }
                         
                         Spacer()
                     }
                     
                     Text(product?.displayPrice ?? "Loading...")
-                        .font(.title2)
+                        .font(.headline)
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
                 }
                 
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.title2)
+                    .font(.subheadline)
                     .foregroundColor(isSelected ? .blue : .gray)
             }
-            .padding()
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
             .background(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 8)
                     .fill(isSelected ? Color.blue.opacity(0.1) : Color.gray.opacity(0.1))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(isSelected ? Color.blue : Color.gray.opacity(0.3), lineWidth: 2)
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(isSelected ? Color.blue : Color.gray.opacity(0.3), lineWidth: 1)
                     )
             )
         }

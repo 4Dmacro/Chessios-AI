@@ -41,6 +41,18 @@ class SubscriptionManager: ObservableObject {
         updateListenerTask?.cancel()
     }
     
+    // MARK: - Debug Methods
+    
+    func resetSubscriptionForTesting() {
+        print("🔄 DEBUG: Resetting subscription status for testing")
+        subscriptionStatus = .unknown
+        isInTrialPeriod = false
+        trialDaysRemaining = 0
+        hasActiveSubscription = false
+        errorMessage = nil
+        print("🔄 DEBUG: Subscription status reset - Premium button should now be visible")
+    }
+    
     // MARK: - Product Loading
     
     func loadProducts() async {

@@ -230,7 +230,7 @@ struct ContentView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 12)
-                    .background(Color.yellow.opacity(0.5))
+                    .background(Color.yellow.opacity(0.8))
                     .cornerRadius(8)
                     .frame(maxWidth: 400)
                     .position(x: UIScreen.main.bounds.width / 2, y: 120)
@@ -781,6 +781,20 @@ struct ContentView: View {
                     .foregroundColor(.white)
                     .cornerRadius(4)
                     .scaleEffect(uiScale)
+                    
+                    // DEBUG: Reset Subscription Button (temporary for testing)
+                  //  Button {
+                   //     subscriptionManager.resetSubscriptionForTesting()
+                   // } label: {
+                    //    Text("Reset Sub")
+                  //  }
+                  //  .font(.caption2)
+                  //  .padding(.horizontal, 4)
+                  //  .padding(.vertical, 4)
+                   // .background(Color.red.opacity(0.6))
+                   // .foregroundColor(.white)
+                   // .cornerRadius(4)
+                  //  .scaleEffect(uiScale)
                 }
                 .padding(.bottom, 240) // Add bottom padding to avoid rounded corners
                 .position(x: 65, y: geometry.size.height - 50) // Much closer to center, still on left side
