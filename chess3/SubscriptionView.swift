@@ -35,10 +35,10 @@ struct SubscriptionView: View {
                 
                 // Features List
                 VStack(alignment: .leading, spacing: 16) {
-                    FeatureRow(icon: "gamecontroller.fill", text: "Full Game Center multiplayer")
-                    FeatureRow(icon: "brain.head.profile", text: "Advanced AI opponents")
-                    // FeatureRow(icon: "cube.transparent", text: "All 3D board configurations")
-                    FeatureRow(icon: "chart.bar.fill", text: "Detailed game statistics")
+                    FeatureRow(icon: "gamecontroller.fill", text: "Challenge Friends Via Game Center")
+                    FeatureRow(icon: "brain.head.profile", text: "Test Yourself Against AI opponent")
+                    FeatureRow(icon: "cube.transparent", text: "Rotating Boards for Play On One Device")
+                    FeatureRow(icon: "chart.bar.fill", text: "AI game statistics")
                     //  FeatureRow(icon: "paintbrush.fill", text: "Custom board themes")
                 }
                 .padding(.horizontal, 40)

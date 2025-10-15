@@ -499,7 +499,7 @@ struct ContentView: View {
                                 .animation(.easeInOut(duration: 0.6), value: gameKitManager.errorMessage)
                                 .onAppear {
                                     // Auto-dismiss error message after 7 seconds
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 7.0) {
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
                                         gameKitManager.clearErrorMessages()
                                     }
                                 }
@@ -520,7 +520,7 @@ struct ContentView: View {
                         .buttonStyle(PlainButtonStyle())
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .background(.yellow.opacity(0.6))
+                        .background(.purple.opacity(0.7))
                         .foregroundColor(.white)
                         .cornerRadius(6)
                     }
@@ -658,7 +658,7 @@ struct ContentView: View {
             print("🎮 ContentView: Is authenticated: \(gameKitManager.isAuthenticated)")
             
             // Hide color explanation after 6 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) {
                 showColorExplanation = false
             }
             
