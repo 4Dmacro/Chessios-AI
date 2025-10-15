@@ -20,8 +20,8 @@ class SubscriptionManager: ObservableObject {
     @Published var errorMessage: String?
     
     // Subscription product IDs
-    let monthlyProductID = "com.grc.chess3d.monthly"
-    let yearlyProductID = "com.grc.chess3d.yearly"
+    let monthlyProductID = "com.grc.chess3d.submth"
+    let yearlyProductID = "com.grc.chess3d.sub1yr"
     
     private var products: [Product] = []
     private var updateListenerTask: Task<Void, Error>? = nil

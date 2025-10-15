@@ -698,6 +698,10 @@ struct ContentView: View {
         .popover(isPresented: $showRules) {
             ChessRulesView(isPresented: $showRules)
         }
+        .sheet(isPresented: $showSubscription) {
+            SubscriptionView()
+                .environmentObject(subscriptionManager)
+        }
         .onChange(of: gameKitManager.playerColor) { _, newColor in
             // Rotate board when GameKit player color changes
             if gameKitManager.matchState == .connected {

@@ -75,7 +75,7 @@
          </BuildableReference>
       </BuildableProductRunnable>
       <StoreKitConfigurationFileReference
-         identifier = "../../chess3/Products.storekit">
+         identifier = "../../chess3ios/Products-ios.storekit">
       </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction

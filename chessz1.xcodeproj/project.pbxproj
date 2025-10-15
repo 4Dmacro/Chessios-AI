@@ -12,6 +12,8 @@
 		FF0F26C32E4C4E41004C7507 /* (null) in Resources */ = {isa = PBXBuildFile; };
 		FF20710B2E51C7C600A62549 /* boardfix2.usdz in Resources */ = {isa = PBXBuildFile; fileRef = FF20710A2E51C7C600A62549 /* boardfix2.usdz */; };
 		FF6ABEED2E234F6800EB04B8 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FF6ABEEC2E234F6800EB04B8 /* Metal.framework */; };
+		FFD348DB2E9E354A007AABA7 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FF20A0562E8D671200455AAC /* StoreKit.framework */; };
+		FFD348DC2E9E3574007AABA7 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FF20A0562E8D671200455AAC /* StoreKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -128,6 +130,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FFD348DB2E9E354A007AABA7 /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -178,6 +181,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FFD348DC2E9E3574007AABA7 /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
