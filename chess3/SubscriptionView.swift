@@ -162,7 +162,9 @@ struct SubscriptionView: View {
                 .padding(.bottom)
                 
             }
+            .frame(minWidth: 400, maxWidth: 500, minHeight: 500, maxHeight: 600)
             .frame(width: 500, height: 600)
+            .background(Color(.windowBackgroundColor))
             .padding()
             .onAppear {
                 Task {

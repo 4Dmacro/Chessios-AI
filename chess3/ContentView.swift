@@ -157,14 +157,15 @@ struct ContentView: View {
                         .cornerRadius(8)
                         
                     
-                    }
-                    .padding()
-                    .background(.regularMaterial.opacity(0.3))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                    )
-                    .cornerRadius(12)
+                }
+                .frame(minWidth: 70) // Reduced width to give more space to top controls
+                .padding()
+                .background(.regularMaterial.opacity(0.3))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                )
+                .cornerRadius(12)
                     
                     // Captured Pieces Display
                     VStack(spacing: 6) {
@@ -225,6 +226,7 @@ struct ContentView: View {
                             .cornerRadius(6)
                         }
                     }
+                    .frame(minWidth: 70) // Reduced width to give more space to top controls
                     .padding()
                     .background(.regularMaterial.opacity(0.2))
                     .overlay(
@@ -247,7 +249,7 @@ struct ContentView: View {
             // Top control bar
             VStack {
                 HStack {
-                    Spacer()
+                    Spacer(minLength: 110) // Reduced spacer to give more space to top controls
                     
                     // Game Mode Selector
                     HStack {
@@ -261,14 +263,14 @@ struct ContentView: View {
                             Text("Learn").tag(GameMode.learn)
                         }
                         .pickerStyle(SegmentedPickerStyle())
-                        .frame(width: 120)
+                        .frame(width: 100)
                         .accentColor(.white)
                         .colorScheme(.dark)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
                     .background(.regularMaterial.opacity(0.2))
-                    .cornerRadius(8)
+                    .cornerRadius(4)
                     
                     // AI Controls
                     VStack(spacing: 4) {
@@ -292,13 +294,13 @@ struct ContentView: View {
                             print("🤖 Button debug: isAITurn=\(chessGame.isAITurn())")
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
                         .background(chessGame.aiModeActive ? Color.green.opacity(0.4) : Color.gray.opacity(0.3))
                         .foregroundColor(chessGame.aiModeActive ? .white : .white)
-                        .cornerRadius(8)
+                        .cornerRadius(4)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8)
+                            RoundedRectangle(cornerRadius: 4)
                                 .stroke(chessGame.aiModeActive ? Color.green : Color.clear, lineWidth: 2)
                         )
                         .scaleEffect(chessGame.aiModeActive ? 1.05 : 1.0)
@@ -326,11 +328,11 @@ struct ContentView: View {
                             print("🔄 New Game: Sent GameKit reset command to connected device")
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
                         .background(Color.blue.opacity(0.4))
                         .foregroundColor(.white)
-                        .cornerRadius(8)
+                        .cornerRadius(4)
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(Color.blue, lineWidth: 2)
@@ -341,11 +343,11 @@ struct ContentView: View {
                             gameKitManager.flipBoard()
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
                         .background(Color.orange.opacity(0.4))
                         .foregroundColor(.white)
-                        .cornerRadius(8)
+                        .cornerRadius(4)
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(Color.orange, lineWidth: 2)
@@ -356,11 +358,11 @@ struct ContentView: View {
                             chessGame.resetGame()
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
                         .background(Color.gray.opacity(0.4))
                         .foregroundColor(.white)
-                        .cornerRadius(8)
+                        .cornerRadius(4)
                         
                        // Text("Connect to Game Center to play multiplayer")
                        //     .font(.caption2)
@@ -417,56 +419,30 @@ struct ContentView: View {
                     }
                     
                     // Rules Button
-                    Button("📖 Rules and Instructions") {
+                    Button("Rules & Instructions") {
                         showRules = true
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
                     .background(Color.blue.opacity(0.3))
                     .foregroundColor(.white)
-                    .cornerRadius(6)
-                  //  .overlay(
-                   //     RoundedRectangle(cornerRadius: 8)
-                     //       .stroke(Color.blue, lineWidth: 1)
-                    
-                    // Premium Button (macOS)
-                 //   if !subscriptionManager.hasActiveSubscription {
-                  //      Button("👑 Premium") {
-                  //          showSubscription = true
-                  //      }
-                  //      .buttonStyle(PlainButtonStyle())
-                  //      .padding(.horizontal, 16)
-                  //      .padding(.vertical, 8)
-                  //      .background(.yellow.opacity(0.6))
-                  //      .foregroundColor(.white)
-                  //      .cornerRadius(6)
-                 //   }
-                    
-                    // DEBUG: Reset Subscription Button (temporary for testing)
-                 //   Button("Reset Sub") {
-                 //       subscriptionManager.resetSubscriptionForTesting()
-                //    }
-                 //   .buttonStyle(PlainButtonStyle())
-                 //   .padding(.horizontal, 16)
-                 //   .padding(.vertical, 8)
-                //    .background(.red.opacity(0.6))
-                //    .foregroundColor(.white)
-                //    .cornerRadius(6)
+                    .cornerRadius(4)
+                  
                     
                     // Game State Display
                     Text(chessGame.turnDisplayText)
-                        .font(.headline)
+                        .font(.caption)
                         .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
                         .background(
                             chessGame.gameState.contains("Checkmate") ? Color.red.opacity(0.8) : 
                             chessGame.gameState.contains("White") ? Color.red.opacity(0.6) : 
                             chessGame.gameState.contains("Black") ? Color.blue.opacity(0.6) : Color.clear
                         )
                         .background(.regularMaterial.opacity(0.3))
-                        .cornerRadius(8)
+                        .cornerRadius(4)
                         .scaleEffect(chessGame.gameState.contains("Checkmate") ? 1.1 : 1.0)
                         .animation(.easeInOut(duration: 0.6), value: chessGame.gameState)
                     
@@ -475,11 +451,11 @@ struct ContentView: View {
                         Text(chessGame.invalidMoveMessage)
                             .font(.headline)
                             .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
                             .background(Color.orange.opacity(0.8))
                             .background(.ultraThinMaterial)
-                            .cornerRadius(8)
+                            .cornerRadius(4)
                             .scaleEffect(1.1)
                             .animation(.easeInOut(duration: 0.6), value: chessGame.invalidMoveMessage)
                     }
@@ -488,13 +464,13 @@ struct ContentView: View {
                     if !gameKitManager.errorMessage.isEmpty {
                         VStack(spacing: 8) {
                             Text(gameKitManager.errorMessage)
-                                .font(.caption)
+                                .font(.caption2)
                                 .foregroundColor(.white)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color.red.opacity(0.8))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.red.opacity(0.7))
                                 .background(.ultraThinMaterial)
-                                .cornerRadius(8)
+                                .cornerRadius(4)
                                 .multilineTextAlignment(.center)
                                 .animation(.easeInOut(duration: 0.6), value: gameKitManager.errorMessage)
                                 .onAppear {
@@ -518,11 +494,11 @@ struct ContentView: View {
                             showSubscription = true
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
                         .background(.purple.opacity(0.7))
                         .foregroundColor(.white)
-                        .cornerRadius(6)
+                        .cornerRadius(4)
                     }
                     
                     // AI Learning Controls (show when AI is active)
@@ -532,21 +508,21 @@ struct ContentView: View {
                                 showAIStats.toggle()
                             }
                             .buttonStyle(PlainButtonStyle())
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
                             .background(.blue.opacity(0.3))
                             .foregroundColor(.white)
-                            .cornerRadius(6)
+                            .cornerRadius(4)
                             
                             Button("🔄 Reset AI") {
                                 chessGame.resetAILearning()
                             }
                             .buttonStyle(PlainButtonStyle())
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
                             .background(.red.opacity(0.3))
                             .foregroundColor(.white)
-                            .cornerRadius(6)
+                            .cornerRadius(4)
                         }
                     }
                     
@@ -658,7 +634,7 @@ struct ContentView: View {
             print("🎮 ContentView: Is authenticated: \(gameKitManager.isAuthenticated)")
             
             // Hide color explanation after 6 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) {
                 showColorExplanation = false
             }
             

@@ -895,7 +895,7 @@ struct ContentView: View {
         setupChessInteraction()
         
         // Hide color explanation after 6 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) {
             showColorExplanation = false
         }
         

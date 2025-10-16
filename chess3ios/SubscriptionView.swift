@@ -162,6 +162,8 @@ struct SubscriptionView: View {
                 .padding(.bottom, 16)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(.systemBackground))
             .navigationTitle("Premium")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
