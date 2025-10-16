@@ -8,6 +8,8 @@
 	<string>Chess 3D</string>
 	<key>CFBundleExecutable</key>
 	<string>chess3</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -19,7 +21,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.4</string>
 	<key>CFBundleVersion</key>
-	<string>14</string>
+	<string>15</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.games</string>
 	<key>LSMinimumSystemVersion</key>
@@ -29,8 +31,12 @@
 		<string>_gamekit._tcp</string>
 		<string>_gamekit._udp</string>
 	</array>
+	<key>NSHighResolutionCapable</key>
+	<true/>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>This app uses local network for Game Center multiplayer chess games.</string>
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
@@ -43,11 +49,5 @@
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
-	<key>CFBundleIconName</key>
-	<string>AppIcon</string>
-	<key>NSSupportsAutomaticGraphicsSwitching</key>
-	<true/>
-	<key>NSHighResolutionCapable</key>
-	<true/>
 </dict>
 </plist>

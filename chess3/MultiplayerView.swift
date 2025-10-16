@@ -120,7 +120,7 @@ struct MultiplayerView: View {
                     }
                     
                     Button("Host Game") {
-                        gameKitManager.hostMatch()
+                        gameKitManager.sendInvitationToFriends()
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 4)

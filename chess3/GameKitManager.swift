@@ -337,6 +337,92 @@ class GameKitManager: NSObject, ObservableObject {
         performAutoMatch()
     }
     
+    // MARK: - Invitation Sending
+    
+    func sendInvitationToFriends() {
+        guard isFullyAuthenticated else {
+            print("❌ GameKit: Player not fully authenticated (displayName: \(GKLocalPlayer.local.displayName))")
+            return
+        }
+        
+        print("🎮 GameKit: Starting invitation match")
+        
+        // Mark this device as the match initiator (host)
+        isMatchInitiator = true
+        print("🎮 GameKit: This device marked as match initiator (will be host/white)")
+        
+        // Clear any previous error messages
+        errorMessage = ""
+        
+        // Use invitation-based matchmaking
+        performInvitationMatch()
+    }
+    
+    private func performInvitationMatch() {
+        DispatchQueue.main.async {
+            print("🎮 GameKit: Creating invitation match request")
+            print("🎮 GameKit: Local player: \(GKLocalPlayer.local.displayName) (ID: \(GKLocalPlayer.local.gamePlayerID))")
+            
+            let request = GKMatchRequest()
+            request.minPlayers = 2
+            request.maxPlayers = 2
+            print("🎮 GameKit: Invitation match request - minPlayers: \(request.minPlayers), maxPlayers: \(request.maxPlayers)")
+            
+            guard let matchmaker = GKMatchmakerViewController(matchRequest: request) else {
+                self.errorMessage = "Could not create Game Center match request"
+                print("❌ GameKit: Failed to create matchmaker view controller")
+                return
+            }
+            
+            // Present the matchmaker on macOS with better error handling
+            if let window = NSApplication.shared.windows.first {
+                print("🎮 GameKit: Found window, presenting matchmaker as sheet")
+                print("🎮 GameKit: Window content view controller: \(window.contentViewController != nil ? "Found" : "Nil")")
+                
+                // Set the matchmaker delegate before presenting
+                matchmaker.matchmakerDelegate = self
+                print("🎮 GameKit: Matchmaker delegate set to self")
+                
+                // Present the matchmaker
+                if let contentVC = window.contentViewController {
+                    print("🎮 GameKit: Content view controller found, presenting matchmaker")
+                    contentVC.presentAsSheet(matchmaker)
+                    print("🎮 GameKit: Presenting invitation interface")
+                    
+                    // Set match state to searching
+                    self.matchState = .searching
+                    print("🎮 GameKit: Match state set to searching")
+                    
+                    // Add timeout for matchmaking to prevent infinite searching
+                    DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 60.0) { [weak matchmaker, weak self] in
+                        guard let self = self else { return }
+                        if self.matchState == .searching {
+                            print("⏰ GameKit: Matchmaking timeout after 60 seconds")
+                            DispatchQueue.main.async {
+                                matchmaker?.dismiss(nil)
+                                self.matchState = .none
+                                self.errorMessage = "Matchmaking timed out. No other players found. Make sure both devices are searching at the same time."
+                                
+                                // Show timeout alert
+                                let alert = NSAlert()
+                                alert.messageText = "Matchmaking Timeout"
+                                alert.informativeText = "No other players found after 60 seconds. Make sure both devices are searching for a match at the same time."
+                                alert.addButton(withTitle: "OK")
+                                alert.runModal()
+                            }
+                        }
+                    }
+                } else {
+                    print("❌ GameKit: Content view controller is nil")
+                    self.errorMessage = "Could not present Game Center interface - no content view controller"
+                }
+            } else {
+                self.errorMessage = "Could not present Game Center interface - no window found"
+                print("❌ GameKit: No window found to present matchmaker")
+            }
+        }
+    }
+    
     // MARK: - Auto-Match Functionality
     
     private func performAutoMatch() {
