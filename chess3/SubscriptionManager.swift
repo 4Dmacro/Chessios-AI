@@ -18,6 +18,9 @@ class SubscriptionManager: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     
+    // Prevent rapid updates that cause layout recursion
+    private var updateTimer: Timer?
+    
     // Subscription product IDs
     let monthlyProductID = "com.grc.chess3d.submth"
     let yearlyProductID = "com.grc.chess3d.sub1yr"
@@ -52,6 +55,21 @@ class SubscriptionManager: ObservableObject {
         print("🔄 DEBUG: Subscription status reset - Premium button should now be visible")
     }
     
+    func forceRefreshSubscriptionStatus() {
+        print("🔄 SubscriptionManager: Force refreshing subscription status")
+        Task {
+            await checkSubscriptionStatus()
+        }
+    }
+    
+    // Debounced update to prevent layout recursion
+    private func debouncedUpdate(updates: @escaping () -> Void) {
+        updateTimer?.invalidate()
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: false) { _ in
+            updates()
+        }
+    }
+    
     // MARK: - Product Loading
     
     func loadProducts() async {
@@ -68,57 +86,100 @@ class SubscriptionManager: ObservableObject {
     // MARK: - Subscription Status
     
     func checkSubscriptionStatus() async {
+        print("🔍 SubscriptionManager: Checking subscription status...")
+        
         guard !products.isEmpty else {
+            print("🔍 SubscriptionManager: No products loaded, loading products first")
             await loadProducts()
             return
         }
         
+        var foundActiveSubscription = false
+        
         for await result in StoreKit.Transaction.currentEntitlements {
             if case .verified(let transaction) = result {
+                print("🔍 SubscriptionManager: Found transaction for product: \(transaction.productID)")
                 if transaction.productID == monthlyProductID || transaction.productID == yearlyProductID {
+                    print("🔍 SubscriptionManager: This is our subscription product")
                     await updateSubscriptionStatus(transaction: transaction)
+                    foundActiveSubscription = true
                     return
                 }
             }
         }
         
-        // No active subscription found
-        subscriptionStatus = .none
-        hasActiveSubscription = false
-        isInTrialPeriod = false
+        if !foundActiveSubscription {
+            print("🔍 SubscriptionManager: No active subscription found")
+            // No active subscription found - update on main thread
+            await MainActor.run {
+                debouncedUpdate {
+                    self.subscriptionStatus = .none
+                    self.hasActiveSubscription = false
+                    self.isInTrialPeriod = false
+                    print("🔍 SubscriptionManager: UI updated on main thread (no subscription, debounced)")
+                }
+            }
+        }
     }
     
     private func updateSubscriptionStatus(transaction: StoreKit.Transaction) async {
         let now = Date()
         let expirationDate = transaction.expirationDate ?? now
         
+        print("🔍 SubscriptionManager: Transaction details:")
+        print("🔍 - Product ID: \(transaction.productID)")
+        print("🔍 - Original Purchase Date: \(transaction.originalPurchaseDate)")
+        print("🔍 - Expiration Date: \(expirationDate)")
+        print("🔍 - Current Date: \(now)")
+        print("🔍 - Is Expired: \(expirationDate <= now)")
+        
         if expirationDate > now {
             // Active subscription
-            subscriptionStatus = .active
-            hasActiveSubscription = true
+            print("🔍 SubscriptionManager: Active subscription found")
             
             // Check if in trial period
             let originalPurchaseDate = transaction.originalPurchaseDate
             let trialEndDate = Calendar.current.date(byAdding: .day, value: 7, to: originalPurchaseDate) ?? originalPurchaseDate
-            isInTrialPeriod = now < trialEndDate
+            let isInTrial = now < trialEndDate
             
-            if isInTrialPeriod {
-                let daysRemaining = Calendar.current.dateComponents([.day], from: now, to: trialEndDate).day ?? 0
-                trialDaysRemaining = max(0, daysRemaining)
+            print("🔍 SubscriptionManager: Trial period check:")
+            print("🔍 - Original Purchase: \(originalPurchaseDate)")
+            print("🔍 - Trial End Date: \(trialEndDate)")
+            print("🔍 - Is In Trial: \(isInTrial)")
+            
+            let daysRemaining = isInTrial ? max(0, Calendar.current.dateComponents([.day], from: now, to: trialEndDate).day ?? 0) : 0
+            print("🔍 SubscriptionManager: Trial days remaining: \(daysRemaining)")
+            
+            // Update on main thread with debouncing to prevent layout recursion
+            await MainActor.run {
+                debouncedUpdate {
+                    self.subscriptionStatus = .active
+                    self.hasActiveSubscription = true
+                    self.isInTrialPeriod = isInTrial
+                    self.trialDaysRemaining = daysRemaining
+                    print("🔍 SubscriptionManager: UI updated on main thread (debounced)")
+                }
             }
         } else {
             // Expired subscription
-            subscriptionStatus = .expired
-            hasActiveSubscription = false
-            isInTrialPeriod = false
+            print("🔍 SubscriptionManager: Expired subscription")
+            await MainActor.run {
+                debouncedUpdate {
+                    self.subscriptionStatus = .expired
+                    self.hasActiveSubscription = false
+                    self.isInTrialPeriod = false
+                    print("🔍 SubscriptionManager: UI updated on main thread (expired, debounced)")
+                }
+            }
         }
+        
+        print("🔍 SubscriptionManager: Final status - hasActiveSubscription: \(hasActiveSubscription), isInTrialPeriod: \(isInTrialPeriod)")
     }
     
     // MARK: - Purchase Methods
     
     func startFreeTrial() async {
         guard let monthlyProduct = products.first(where: { $0.id == monthlyProductID }) else {
-            errorMessage = "Subscription not available"
             return
         }
         
@@ -144,7 +205,6 @@ class SubscriptionManager: ObservableObject {
             }
         } catch {
             print("❌ Purchase failed: \(error)")
-            errorMessage = "Failed to start free trial"
         }
         
         isLoading = false

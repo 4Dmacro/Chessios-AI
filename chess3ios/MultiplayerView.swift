@@ -102,7 +102,7 @@ struct MultiplayerView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(gameKitManager.isAuthenticated ? Color.green.opacity(0.4) : Color.gray)
+                        .background(gameKitManager.isAuthenticated ? Color.green.opacity(0.3) : Color.gray)
                         .cornerRadius(8)
                         .disabled(!gameKitManager.isAuthenticated)
                         
@@ -115,7 +115,7 @@ struct MultiplayerView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
-                        .background(Color.yellow.opacity(0.6))
+                        .background(Color.yellow.opacity(0.4))
                         .cornerRadius(6)
                         
                         Button("Quick Match") {
@@ -125,7 +125,7 @@ struct MultiplayerView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(gameKitManager.isAuthenticated ? Color.orange.opacity(0.6) : Color.gray)
+                        .background(gameKitManager.isAuthenticated ? Color.orange.opacity(0.4) : Color.gray)
                         .cornerRadius(8)
                         .disabled(!gameKitManager.isAuthenticated)
                         

@@ -3252,7 +3252,7 @@ struct ChessPieceControllerView: View {
                     Image(systemName: "robot")
                         .foregroundColor(.white)
                     Text(chessGame.lastAIMove)
-                        .font(.caption)
+                        .font(.caption2)
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
                 }
@@ -3268,7 +3268,7 @@ struct ChessPieceControllerView: View {
                     Image(systemName: "person.circle")
                         .foregroundColor(.white)
                     Text(chessGame.lastOpponentMove)
-                        .font(.caption)
+                        .font(.caption2)
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
                 }
@@ -3287,7 +3287,7 @@ struct ChessPieceControllerView: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.red)
                     Text("CHECK! Your king is under attack!")
-                        .font(.caption)
+                        .font(.caption2)
                         .fontWeight(.bold)
                         .foregroundColor(.red)
                 }
@@ -3302,7 +3302,7 @@ struct ChessPieceControllerView: View {
                     Image(systemName: "horse")
                         .foregroundColor(.orange)
                     Text("Knight Mode: Click two arrows for L-shape move")
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundColor(.orange)
                 }
                 .padding(.horizontal)
@@ -4038,57 +4038,57 @@ struct ChessPieceControllerView: View {
                     .cornerRadius(3)
             }
             // Piece list
-            ScrollView(.vertical, showsIndicators: true) {
-                LazyVStack(alignment: .leading, spacing: 1) {
-                                    HStack(alignment: .top, spacing: 1) {
-                    Spacer()
+          //  ScrollView(.vertical, showsIndicators: true) {
+          //      LazyVStack(alignment: .leading, spacing: 1) {
+           //                         HStack(alignment: .top, spacing: 1) {
+          //          Spacer()
                     // Pawns column
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Pawns")
-                            .font(.caption2)
+           //         VStack(alignment: .leading, spacing: 1) {
+            //            Text("Pawns")
+             //               .font(.caption2)
                            // .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                        ForEach(getPawns(for: currentPlayerPieces), id: \.position.stringValue) { piece in
-                            CompactPieceRowView(piece: piece, controller: controller)
-                        }
-                    }
+              //              .foregroundColor(.white)
+              //          ForEach(getPawns(for: currentPlayerPieces), id: \.position.stringValue) { piece in
+              //              CompactPieceRowView(piece: piece, controller: controller)
+              //          }
+              //      }
                     // Other pieces column
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Pieces")
-                            .font(.caption2)
+               ///     VStack(alignment: .leading, spacing: 1) {
+                //        Text("Pieces")
+                //            .font(.caption2)
                           //  .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                        ForEach(getOtherPieces(for: currentPlayerPieces), id: \.position.stringValue) { piece in
-                            CompactPieceRowView(piece: piece, controller: controller)
-                        }
-                    }
-                    Spacer()
+                //            .foregroundColor(.white)
+                //        ForEach(getOtherPieces(for: currentPlayerPieces), id: \.position.stringValue) { piece in
+                //            CompactPieceRowView(piece: piece, controller: controller)
+                //        }
+               //     }
+                //    Spacer()
                 }
                     .padding(.horizontal, 4)
                     .padding(.vertical, 4)
                 }
             }
-            .frame(maxHeight: pieceListHeight) // Adaptive height for device
-            .cornerRadius(3)
-        }
-    }
+         //   .frame(maxHeight: pieceListHeight) // Adaptive height for device
+        //    .cornerRadius(3)
+       // }
+   // }
     
-    func getPawns(for whitePieces: Bool) -> [ChessPiece3D] {
-        let pieces = whitePieces ? controller.whitePieces : controller.blackPieces
-        return pieces.filter { $0.type == .pawn }.sorted { $0.position.file < $1.position.file }
-    }
+   // func getPawns(for whitePieces: Bool) -> [ChessPiece3D] {
+   //     let pieces = whitePieces ? controller.whitePieces : controller.blackPieces
+   //     return pieces.filter { $0.type == .pawn }.sorted { $0.position.file < $1.position.file }
+   // }
     
-    func getOtherPieces(for whitePieces: Bool) -> [ChessPiece3D] {
-        let pieces = whitePieces ? controller.whitePieces : controller.blackPieces
-        let otherPieces = pieces.filter { $0.type != .pawn }
+   // func getOtherPieces(for whitePieces: Bool) -> [ChessPiece3D] {
+    //    let pieces = whitePieces ? controller.whitePieces : controller.blackPieces
+     //   let otherPieces = pieces.filter { $0.type != .pawn }
         
         // Sort in board order: Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook
-        return otherPieces.sorted { piece1, piece2 in
-            let order1 = getPieceOrder(piece1)
-            let order2 = getPieceOrder(piece2)
-            return order1 < order2
-        }
-    }
+    //    return otherPieces.sorted { piece1, piece2 in
+     //       let order1 = getPieceOrder(piece1)
+     //       let order2 = getPieceOrder(piece2)
+     //       return order1 < order2
+     //   }
+   // }
     
     func getPieceOrder(_ piece: ChessPiece3D) -> Int {
         switch piece.type {
@@ -4481,7 +4481,7 @@ struct CompactPieceRowView: View {
             blackSymbols[piece.type] ?? "?"
     }
     }
-}
+//}
 
 // ChessPieceController class ends here
 

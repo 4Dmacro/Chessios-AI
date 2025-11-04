@@ -9,7 +9,7 @@ import SwiftUI
 import StoreKit
 
 struct SubscriptionView: View {
-    @StateObject private var subscriptionManager = SubscriptionManager()
+    @ObservedObject var subscriptionManager: SubscriptionManager
     @Environment(\.dismiss) private var dismiss
     @State private var selectedProduct: String = "monthly"
     
@@ -310,7 +310,7 @@ struct SubscriptionOptionView: View {
 }
 
 #Preview {
-    SubscriptionView()
+    SubscriptionView(subscriptionManager: SubscriptionManager())
 }
 
 

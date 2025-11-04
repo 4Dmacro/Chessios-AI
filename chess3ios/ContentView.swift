@@ -448,18 +448,6 @@ struct ContentView: View {
                     }
                     Spacer(minLength: 20)
                     
-                    // Rules Button - Bottom Right Corner
-                    Button("📖 Rules and Instructions") {
-                        showRules = true
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .font(.caption2)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .background(Color.blue.opacity(0.4))
-                    .foregroundColor(.white)
-                    .cornerRadius(6)
-                    
                 }
                     Spacer(minLength: 20)
             }
@@ -471,12 +459,19 @@ struct ContentView: View {
                 .scaleEffect(uiScale)
                 .position(x: geometry.size.width - 98, y: geometry.size.height / 2) // Move 15mm (about 30px) to the right
             
-            // Rules Button - Bottom Right Corner
-         //   Button("📖 Rules and Instructions") {
-       //         showRules = true
-       //     }
-       //     .buttonStyle(PlainButtonStyle())
-        //    .font(.caption2)
+            // Rules Button - Right Side Beneath Chess Piece Controls
+            Button("📖 Rules and Instructions") {
+                showRules = true
+            }
+            .buttonStyle(PlainButtonStyle())
+            .font(.caption2)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(Color.blue.opacity(0.4))
+            .foregroundColor(.white)
+            .cornerRadius(6)
+            .scaleEffect(uiScale)
+            .position(x: geometry.size.width - 98, y: geometry.size.height / 2 + 200) // Position beneath chess piece controls
         //    .padding(.horizontal, 8)
         //    .padding(.vertical, 6)
          //   .background(Color.blue.opacity(0.4))
@@ -764,24 +759,6 @@ struct ContentView: View {
                         .scaleEffect(uiScale)
                     }
                     
-                    // Rules Button - Bottom Right Corner (iPhone)
-                    Button {
-                        showRules = true
-                    } label: {
-                        VStack(spacing: 0) {
-                            Text("Rules &")
-                            Text("Instructions")
-                        }
-                    }
-                   // .buttonStyle(PlainButtonStyle())
-                    .font(.caption2)
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 4)
-                    .background(Color.blue.opacity(0.3))
-                    .foregroundColor(.white)
-                    .cornerRadius(4)
-                    .scaleEffect(uiScale)
-                    
                     // DEBUG: Reset Subscription Button (temporary for testing)
                   //  Button {
                    //     subscriptionManager.resetSubscriptionForTesting()
@@ -830,6 +807,23 @@ struct ContentView: View {
                     .scaleEffect(uiScale)
                     .position(x: geometry.size.width - 125, y: geometry.size.height / 2.3) // Move further left to bring fully on screen
                 
+                // Rules Button - Right Side Beneath Chess Piece Controls (iPhone)
+                Button {
+                    showRules = true
+                } label: {
+                    VStack(spacing: 0) {
+                        Text("Rules &")
+                        Text("Instructions")
+                    }
+                }
+                .font(.caption2)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 4)
+                .background(Color.blue.opacity(0.3))
+                .foregroundColor(.white)
+                .cornerRadius(4)
+                .scaleEffect(uiScale)
+                .position(x: geometry.size.width - 125, y: geometry.size.height / 2.3 + 180) // Position beneath chess piece controls
               
                 
                 // Move Confirmation UI (overlay when move is pending)

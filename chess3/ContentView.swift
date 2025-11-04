@@ -488,15 +488,27 @@ struct ContentView: View {
                     
                     Spacer()
                     
-                    // Premium Button (show when no active subscription)
-                    if !subscriptionManager.hasActiveSubscription {
+                    // Subscription Status Display
+                    if subscriptionManager.hasActiveSubscription {
+                        // Show subscription status button when user has active subscription
+                        Button("✅ Premium Active") {
+                            showSubscription = true
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.green.opacity(0.5))
+                        .foregroundColor(.white)
+                        .cornerRadius(4)
+                    } else {
+                        // Show free trial button when no active subscription
                         Button("👑 Free Trial") {
                             showSubscription = true
                         }
                         .buttonStyle(PlainButtonStyle())
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(.purple.opacity(0.7))
+                        .background(.purple.opacity(0.5))
                         .foregroundColor(.white)
                         .cornerRadius(4)
                     }
@@ -633,6 +645,9 @@ struct ContentView: View {
             print("🎮 ContentView: Current match state: \(gameKitManager.matchState)")
             print("🎮 ContentView: Is authenticated: \(gameKitManager.isAuthenticated)")
             
+            // Force refresh subscription status
+            subscriptionManager.forceRefreshSubscriptionStatus()
+            
             // Hide color explanation after 6 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) {
                 showColorExplanation = false
@@ -692,14 +707,14 @@ struct ContentView: View {
             PromotionChoiceView(chessGame: chessGame)
         }
         .sheet(isPresented: $showSubscription) {
-            SubscriptionView()
+            if subscriptionManager.hasActiveSubscription {
+                SubscriptionStatusView(subscriptionManager: subscriptionManager)
+            } else {
+                SubscriptionView(subscriptionManager: subscriptionManager)
+            }
         }
         .popover(isPresented: $showRules) {
             ChessRulesView(isPresented: $showRules)
-        }
-        .sheet(isPresented: $showSubscription) {
-            SubscriptionView()
-                .environmentObject(subscriptionManager)
         }
         .onChange(of: gameKitManager.playerColor) { _, newColor in
             // Rotate board when GameKit player color changes
