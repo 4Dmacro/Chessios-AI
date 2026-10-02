@@ -86,6 +86,12 @@ class ChessGameManager: ObservableObject {
     private var lastAIMoveObject: ChessMove3D?
     private var secondLastAIMoveObject: ChessMove3D?
     private var consecutiveFailedMoves: Int = 0
+    /// Bumped when a search starts and when a fallback move supersedes it.
+    private var aiSearchGeneration: UInt = 0
+    /// True until the background search block has finished. A failed play must not start another search on top of this one.
+    private var aiSearchInFlight = false
+    /// Countdown, its 1.5s fallback, and its 5s fallback all try to play the same move. Only the first one may.
+    private var aiCountdownClaimedGeneration: UInt = 0
     @Published var isVisualMoveInProgress: Bool = false
     
     // Game Center opponent move properties
@@ -3449,12 +3455,8 @@ class ChessGameManager: ObservableObject {
             print("📊 Chess board already has \(chessBoard.pieces.count) pieces")
         }
         
-        // Ensure we have exactly 88 pieces (44 white + 44 black) for chess3 with aerial pieces
-        let totalPieces = chessBoard.pieces.count
-        if totalPieces != 88 {
-            print("⚠️ WARNING: Chess board has \(totalPieces) pieces, expected 88. Setting up board.")
-            chessBoard.setupInitialPosition()
-        }
+        // A count other than 88 is normal once pieces have been captured. Only an empty
+        // board is the initial setup, and that case is handled above.
         
         // Store the original complete chess board state
         let originalPieces = chessBoard.pieces
@@ -3880,6 +3882,7 @@ class ChessGameManager: ObservableObject {
         
         // Store the pending AI move for UI display
         pendingAIMove = move
+        let generation = aiSearchGeneration
         
         // Cancel any existing timer
         aiMoveCountdownTimer?.invalidate()
@@ -3887,12 +3890,14 @@ class ChessGameManager: ObservableObject {
         // CRITICAL: Add timeout protection for countdown
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
             guard let self = self else { return }
-            if self.isAIMoveInProgress {
-                print("⚠️ AI countdown timeout - forcing move execution")
-                self.aiMoveCountdownTimer?.invalidate()
-                DispatchQueue.main.async {
-                    self.executeAIMove(move)
-                }
+            guard self.aiSearchGeneration == generation, self.isAIMoveInProgress else { return }
+            guard self.aiCountdownClaimedGeneration != generation else { return }
+            self.aiCountdownClaimedGeneration = generation
+            print("⚠️ AI countdown timeout - forcing move execution")
+            self.aiMoveCountdownTimer?.invalidate()
+            DispatchQueue.main.async {
+                guard self.aiSearchGeneration == generation else { return }
+                self.executeAIMove(move)
             }
         }
         
@@ -3900,8 +3905,12 @@ class ChessGameManager: ObservableObject {
         print("🤖 AI: Setting up 1-second countdown timer...")
         aiMoveCountdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in
             guard let self = self else { return }
+            guard self.aiSearchGeneration == generation, self.isAIMoveInProgress else { return }
+            guard self.aiCountdownClaimedGeneration != generation else { return }
+            self.aiCountdownClaimedGeneration = generation
             print("🤖 AI: Countdown timer fired - executing move")
             DispatchQueue.main.async {
+                guard self.aiSearchGeneration == generation else { return }
                 self.executeAIMove(move)
                 self.isAIMoveInProgress = false
                 self.pendingAIMove = nil
@@ -3911,14 +3920,16 @@ class ChessGameManager: ObservableObject {
         // CRITICAL: Add immediate fallback in case timer doesn't fire
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
             guard let self = self else { return }
-            if self.isAIMoveInProgress {
-                print("⚠️ AI countdown fallback - timer may not have fired, forcing execution")
-                self.aiMoveCountdownTimer?.invalidate()
-                DispatchQueue.main.async {
-                    self.executeAIMove(move)
-                    self.isAIMoveInProgress = false
-                    self.pendingAIMove = nil
-                }
+            guard self.aiSearchGeneration == generation, self.isAIMoveInProgress else { return }
+            guard self.aiCountdownClaimedGeneration != generation else { return }
+            self.aiCountdownClaimedGeneration = generation
+            print("⚠️ AI countdown fallback - timer may not have fired, forcing execution")
+            self.aiMoveCountdownTimer?.invalidate()
+            DispatchQueue.main.async {
+                guard self.aiSearchGeneration == generation else { return }
+                self.executeAIMove(move)
+                self.isAIMoveInProgress = false
+                self.pendingAIMove = nil
             }
         }
     }
@@ -4012,6 +4023,10 @@ class ChessGameManager: ObservableObject {
         // CRITICAL: Prevent multiple AI moves from executing simultaneously
         guard !isAIMoveInProgress else {
             print("🤖 AI move already in progress, skipping...")
+            return
+        }
+        guard !aiSearchInFlight else {
+            print("🤖 AI search already running, skipping...")
             return
         }
         
@@ -4124,12 +4139,12 @@ class ChessGameManager: ObservableObject {
         
         isAIMoveInProgress = true
         
-        // CRITICAL: Add timeout protection - if AI is stuck for more than 5 seconds, reset
+        // The search runs on a private board copy. Leave isAIMoveInProgress set
+        // so a finished search can still play, and so the 10s fallback can too.
         DispatchQueue.main.asyncAfter(deadline: .now() + maxAITime) { [weak self] in
             guard let self = self else { return }
             if self.isAIMoveInProgress {
-                print("⚠️ AI move timeout - resetting stuck AI move")
-                self.isAIMoveInProgress = false
+                print("⚠️ AI still thinking after \(maxAITime)s")
             }
         }
         
@@ -4143,24 +4158,23 @@ class ChessGameManager: ObservableObject {
         }
         
         print("🤖 AI is thinking...")
-        
-        // CRITICAL: Add timeout for AI calculation to prevent infinite thinking
-        let calculationTimeout = DispatchTime.now() + 3.0 // Restored to 3 seconds for proper AI calculation
+
+        aiSearchGeneration += 1
+        let searchGeneration = aiSearchGeneration
+        aiSearchInFlight = true
+        // Copy on this thread, before the background search and before any fallback move.
+        let snapshot = chessBoard.fork()
         
         // Run AI calculation on background thread (restored from chess2)
         DispatchQueue.global(qos: .userInitiated).async {
-            let bestMove = ai.getBestMove()
-            
-            // Check if we've exceeded the timeout
-            if DispatchTime.now() > calculationTimeout {
-                print("⚠️ AI calculation timeout - forcing move selection")
-                DispatchQueue.main.async {
-                    self.isAIMoveInProgress = false
-                }
-                return
-            }
+            let bestMove = ai.getBestMove(on: snapshot)
             
             DispatchQueue.main.async {
+                self.aiSearchInFlight = false
+                guard self.aiSearchGeneration == searchGeneration, self.isAIMoveInProgress else {
+                    print("🤖 AI: Search result discarded — a fallback move already took this turn")
+                    return
+                }
                 if let move = bestMove {
                     print("🤖 AI found move: \(move.from.stringValue) -> \(move.to.stringValue)")
                     // Start countdown timer instead of executing immediately (restored from chess2)
@@ -4251,45 +4265,18 @@ class ChessGameManager: ObservableObject {
         let blackPieces = allPieces.filter { $0.color == .black }
         print("🤖 AI debug: Chess engine has \(blackPieces.count) black pieces total")
         
-        // CRITICAL: Check for catastrophic piece loss - if we have fewer than 40 pieces, something is very wrong
-        // Normal state: 44 white + 44 black = 88 pieces initially, decreases with captures
-        if allPieces.count < 40 {
-            print("❌ CRITICAL ERROR: Chess engine has only \(allPieces.count) pieces! This is catastrophic corruption!")
-            print("❌ CRITICAL ERROR: Reinitializing board to recover from corruption...")
-            chessBoard.setupInitialPosition()
-            self.consecutiveFailedMoves += 1
-            self.isAIMoveInProgress = false
-            return
-        }
-        
-        // CRITICAL: Check for piece duplication - if we have more than 88 pieces, something is very wrong
-        // Normal state: 44 white + 44 black = 88 pieces initially, decreases with captures
+        // Captures reduce the piece count, and a queen leaving the board is a legal capture.
+        // Restoring the starting position here throws away every move already played.
         if allPieces.count > 88 {
-            print("❌ CRITICAL ERROR: Chess engine has \(allPieces.count) pieces! This is piece duplication corruption!")
-            print("❌ CRITICAL ERROR: Reinitializing board to recover from corruption...")
-            chessBoard.setupInitialPosition()
+            print("❌ AI: \(allPieces.count) pieces on the board, aborting this move")
             self.consecutiveFailedMoves += 1
             self.isAIMoveInProgress = false
             return
         }
         
-        // CRITICAL: Check for duplicate kings (should only be 2 total)
         let kings = allPieces.filter { $0.type == .king }
         if kings.count != 2 {
-            print("❌ CRITICAL ERROR: Found \(kings.count) kings! Should be exactly 2. This is corruption!")
-            print("❌ CRITICAL ERROR: Reinitializing board to recover from corruption...")
-            chessBoard.setupInitialPosition()
-            self.consecutiveFailedMoves += 1
-            self.isAIMoveInProgress = false
-            return
-        }
-        
-        // CRITICAL: Check for duplicate queens (should be 2 total)
-        let queens = allPieces.filter { $0.type == .queen }
-        if queens.count != 2 {
-            print("❌ CRITICAL ERROR: Found \(queens.count) queens! Should be exactly 2. This is corruption!")
-            print("❌ CRITICAL ERROR: Reinitializing board to recover from corruption...")
-            chessBoard.setupInitialPosition()
+            print("❌ AI: found \(kings.count) kings, aborting this move")
             self.consecutiveFailedMoves += 1
             self.isAIMoveInProgress = false
             return
@@ -4307,8 +4294,9 @@ class ChessGameManager: ObservableObject {
                 return
             }
             
-            // Verify the move is valid before executing
-            let validMoves = chessBoard.getValidMoves(for: piece)
+            // The 10-move cap is only for the on-screen button list. Search can
+            // choose a later bishop or queen square, and that square is still legal.
+            let validMoves = chessBoard.getValidMoves(for: piece, suppressDebug: true, limitMoves: false)
             let isValidMove = validMoves.contains { $0.to == move.to }
             print("🤖 AI debug: Move is valid: \(isValidMove)")
             
@@ -4356,9 +4344,8 @@ class ChessGameManager: ObservableObject {
                         }
                     }
                     
-                    // CRITICAL: Update game state after AI move
-                    let currentTurn = chessBoard.getCurrentTurn()
-                    gameState = "\(currentTurn.rawValue.capitalized)'s Turn"
+                    // Show check or checkmate, not only whose turn it is.
+                    gameState = chessBoard.getGameState()
                     print("🤖 AI: Updated game state to: \(gameState)")
                     
                     // CRITICAL: Resync USDZ piece tracking after AI move to prevent missing pieces
@@ -5071,8 +5058,10 @@ class ChessGameManager: ObservableObject {
     /// Forces the AI to make any available move when it gets stuck
     private func forceAnyAvailableMove(for aiColor: PieceColor) {
         print("🚨 NUCLEAR OPTION: Forcing any available move for \(aiColor.rawValue)")
-        
-        // Reset the stuck flag
+
+        // The in-flight search is on its own board copy. Drop its result so it
+        // cannot play a second move after this fallback.
+        aiSearchGeneration += 1
         isAIMoveInProgress = false
         
         // Get all pieces of the AI color

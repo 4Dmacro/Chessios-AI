@@ -189,6 +189,55 @@ struct ChessPiece3D: Equatable {
     }
 }
 
+// MARK: - Slider rays
+//
+// Rooks move on exactly one axis. Bishops move on a true diagonal: two axes with equal
+// distance, or all three axes with equal distance. Queens do both. Anything else is not
+// a ray, and a path walk along it never lands on the target.
+
+struct SliderStep {
+    let file: Int
+    let rank: Int
+    let z: Int
+}
+
+func sliderUnitStep(from: ChessPosition3D, to: ChessPosition3D, allowRook: Bool, allowBishop: Bool) -> SliderStep? {
+    let fileDelta = to.file - from.file
+    let rankDelta = to.rank - from.rank
+    let zDelta = to.z - from.z
+    if fileDelta == 0 && rankDelta == 0 && zDelta == 0 {
+        return nil
+    }
+    
+    let absFile = abs(fileDelta)
+    let absRank = abs(rankDelta)
+    let absZ = abs(zDelta)
+    let axes = (absFile > 0 ? 1 : 0) + (absRank > 0 ? 1 : 0) + (absZ > 0 ? 1 : 0)
+    let step = SliderStep(
+        file: fileDelta == 0 ? 0 : (fileDelta > 0 ? 1 : -1),
+        rank: rankDelta == 0 ? 0 : (rankDelta > 0 ? 1 : -1),
+        z: zDelta == 0 ? 0 : (zDelta > 0 ? 1 : -1)
+    )
+    
+    if allowRook && axes == 1 {
+        return step
+    }
+    
+    if allowBishop {
+        let faceDiagonal = axes == 2 && (
+            (absFile == absRank && absZ == 0) ||
+            (absFile == absZ && absRank == 0) ||
+            (absRank == absZ && absFile == 0)
+        )
+        let spaceDiagonal = axes == 3 && absFile == absRank && absRank == absZ
+        if faceDiagonal || spaceDiagonal {
+            return step
+        }
+    }
+    
+    return nil
+}
+
 // MARK: - Chess Move (3D)
 struct ChessMove3D: Equatable {
     let piece: ChessPiece3D
@@ -218,12 +267,54 @@ class ChessBoard3D {
     var enPassantTarget: ChessPosition3D?
     private var isCheckingForCheckmate = false // Prevent infinite recursion
     private let piecesQueue = DispatchQueue(label: "com.chess.pieces")
+    private var tacticsCache: TacticsSnapshot?
+    /// Search copy only. Skips move-gen logs and the 10-move cap, and refreshes the attack map by epoch instead of rehashing.
+    var quietSearch = false
+    private var positionEpoch: UInt64 = 1
+    private var cachedEpoch: UInt64 = 0
+    
+    private static let rookRays: [(Int, Int, Int)] = [
+        (1, 0, 0), (-1, 0, 0),
+        (0, 1, 0), (0, -1, 0),
+        (0, 0, 1), (0, 0, -1)
+    ]
+    
+    private static let bishopRays: [(Int, Int, Int)] = [
+        (1, 1, 0), (1, -1, 0), (-1, 1, 0), (-1, -1, 0),
+        (1, 0, 1), (1, 0, -1), (-1, 0, 1), (-1, 0, -1),
+        (0, 1, 1), (0, 1, -1), (0, -1, 1), (0, -1, -1),
+        (1, 1, 1), (1, 1, -1), (1, -1, 1), (1, -1, -1),
+        (-1, 1, 1), (-1, 1, -1), (-1, -1, 1), (-1, -1, -1)
+    ]
     
     init() {
         pieces = [:]
         moveHistory = []
         currentTurn = .white
         enPassantTarget = nil
+    }
+
+    /// A private board the AI can search without touching the live game.
+    /// The dictionary is rebuilt entry by entry so the search does not share
+    /// storage with the on-screen board. A plain assignment still shares the
+    /// buffer, and the pin scan then crashes when both sides touch it.
+    func fork() -> ChessBoard3D {
+        let copy = ChessBoard3D()
+        copy.pieces = isolatedPieces()
+        copy.currentTurn = currentTurn
+        copy.enPassantTarget = enPassantTarget
+        return copy
+    }
+
+    private func isolatedPieces() -> [ChessPosition3D: ChessPiece3D] {
+        piecesQueue.sync {
+            var unique: [ChessPosition3D: ChessPiece3D] = [:]
+            unique.reserveCapacity(pieces.count)
+            for (position, piece) in pieces {
+                unique[position] = piece
+            }
+            return unique
+        }
     }
     
     // MARK: - Board Setup
@@ -557,108 +648,15 @@ class ChessBoard3D {
         return true
     }
     
-    // Check if a move would leave the king in check
+    // Check if a move would leave the king in check. Uses the attack map for this
+    // position, so it does not move pieces or rescan the board.
     private func wouldMoveLeaveKingInCheck(from: ChessPosition3D, to: ChessPosition3D, suppressDebug: Bool = false) -> Bool {
         guard let piece = getPiece(at: from) else { return false }
-        
-        // CRITICAL: Add aggressive timeout protection for validation functions
-        let startTime = Date()
-        let maxValidationTime: TimeInterval = 0.5 // Reduced to 0.5 seconds for faster timeout
-        
-        // Check timeout before starting validation
-        if Date().timeIntervalSince(startTime) > maxValidationTime {
-            print("⚠️ Validation timeout - assuming move is safe")
-            return false // Assume move is safe if validation times out
-        }
-        
-        // Temporarily make the move
-        let originalPiece = safeGetPiece(at: to)
-        let originalFromPiece = safeGetPiece(at: from)
-        
-        // Remove captured piece if any
-        if safeGetPiece(at: to) != nil {
-            _ = safeDictionaryAccess {
-                pieces.removeValue(forKey: to)
-                return true
-            }
-        }
-        
-        // Move the piece
-        safeSetPiece(piece.moved(to: to), at: to)
-        _ = safeDictionaryAccess {
-            pieces.removeValue(forKey: from)
-            return true
-        }
-        
-        // Check if king is in check after the move (use suppressDebug to prevent infinite loop)
-        // CRITICAL: Add timeout check before calling isCheck
-        if Date().timeIntervalSince(startTime) > maxValidationTime {
-            print("⚠️ Validation timeout before isCheck - assuming move is safe")
-            // Restore board state quickly
-            _ = safeDictionaryAccess {
-                pieces.removeValue(forKey: to)
-                return true
-            }
-            if let originalFrom = originalFromPiece {
-                safeSetPiece(originalFrom, at: from)
-            }
-            if let original = originalPiece {
-                safeSetPiece(original, at: to)
-            }
-            return false // Assume move is safe if validation times out
-        }
-        
-        let kingInCheck = isCheck(color: piece.color, suppressDebug: true)
-        
-        // CRITICAL: Add timeout check after isCheck
-        if Date().timeIntervalSince(startTime) > maxValidationTime {
-            print("⚠️ Validation timeout after isCheck - assuming move is safe")
-            // Restore board state quickly
-            _ = safeDictionaryAccess {
-                pieces.removeValue(forKey: to)
-                return true
-            }
-            if let originalFrom = originalFromPiece {
-                safeSetPiece(originalFrom, at: from)
-            }
-            if let original = originalPiece {
-                safeSetPiece(original, at: to)
-            }
-            return false // Assume move is safe if validation times out
-        }
-        
-        // Restore the board state - be more careful about cleanup
-        _ = safeDictionaryAccess {
-            pieces.removeValue(forKey: to) // Remove the moved piece
-            return true
-        }
-        
-        // Restore original pieces
-        if let originalFrom = originalFromPiece {
-            safeSetPiece(originalFrom, at: from)
-        } else {
-            // If there was no piece at from position, remove any piece that might be there
-            _ = safeDictionaryAccess {
-                pieces.removeValue(forKey: from)
-                return true
-            }
-        }
-        if let original = originalPiece {
-            safeSetPiece(original, at: to)
-        } else {
-            // If there was no piece at to position, remove any piece that might be there
-            _ = safeDictionaryAccess {
-                pieces.removeValue(forKey: to)
-                return true
-            }
-        }
-        
-        // Debug output for king moves
+        let leavesKingInCheck = moveLeavesKingInCheck(piece: piece, to: to, tactics: ensureTactics())
         if piece.type == .king && !suppressDebug {
-            print("🔍 wouldMoveLeaveKingInCheck: King move from \(from.stringValue) to \(to.stringValue) would leave king in check: \(kingInCheck)")
+            print("🔍 wouldMoveLeaveKingInCheck: King move from \(from.stringValue) to \(to.stringValue) would leave king in check: \(leavesKingInCheck)")
         }
-        
-        return kingInCheck
+        return leavesKingInCheck
     }
     
     // MARK: - Human Player Fast Validation (No Safety Checks)
@@ -834,52 +832,16 @@ class ChessBoard3D {
         return true
     }
     
-    func getValidMoves(for piece: ChessPiece3D, checkEnPassant: Bool = true, checkKingSafety: Bool = true, suppressDebug: Bool = false) -> [ChessMove3D] {
-        // CRITICAL: Add timeout protection for getValidMoves function
-        let startTime = Date()
-        let maxGetValidMovesTime: TimeInterval = 3.0 // 3 second timeout for getValidMoves
+    func getValidMoves(for piece: ChessPiece3D, checkEnPassant: Bool = true, checkKingSafety: Bool = true, suppressDebug: Bool = false, limitMoves: Bool = true) -> [ChessMove3D] {
+        let tactics = ensureTactics()
+        let inCheck = !(tactics.checkers[piece.color]?.isEmpty ?? true)
+        // In check the saving capture or block may be past the quiet-move cap.
+        // Search and the move that search chose must see the same squares, or a
+        // bishop step past the first 10 is rejected when it is time to play it.
+        let uncapped = !limitMoves || quietSearch || (checkKingSafety && inCheck)
+        let maxMovesPerPiece = 10
         
         var validMoves: [ChessMove3D] = []
-        
-        // CRITICAL: Special handling for king when in check to prevent infinite loops
-        if piece.type == .king && isCheck(color: piece.color, suppressDebug: true) {
-            if !suppressDebug {
-                print("🔍 King is in check - using emergency move generation")
-            }
-            // Use simplified move generation for king in check
-            validMoves = generateKingMoves(for: piece)
-            
-            // CRITICAL: Skip complex validation for king in check to prevent freezing
-            if !suppressDebug {
-                print("🔍 Emergency king moves generated: \(validMoves.count)")
-            }
-            return validMoves
-        }
-        
-        // CRITICAL: Add aggressive timeout for king move generation
-        if piece.type == .king {
-            let kingStartTime = Date()
-            let maxKingTime: TimeInterval = 1.0 // 1 second timeout for king moves
-            
-            // Check timeout before generating king moves
-            if Date().timeIntervalSince(kingStartTime) > maxKingTime {
-                if !suppressDebug {
-                    print("⚠️ King move generation timeout - returning empty array")
-                }
-                return []
-            }
-        }
-        
-        // CRITICAL: Add overall move limit to prevent AI overload
-        let maxMovesPerPiece = 10 // Limit moves per piece to prevent timeout
-        
-        // CRITICAL: Check timeout before generating moves
-        if Date().timeIntervalSince(startTime) > maxGetValidMovesTime {
-            if !suppressDebug {
-                print("⚠️ getValidMoves timeout before move generation - returning empty array")
-            }
-            return []
-        }
         
         switch piece.type {
         case .pawn:
@@ -895,23 +857,14 @@ class ChessBoard3D {
         case .knight:
             validMoves = generateKnightMoves(for: piece)
         case .bishop:
-            validMoves = generateBishopMoves(for: piece)
+            validMoves = generateBishopMoves(for: piece, capped: !uncapped)
         case .queen:
-            validMoves = generateQueenMoves(for: piece)
+            validMoves = generateQueenMoves(for: piece, capped: !uncapped)
         case .king:
             validMoves = generateKingMoves(for: piece)
         }
         
-        // CRITICAL: Check timeout after generating moves
-        if Date().timeIntervalSince(startTime) > maxGetValidMovesTime {
-            if !suppressDebug {
-                print("⚠️ getValidMoves timeout after move generation - returning generated moves without filtering")
-            }
-            return validMoves
-        }
-        
-        // Limit moves per piece to prevent AI overload (except king - let king evaluate all moves)
-        if piece.type != .king && validMoves.count > maxMovesPerPiece {
+        if !uncapped && piece.type != .king && validMoves.count > maxMovesPerPiece {
             if !suppressDebug {
                 print("🔍 Limiting moves for \(piece.type.rawValue) from \(validMoves.count) to \(maxMovesPerPiece)")
             }
@@ -920,20 +873,9 @@ class ChessBoard3D {
             print("🔍 King allowed to evaluate all \(validMoves.count) moves")
         }
         
-        // CRITICAL: Check timeout before king safety filtering
-        if Date().timeIntervalSince(startTime) > maxGetValidMovesTime {
-            if !suppressDebug {
-                print("⚠️ getValidMoves timeout before king safety filtering - returning moves without safety check")
-            }
-            return validMoves
-        }
+        guard checkKingSafety else { return validMoves }
         
-        // Filter out moves that would leave the king in check (unless we're checking for checkmate)
-        if checkKingSafety {
-            return validMoves.filter { !wouldMoveLeaveKingInCheck(from: $0.from, to: $0.to, suppressDebug: suppressDebug) }
-        } else {
-            return validMoves
-        }
+        return validMoves.filter { !moveLeavesKingInCheck(piece: piece, to: $0.to, tactics: tactics) }
     }
     
     // MARK: - Piece-Specific Move Generation
@@ -962,7 +904,7 @@ class ChessBoard3D {
         }
         
         // Debug: Check if this is the problematic move
-        if piece.position.stringValue.contains("b2") {
+        if !quietSearch && piece.position.stringValue.contains("b2") {
             print("🔍 Pawn move generation for \(piece.position.stringValue):")
             print("🔍 Direction: \(direction), startRank: \(startRank)")
             print("🔍 Generated moves:")
@@ -1003,7 +945,9 @@ class ChessBoard3D {
                 
                 // Allow diagonal captures with file change and forward Y only
                 if let diagPos = piece.position.offset(file: fileOffset, rank: direction, z: zOffset), let target = safeGetPiece(at: diagPos), target.color != piece.color {
-                    print("🔍 3D Pawn capture: \(piece.position.stringValue) -> \(diagPos.stringValue) (capturing \(target.type.rawValue))")
+                    if !quietSearch {
+                        print("🔍 3D Pawn capture: \(piece.position.stringValue) -> \(diagPos.stringValue) (capturing \(target.type.rawValue))")
+                    }
                     moves.append(ChessMove3D(piece: piece, from: piece.position, to: diagPos, capturedPiece: target))
                 }
             }
@@ -1103,12 +1047,13 @@ class ChessBoard3D {
     }
 
     // 3D Bishop moves: all diagonals (2D and 3D) - LIMITED for AI performance
-    private func generateBishopMoves(for piece: ChessPiece3D) -> [ChessMove3D] {
-        print("🔍 generateBishopMoves called for \(piece.color) \(piece.type.rawValue) at \(piece.position.stringValue)")
+    private func generateBishopMoves(for piece: ChessPiece3D, capped: Bool = true) -> [ChessMove3D] {
+        if !quietSearch {
+            print("🔍 generateBishopMoves called for \(piece.color) \(piece.type.rawValue) at \(piece.position.stringValue)")
+        }
         var moves: [ChessMove3D] = []
         
-        // CRITICAL: Limit bishop moves to prevent AI overload
-                        let maxBishopMoves = 10 // Further reduced limit to prevent AI timeout
+        let maxBishopMoves = capped ? 10 : Int.max
         
         // Generate moves in all diagonal directions
         let directions = [
@@ -1144,27 +1089,30 @@ class ChessBoard3D {
             }
         }
         
-        print("🔍 Bishop moves generated: \(moves.count) moves (limited to \(maxBishopMoves))")
-        for move in moves {
-            print("  - \(move.from.stringValue) -> \(move.to.stringValue)")
+        if !quietSearch {
+            print("🔍 Bishop moves generated: \(moves.count) moves\(capped ? " (limited to \(maxBishopMoves))" : "")")
+            for move in moves {
+                print("  - \(move.from.stringValue) -> \(move.to.stringValue)")
+            }
         }
         
         return moves
     }
     
     // 3D Queen moves: combine rook and bishop - HEAVILY LIMITED for AI performance
-    private func generateQueenMoves(for piece: ChessPiece3D) -> [ChessMove3D] {
-        let maxQueenMoves = 10 // Heavily reduced from 30 to prevent AI overload
+    private func generateQueenMoves(for piece: ChessPiece3D, capped: Bool = true) -> [ChessMove3D] {
+        let maxQueenMoves = 10
         
         let rookMoves = generateRookMoves(for: piece)
-        let bishopMoves = generateBishopMoves(for: piece)
+        let bishopMoves = generateBishopMoves(for: piece, capped: capped)
         
         var allMoves = rookMoves + bishopMoves
         
-        // Limit total queen moves
-        if allMoves.count > maxQueenMoves {
+        if capped && allMoves.count > maxQueenMoves {
             allMoves = Array(allMoves.prefix(maxQueenMoves))
-            print("⚠️ Queen move limit reached (\(maxQueenMoves)) - limiting moves for \(piece.color) queen at \(piece.position.stringValue)")
+            if !quietSearch {
+                print("⚠️ Queen move limit reached (\(maxQueenMoves)) - limiting moves for \(piece.color) queen at \(piece.position.stringValue)")
+            }
         }
         
         return allMoves
@@ -1366,12 +1314,11 @@ class ChessBoard3D {
             enPassantTarget = nil
         }
         
-        // Check for checkmate after the move
-        // Check if the opponent (who just had their turn) is now in checkmate
-        if isCheckmate(color: currentTurn.opposite) {
+        // The side now to move is the one that may have been mated.
+        if isCheckmate(color: currentTurn) {
             print("♔ CHECKMATE! \(currentTurn.opposite.rawValue.capitalized) wins!")
-        } else if isCheck(color: currentTurn.opposite) {
-            print("♔ \(currentTurn.opposite.rawValue.capitalized) is in check!")
+        } else if isCheck(color: currentTurn) {
+            print("♔ \(currentTurn.rawValue.capitalized) is in check!")
         }
         
         return true
@@ -1446,11 +1393,6 @@ class ChessBoard3D {
             return "Loading..."
         }
         
-        // During initial loading, suppress check detection to avoid interference
-        if pieces.count < 64 {
-            return "\(currentTurn.rawValue.capitalized)'s turn"
-        }
-        
         // Check for checkmate first
         if isCheckmate(color: currentTurn) {
             let winner = currentTurn.opposite
@@ -1474,12 +1416,11 @@ class ChessBoard3D {
             return "Loading..."
         }
         
-        // During initial loading, suppress check detection to avoid interference
-        if pieces.count < 64 {
-            return "\(currentTurn.rawValue.capitalized)'s turn"
+        if isCheckmate(color: currentTurn) {
+            let winner = currentTurn.opposite
+            return "Checkmate! \(winner.rawValue.capitalized) wins!"
         }
         
-        // CRITICAL: Only do simple check detection - no expensive checkmate validation
         if isCheck(color: currentTurn, suppressDebug: true) {
             return "\(currentTurn.rawValue.capitalized) is in check!"
         }
@@ -1494,59 +1435,284 @@ class ChessBoard3D {
         enPassantTarget = nil
     }
     
-    // MARK: - Game State Methods
-    func isCheck(color: PieceColor, suppressDebug: Bool = false) -> Bool {
-        // CRITICAL: Add timeout protection for isCheck function
-        let startTime = Date()
-        let maxCheckTime: TimeInterval = 0.5 // Reduced to 0.5 seconds for faster timeout
-        
-        // Find the king of the specified color using safe access
-        let allPieces = safePiecesValues()
-        guard let king = allPieces.first(where: { $0.type == .king && $0.color == color }) else {
-            if !suppressDebug {
-                print("⚠️ isCheck: No king found for \(color.rawValue) - this is a critical error!")
-                print("⚠️ isCheck: Available pieces: \(allPieces.count) total")
-                let kings = allPieces.filter { $0.type == .king }
-                print("⚠️ isCheck: Found \(kings.count) kings: \(kings.map { "\($0.color) at \($0.position.stringValue)" })")
+    // MARK: - Attack map
+    //
+    // One snapshot per position. Squares attacked by each color, who is checking each
+    // king, and which pieces are pinned. King safety is a lookup against this snapshot.
+
+    private struct TacticsSnapshot {
+        let fingerprint: UInt64
+        var attacks: [PieceColor: Set<ChessPosition3D>]
+        var checkers: [PieceColor: [ChessPiece3D]]
+        var pins: [PieceColor: [ChessPosition3D: SliderStep]]
+        var kingAt: [PieceColor: ChessPosition3D]
+    }
+
+    func squaresAttacked(by color: PieceColor) -> Set<ChessPosition3D> {
+        ensureTactics().attacks[color] ?? []
+    }
+
+    func checkers(of color: PieceColor) -> [ChessPiece3D] {
+        ensureTactics().checkers[color] ?? []
+    }
+
+    private func ensureTactics() -> TacticsSnapshot {
+        if quietSearch, let cached = tacticsCache, cachedEpoch == positionEpoch {
+            return cached
+        }
+        let fingerprint = quietSearch ? positionEpoch : boardFingerprint()
+        if !quietSearch, let cached = tacticsCache, cached.fingerprint == fingerprint {
+            return cached
+        }
+        let built = buildTactics(fingerprint: fingerprint)
+        tacticsCache = built
+        if quietSearch {
+            cachedEpoch = positionEpoch
+        }
+        return built
+    }
+
+    private func boardFingerprint() -> UInt64 {
+        let snapshot = isolatedPieces()
+        var hash: UInt64 = 14695981039346656037
+        let keys = snapshot.keys.sorted { a, b in
+            if a.z != b.z { return a.z < b.z }
+            if a.rank != b.rank { return a.rank < b.rank }
+            return a.file < b.file
+        }
+        for key in keys {
+            guard let piece = snapshot[key] else { continue }
+            hash = (hash ^ UInt64(key.file)) &* 1099511628211
+            hash = (hash ^ UInt64(key.rank)) &* 1099511628211
+            hash = (hash ^ UInt64(key.z)) &* 1099511628211
+            hash = (hash ^ UInt64(pieceTypeIndex(piece.type))) &* 1099511628211
+            hash = (hash ^ (piece.color == .white ? 1 : 2)) &* 1099511628211
+        }
+        return hash
+    }
+
+    func positionKey() -> UInt64 {
+        var key = boardFingerprint()
+        key = (key ^ (currentTurn == .white ? 1 : 2)) &* 1099511628211
+        if let target = enPassantTarget {
+            key = (key ^ UInt64(target.file + 8)) &* 1099511628211
+            key = (key ^ UInt64(target.rank + 8)) &* 1099511628211
+            key = (key ^ UInt64(target.z + 8)) &* 1099511628211
+        }
+        return key
+    }
+
+    private func pieceTypeIndex(_ type: PieceType) -> Int {
+        switch type {
+        case .pawn: return 1
+        case .rook: return 2
+        case .knight: return 3
+        case .bishop: return 4
+        case .queen: return 5
+        case .king: return 6
+        }
+    }
+
+    private func buildTactics(fingerprint: UInt64) -> TacticsSnapshot {
+        let occupied = isolatedPieces()
+        var whiteAttacks: Set<ChessPosition3D> = []
+        var blackAttacks: Set<ChessPosition3D> = []
+        var whiteCheckers: [ChessPiece3D] = []
+        var blackCheckers: [ChessPiece3D] = []
+        var kingAt: [PieceColor: ChessPosition3D] = [:]
+
+        for piece in occupied.values where piece.type == .king && (piece.color == .white || piece.color == .black) {
+            kingAt[piece.color] = piece.position
+        }
+
+        for piece in occupied.values {
+            if piece.color == .white {
+                addAttacks(of: piece, enemyKing: kingAt[.black], occupied: occupied, attacks: &whiteAttacks, checkersOfEnemy: &blackCheckers)
+            } else if piece.color == .black {
+                addAttacks(of: piece, enemyKing: kingAt[.white], occupied: occupied, attacks: &blackAttacks, checkersOfEnemy: &whiteCheckers)
             }
+        }
+
+        var pins: [PieceColor: [ChessPosition3D: SliderStep]] = [.white: [:], .black: [:]]
+        for color in [PieceColor.white, PieceColor.black] {
+            if let kingPos = kingAt[color] {
+                pins[color] = pinsAgainst(color: color, kingPos: kingPos, occupied: occupied)
+            }
+        }
+
+        return TacticsSnapshot(
+            fingerprint: fingerprint,
+            attacks: [.white: whiteAttacks, .black: blackAttacks],
+            checkers: [.white: whiteCheckers, .black: blackCheckers],
+            pins: pins,
+            kingAt: kingAt
+        )
+    }
+
+    private func addAttacks(of piece: ChessPiece3D, enemyKing: ChessPosition3D?, occupied: [ChessPosition3D: ChessPiece3D], attacks: inout Set<ChessPosition3D>, checkersOfEnemy: inout [ChessPiece3D]) {
+        switch piece.type {
+        case .pawn:
+            let direction = piece.color == .white ? 1 : -1
+            for fileOffset in [-1, 1] {
+                for zOffset in [-1, 0, 1] {
+                    guard let target = piece.position.offset(file: fileOffset, rank: direction, z: zOffset) else { continue }
+                    markAttack(target, by: piece, enemyKing: enemyKing, attacks: &attacks, checkersOfEnemy: &checkersOfEnemy)
+                }
+            }
+        case .knight:
+            let steps = [(2, 1, 0), (2, 0, 1), (1, 2, 0), (0, 2, 1), (1, 0, 2), (0, 1, 2)]
+            for (a, b, c) in steps {
+                for sa in [-1, 1] {
+                    for sb in [-1, 1] {
+                        for sc in [-1, 1] {
+                            guard let target = piece.position.offset(file: a * sa, rank: b * sb, z: c * sc) else { continue }
+                            markAttack(target, by: piece, enemyKing: enemyKing, attacks: &attacks, checkersOfEnemy: &checkersOfEnemy)
+                        }
+                    }
+                }
+            }
+        case .king:
+            for fileOffset in -1...1 {
+                for rankOffset in -1...1 {
+                    for zOffset in -1...1 {
+                        if fileOffset == 0 && rankOffset == 0 && zOffset == 0 { continue }
+                        guard let target = piece.position.offset(file: fileOffset, rank: rankOffset, z: zOffset) else { continue }
+                        markAttack(target, by: piece, enemyKing: enemyKing, attacks: &attacks, checkersOfEnemy: &checkersOfEnemy)
+                    }
+                }
+            }
+        case .rook:
+            addRayAttacks(of: piece, directions: Self.rookRays, enemyKing: enemyKing, occupied: occupied, attacks: &attacks, checkersOfEnemy: &checkersOfEnemy)
+        case .bishop:
+            addRayAttacks(of: piece, directions: Self.bishopRays, enemyKing: enemyKing, occupied: occupied, attacks: &attacks, checkersOfEnemy: &checkersOfEnemy)
+        case .queen:
+            addRayAttacks(of: piece, directions: Self.rookRays + Self.bishopRays, enemyKing: enemyKing, occupied: occupied, attacks: &attacks, checkersOfEnemy: &checkersOfEnemy)
+        }
+    }
+
+    private func markAttack(_ target: ChessPosition3D, by piece: ChessPiece3D, enemyKing: ChessPosition3D?, attacks: inout Set<ChessPosition3D>, checkersOfEnemy: inout [ChessPiece3D]) {
+        attacks.insert(target)
+        if target == enemyKing && !checkersOfEnemy.contains(where: { $0.position == piece.position }) {
+            checkersOfEnemy.append(piece)
+        }
+    }
+
+    private func addRayAttacks(of piece: ChessPiece3D, directions: [(Int, Int, Int)], enemyKing: ChessPosition3D?, occupied: [ChessPosition3D: ChessPiece3D], attacks: inout Set<ChessPosition3D>, checkersOfEnemy: inout [ChessPiece3D]) {
+        for (df, dr, dz) in directions {
+            var step = 1
+            while let target = piece.position.offset(file: df * step, rank: dr * step, z: dz * step) {
+                markAttack(target, by: piece, enemyKing: enemyKing, attacks: &attacks, checkersOfEnemy: &checkersOfEnemy)
+                // The king does not block the ray, so a square behind the king stays attacked.
+                if target == enemyKing {
+                    step += 1
+                    continue
+                }
+                if occupied[target] != nil {
+                    break
+                }
+                step += 1
+            }
+        }
+    }
+
+    private func pinsAgainst(color: PieceColor, kingPos: ChessPosition3D, occupied: [ChessPosition3D: ChessPiece3D]) -> [ChessPosition3D: SliderStep] {
+        var pins: [ChessPosition3D: SliderStep] = [:]
+        let rays = Self.rookRays + Self.bishopRays
+        for (df, dr, dz) in rays {
+            let rayIsOrthogonal = [df, dr, dz].filter { $0 != 0 }.count == 1
+            var friendlyPos: ChessPosition3D?
+            var step = 1
+            while let target = kingPos.offset(file: df * step, rank: dr * step, z: dz * step) {
+                if let occupier = occupied[target] {
+                    if occupier.color == color {
+                        if friendlyPos != nil { break }
+                        friendlyPos = target
+                    } else if let pinned = friendlyPos {
+                        let canPin = (rayIsOrthogonal && (occupier.type == .rook || occupier.type == .queen))
+                            || (!rayIsOrthogonal && (occupier.type == .bishop || occupier.type == .queen))
+                        if canPin {
+                            pins[pinned] = SliderStep(file: df, rank: dr, z: dz)
+                        }
+                        break
+                    } else {
+                        break
+                    }
+                }
+                step += 1
+            }
+        }
+        return pins
+    }
+
+    private func moveLeavesKingInCheck(piece: ChessPiece3D, to: ChessPosition3D, tactics: TacticsSnapshot) -> Bool {
+        let color = piece.color
+        let from = piece.position
+        let opponentAttacks = tactics.attacks[color.opposite] ?? []
+        let checkers = tactics.checkers[color] ?? []
+
+        if piece.type == .king {
+            return opponentAttacks.contains(to)
+        }
+
+        if let pin = tactics.pins[color]?[from], !staysOnPin(from: from, to: to, pin: pin) {
+            return true
+        }
+
+        if checkers.isEmpty {
             return false
         }
-        
-        // Check if any opponent piece can attack the king using safe access
-        let opponentColor = color.opposite
-        let opponentPieces = allPieces.filter { $0.color == opponentColor }
-        
-        // CRITICAL: For 3D chess, we need to check all opponent pieces to ensure check detection is accurate
-        // Don't limit the number of pieces to check - this is critical for game integrity
-        if !suppressDebug {
-            // Only print this debug info occasionally to reduce spam
-            if opponentPieces.count > 40 {
-                print("🔍 isCheck: Checking \(opponentPieces.count) opponent pieces for attacks on \(color.rawValue) king at \(king.position.stringValue)")
-            }
+        if checkers.count >= 2 {
+            return true
         }
-        
-        for (index, opponentPiece) in opponentPieces.enumerated() {
-            // CRITICAL: Check timeout during loop
-            if Date().timeIntervalSince(startTime) > maxCheckTime {
-                if !suppressDebug {
-                    print("⚠️ isCheck timeout after \(index) pieces - assuming not in check")
-                }
-                return false // Assume not in check if timeout occurs
-            }
-            
-            if canPieceAttackPosition(piece: opponentPiece, targetPosition: king.position) {
-                if !suppressDebug {
-                    print("♔ \(color.rawValue) king at \(king.position.stringValue) is in check by \(opponentPiece.color) \(opponentPiece.type) at \(opponentPiece.position.stringValue)")
-                }
-                return true
-            }
+
+        let checker = checkers[0]
+        if to == checker.position {
+            return false
         }
-        
-        if !suppressDebug {
-            print("🔍 isCheck: No attacking pieces found for \(color.rawValue) king at \(king.position.stringValue)")
+        if checker.type == .rook || checker.type == .bishop || checker.type == .queen,
+           let kingPos = tactics.kingAt[color],
+           squaresStrictlyBetween(checker.position, kingPos).contains(to) {
+            return false
         }
-        
-        return false
+        return true
+    }
+
+    private func staysOnPin(from: ChessPosition3D, to: ChessPosition3D, pin: SliderStep) -> Bool {
+        guard let step = sliderUnitStep(from: from, to: to, allowRook: true, allowBishop: true) else {
+            return false
+        }
+        let forward = step.file == pin.file && step.rank == pin.rank && step.z == pin.z
+        let backward = step.file == -pin.file && step.rank == -pin.rank && step.z == -pin.z
+        return forward || backward
+    }
+
+    private func squaresStrictlyBetween(_ a: ChessPosition3D, _ b: ChessPosition3D) -> Set<ChessPosition3D> {
+        guard let step = sliderUnitStep(from: a, to: b, allowRook: true, allowBishop: true) else {
+            return []
+        }
+        var squares: Set<ChessPosition3D> = []
+        var file = a.file + step.file
+        var rank = a.rank + step.rank
+        var z = a.z + step.z
+        for _ in 0..<7 {
+            if file == b.file && rank == b.rank && z == b.z { break }
+            if file < 0 || file > 7 || rank < 0 || rank > 7 || z < 0 || z > 7 { break }
+            squares.insert(ChessPosition3D(file: file, rank: rank, z: z))
+            file += step.file
+            rank += step.rank
+            z += step.z
+        }
+        return squares
+    }
+
+    // MARK: - Game State Methods
+    func isCheck(color: PieceColor, suppressDebug: Bool = false) -> Bool {
+        let tactics = ensureTactics()
+        let checkers = tactics.checkers[color] ?? []
+        if !suppressDebug, let checker = checkers.first, let king = tactics.kingAt[color] {
+            print("♔ \(color.rawValue) king at \(king.stringValue) is in check by \(checker.color) \(checker.type) at \(checker.position.stringValue)")
+        }
+        return !checkers.isEmpty
     }
     
     func isCheckmate(color: PieceColor) -> Bool {
@@ -1560,9 +1726,8 @@ class ChessBoard3D {
         isCheckingForCheckmate = true
         defer { isCheckingForCheckmate = false }
         
-        // During initial loading, suppress check detection to avoid interference
-        // Only suppress if we have very few pieces (likely during initial setup)
-        if pieces.count < 32 {
+        // A late game can have far fewer than the starting 88 pieces.
+        if pieces.count < 4 {
             print("♔ isCheckmate: Too few pieces (\(pieces.count)) - returning false")
             return false
         }
@@ -1576,67 +1741,14 @@ class ChessBoard3D {
         
         print("♔ \(color.rawValue) king is in check - checking for checkmate")
         
-        // Get all pieces of the given color
         let piecesOfColor = pieces.values.filter { $0.color == color }
         print("♔ Found \(piecesOfColor.count) pieces for \(color.rawValue) to check")
         
-        // Check if any piece can make a move that gets the king out of check
         for piece in piecesOfColor {
-            // CRITICAL: Use getValidMoves with checkEnPassant: false and checkKingSafety: false to prevent recursion
-            let validMoves = getValidMoves(for: piece, checkEnPassant: false, checkKingSafety: false, suppressDebug: true)
-            // Only log if piece has moves (reduces debug spam)
-            if validMoves.count > 0 {
-                print("♔ \(piece.color) \(piece.type) at \(piece.position.stringValue) has \(validMoves.count) valid moves")
-            }
-            
-            for move in validMoves {
-                // print("♔ Testing move: \(move.from.stringValue) -> \(move.to.stringValue)")
-                
-                // Try the move temporarily
-                let originalPiece = pieces[move.to]
-                let originalFromPiece = pieces[move.from]
-                
-                // Remove captured piece if any
-                if let capturedPiece = move.capturedPiece {
-                    pieces.removeValue(forKey: capturedPiece.position)
-                }
-                
-                // Move the piece
-                safeSetPiece(piece.moved(to: move.to), at: move.to)
-                _ = safeDictionaryAccess {
-                    pieces.removeValue(forKey: move.from)
-                    return true
-                }
-                
-                // Check if king is still in check
-                let stillInCheck = isCheck(color: color, suppressDebug: true)
-                
-                // Restore the board state - be more careful about cleanup
-                _ = safeDictionaryAccess {
-                    pieces.removeValue(forKey: move.to) // Remove the moved piece
-                    return true
-                }
-                
-                // Restore original pieces
-                if let originalFrom = originalFromPiece {
-                    safeSetPiece(originalFrom, at: move.from)
-                }
-                if let original = originalPiece {
-                    safeSetPiece(original, at: move.to)
-                }
-                if let capturedPiece = move.capturedPiece {
-                    safeSetPiece(capturedPiece, at: capturedPiece.position)
-                }
-                
-                // If any move gets the king out of check, it's not checkmate
-                if !stillInCheck {
-                    print("♔ CHECKMATE DEBUG: Move \(move.from.stringValue) -> \(move.to.stringValue) by \(piece.type) saves the king - NOT checkmate")
-                    print("♔ isCheckmate returning FALSE for \(color.rawValue) (move saves king)")
-                    return false
-                }
-                // else {
-                //     print("♔ Move \(move.from.stringValue) -> \(move.to.stringValue) does NOT save the king")
-                // }
+            let validMoves = getValidMoves(for: piece, checkEnPassant: false, checkKingSafety: true, suppressDebug: true)
+            if !validMoves.isEmpty {
+                print("♔ \(piece.color) \(piece.type) at \(piece.position.stringValue) has \(validMoves.count) evasions - NOT checkmate")
+                return false
             }
         }
         
@@ -1743,28 +1855,11 @@ class ChessBoard3D {
     }
     
     private func wouldPositionBeUnderAttack(position: ChessPosition3D, by color: PieceColor) -> Bool {
-        let opponentPieces = pieces.values.filter { $0.color == color }
-        
-        for opponentPiece in opponentPieces {
-            if canPieceAttackPosition(piece: opponentPiece, targetPosition: position) {
-                return true
-            }
-        }
-        
-        return false
+        return squaresAttacked(by: color).contains(position)
     }
     
     // Helper method to check if a piece can attack a specific position
     private func canPieceAttackPosition(piece: ChessPiece3D, targetPosition: ChessPosition3D) -> Bool {
-        // CRITICAL: Add timeout protection for attack position checks
-        // Use a simple approach to prevent infinite loops
-        let currentTime = Date()
-        
-        // Simple rate limiting - if this function is called too frequently, assume no attack
-        // This prevents infinite loops in attack position checking
-        if currentTime.timeIntervalSince1970.truncatingRemainder(dividingBy: 0.1) < 0.001 {
-            return false
-        }
         switch piece.type {
         case .pawn:
             // Pawns attack diagonally in 3D space (file change + forward Y + same or adjacent Z)
@@ -1774,75 +1869,25 @@ class ChessBoard3D {
             let zDiff = abs(targetPosition.z - piece.position.z)
             
             // Allow diagonal captures: file change + forward Y + same or adjacent Z level
-            let canAttack = fileDiff == 1 && rankDiff == direction && zDiff <= 1
-            
-            // Debug output for pawn attacks
-            if targetPosition.stringValue.contains("g6") && (piece.position.stringValue.contains("h7") || piece.position.stringValue.contains("f7")) {
-                print("🔍 Pawn attack check: \(piece.color) pawn at \(piece.position.stringValue) -> \(targetPosition.stringValue)")
-                print("🔍 Pawn attack: fileDiff=\(fileDiff), rankDiff=\(rankDiff)")
-                print("🔍 Pawn attack: canAttack=\(canAttack)")
-            }
-            
-            return canAttack
+            return fileDiff == 1 && rankDiff == direction && zDiff <= 1
             
         case .rook:
-            // Rooks attack in straight lines
-            return (targetPosition.file == piece.position.file || targetPosition.rank == piece.position.rank) &&
-                   !isPathBlocked(from: piece.position, to: targetPosition)
+            guard sliderUnitStep(from: piece.position, to: targetPosition, allowRook: true, allowBishop: false) != nil else {
+                return false
+            }
+            return !isPathBlocked(from: piece.position, to: targetPosition)
             
         case .bishop:
-            // Bishops attack diagonally (2D and 3D)
-            let fileDiff = abs(targetPosition.file - piece.position.file)
-            let rankDiff = abs(targetPosition.rank - piece.position.rank)
-            let zDiff = abs(targetPosition.z - piece.position.z)
-            
-            // 2D diagonal (file + rank)
-            let is2DDiagonal = fileDiff == rankDiff && zDiff == 0
-            // 3D diagonal (file + Z, rank + Z, or file + rank + Z)
-            let is3DDiagonal = (fileDiff == zDiff && rankDiff == 0) ||
-                              (rankDiff == zDiff && fileDiff == 0) ||
-                              (fileDiff == rankDiff && rankDiff == zDiff)
-            
-            let canAttack = (is2DDiagonal || is3DDiagonal) && !isPathBlocked(from: piece.position, to: targetPosition)
-            
-            // Debug output for bishop attacks (only for specific positions to avoid spam)
-            if targetPosition.stringValue.contains("f1") && piece.position.stringValue.contains("g1") {
-                print("🔍 Bishop attack check: \(piece.color) bishop at \(piece.position.stringValue) -> \(targetPosition.stringValue)")
-                print("🔍 Bishop attack: fileDiff=\(fileDiff), rankDiff=\(rankDiff), zDiff=\(zDiff)")
-                print("🔍 Bishop attack: is2DDiagonal=\(is2DDiagonal), is3DDiagonal=\(is3DDiagonal)")
-                print("🔍 Bishop attack: pathBlocked=\(isPathBlocked(from: piece.position, to: targetPosition))")
-                print("🔍 Bishop attack: canAttack=\(canAttack)")
+            guard sliderUnitStep(from: piece.position, to: targetPosition, allowRook: false, allowBishop: true) != nil else {
+                return false
             }
-            
-            return canAttack
+            return !isPathBlocked(from: piece.position, to: targetPosition)
             
         case .queen:
-            // Queens attack in straight lines or diagonally (including 3D)
-            let fileDiff = abs(targetPosition.file - piece.position.file)
-            let rankDiff = abs(targetPosition.rank - piece.position.rank)
-            let zDiff = abs(targetPosition.z - piece.position.z)
-            
-            // Check for straight line attacks (same file, rank, or Z)
-            let straightLineAttack = (targetPosition.file == piece.position.file || 
-                                    targetPosition.rank == piece.position.rank || 
-                                    targetPosition.z == piece.position.z)
-            
-            // Check for diagonal attacks (2D and 3D)
-            let diagonal2D = (fileDiff == rankDiff && zDiff == 0)
-            let diagonal3D = (fileDiff == rankDiff && fileDiff == zDiff && fileDiff > 0)
-            
-            let canAttack = (straightLineAttack || diagonal2D || diagonal3D)
-            let pathClear = !isPathBlocked(from: piece.position, to: targetPosition)
-            
-            // Debug logging for queen attacks (only when debugging specific issues)
-            if fileDiff <= 2 && rankDiff <= 2 && zDiff <= 2 {
-                print("🔍 Queen attack check: \(piece.color) queen at \(piece.position.stringValue) -> \(targetPosition.stringValue)")
-                print("🔍 Queen attack: fileDiff=\(fileDiff), rankDiff=\(rankDiff), zDiff=\(zDiff)")
-                print("🔍 Queen attack: straightLine=\(straightLineAttack), diagonal2D=\(diagonal2D), diagonal3D=\(diagonal3D)")
-                print("🔍 Queen attack: canAttack=\(canAttack), pathClear=\(pathClear)")
+            guard sliderUnitStep(from: piece.position, to: targetPosition, allowRook: true, allowBishop: true) != nil else {
+                return false
             }
-            
-            return canAttack && pathClear
+            return !isPathBlocked(from: piece.position, to: targetPosition)
             
         case .king:
             // Kings attack adjacent squares in 3D
@@ -1875,32 +1920,33 @@ class ChessBoard3D {
         }
     }
     
-    // Helper method to check if path is blocked
+    // Squares between `from` and `to` on a rook or bishop ray. A non-ray returns blocked
+    // so a bad caller cannot walk forever. The board is 8 squares on each axis, so 7
+    // steps is the longest ray that can still land on the target.
     private func isPathBlocked(from: ChessPosition3D, to: ChessPosition3D) -> Bool {
-        let fileDiff = to.file - from.file
-        let rankDiff = to.rank - from.rank
-        let zDiff = to.z - from.z
+        guard let step = sliderUnitStep(from: from, to: to, allowRook: true, allowBishop: true) else {
+            return true
+        }
         
-        // Determine step direction
-        let fileStep = fileDiff == 0 ? 0 : fileDiff > 0 ? 1 : -1
-        let rankStep = rankDiff == 0 ? 0 : rankDiff > 0 ? 1 : -1
-        let zStep = zDiff == 0 ? 0 : zDiff > 0 ? 1 : -1
+        var currentFile = from.file + step.file
+        var currentRank = from.rank + step.rank
+        var currentZ = from.z + step.z
         
-        // Check each position along the path (excluding start and end)
-        var currentFile = from.file + fileStep
-        var currentRank = from.rank + rankStep
-        var currentZ = from.z + zStep
-        
-        while currentFile != to.file || currentRank != to.rank || currentZ != to.z {
-            let checkPosition = ChessPosition3D(file: currentFile, rank: currentRank, z: currentZ)
-            if getPiece(at: checkPosition) != nil {
+        for _ in 0..<7 {
+            if currentFile < 0 || currentFile > 7 || currentRank < 0 || currentRank > 7 || currentZ < 0 || currentZ > 7 {
                 return true
             }
-            currentFile += fileStep
-            currentRank += rankStep
-            currentZ += zStep
+            if currentFile == to.file && currentRank == to.rank && currentZ == to.z {
+                return false
+            }
+            if getPiece(at: ChessPosition3D(file: currentFile, rank: currentRank, z: currentZ)) != nil {
+                return true
+            }
+            currentFile += step.file
+            currentRank += step.rank
+            currentZ += step.z
         }
-        return false
+        return true
     }
     
     // MARK: - AI Support Methods
@@ -1911,20 +1957,25 @@ class ChessBoard3D {
             pieces.removeValue(forKey: move.from)
             return true
         }
-        
-        // Place the piece at its new position
-        let movedPiece = move.piece.moved(to: move.to)
-        safeSetPiece(movedPiece, at: move.to)
-        
-        // Handle captures
-        if let capturedPiece = move.capturedPiece {
-            // CRITICAL: Remove the captured piece from the pieces dictionary
+
+        // En passant victims do not sit on the destination square. A normal
+        // capture is overwritten when the mover is placed, so removing it
+        // afterwards would delete the mover.
+        if let capturedPiece = move.capturedPiece, capturedPiece.position != move.to {
             _ = safeDictionaryAccess {
                 pieces.removeValue(forKey: capturedPiece.position)
                 return true
             }
-            print("🤖 AI: Captured \(capturedPiece.color) \(capturedPiece.type) at \(capturedPiece.position.stringValue)")
+            if !quietSearch {
+                print("🤖 AI: Captured \(capturedPiece.color) \(capturedPiece.type) at \(capturedPiece.position.stringValue)")
+            }
+        } else if move.capturedPiece != nil && !quietSearch {
+            print("🤖 AI: Captured \(move.capturedPiece!.color) \(move.capturedPiece!.type) at \(move.to.stringValue)")
         }
+        
+        // Place the piece at its new position
+        let movedPiece = move.piece.moved(to: move.to)
+        safeSetPiece(movedPiece, at: move.to)
         
         // Handle en passant
         if move.isEnPassant {
@@ -1971,6 +2022,7 @@ class ChessBoard3D {
         
         // Switch turns
         currentTurn = currentTurn.opposite
+        positionEpoch &+= 1
         
         // Add to move history
         moveHistory.append(move)
@@ -2025,6 +2077,7 @@ class ChessBoard3D {
         
         // Switch turns back
         currentTurn = currentTurn.opposite
+        positionEpoch &+= 1
         
         // Remove from move history
         if !moveHistory.isEmpty {
@@ -2059,7 +2112,9 @@ class ChessBoard3D {
             if rankDiff == 2 && zDiff == 0 {
                 let enPassantRank = move.from.rank + (move.piece.color == .white ? 1 : -1)
                 enPassantTarget = ChessPosition3D(file: move.from.file, rank: enPassantRank, z: move.from.z)
-                print("🤖 AI: Set en passant target to \(enPassantTarget?.stringValue ?? "none")")
+                if !quietSearch {
+                    print("🤖 AI: Set en passant target to \(enPassantTarget?.stringValue ?? "none")")
+                }
             } else {
                 enPassantTarget = nil
             }

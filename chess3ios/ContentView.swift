@@ -36,6 +36,7 @@ struct ContentView: View {
     @State private var showGameCenterPopover = false // For Game Center popover
     @State private var showRules = false // For rules popover
     @State private var showSubscription = false // For subscription popover
+    @State private var dragStartYaw: Float?
     @StateObject private var subscriptionManager = SubscriptionManager()
     
     @EnvironmentObject var gameKitManager: GameKitManager
@@ -90,6 +91,9 @@ struct ContentView: View {
                     DragGesture(minimumDistance: 15)
                         .onChanged { value in
                             handleDrag(value)
+                        }
+                        .onEnded { _ in
+                            finishBoardDrag()
                         }
                 )
                 .onTapGesture { location in
@@ -455,23 +459,11 @@ struct ContentView: View {
             .position(x: 75, y: geometry.size.height / 2 - 5) // Position left controls higher up for iPad
             
             // Right Side Controls - Movement Controls
-            ChessPieceControllerView(controller: pieceController)
+            // The rules button is inside this stack, under the yellow piece label,
+            // so extra bishop arrows push it down instead of covering it.
+            ChessPieceControllerView(controller: pieceController, onShowRules: { showRules = true })
                 .scaleEffect(uiScale)
-                .position(x: geometry.size.width - 98, y: geometry.size.height / 2) // Move 15mm (about 30px) to the right
-            
-            // Rules Button - Right Side Beneath Chess Piece Controls
-            Button("📖 Rules and Instructions") {
-                showRules = true
-            }
-            .buttonStyle(PlainButtonStyle())
-            .font(.caption2)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(Color.blue.opacity(0.4))
-            .foregroundColor(.white)
-            .cornerRadius(6)
-            .scaleEffect(uiScale)
-            .position(x: geometry.size.width - 98, y: geometry.size.height / 2 + 200) // Position beneath chess piece controls
+                .position(x: geometry.size.width - 98, y: geometry.size.height / 2)
         //    .padding(.horizontal, 8)
         //    .padding(.vertical, 6)
          //   .background(Color.blue.opacity(0.4))
@@ -802,28 +794,10 @@ struct ContentView: View {
                         .frame(width: 300, height: 250)
                 }
                 
-                // Piece controller at absolute right edge
-                ChessPieceControllerView(controller: pieceController)
+                // Piece controller at absolute right edge. Rules sits under the yellow piece label.
+                ChessPieceControllerView(controller: pieceController, onShowRules: { showRules = true })
                     .scaleEffect(uiScale)
-                    .position(x: geometry.size.width - 125, y: geometry.size.height / 2.3) // Move further left to bring fully on screen
-                
-                // Rules Button - Right Side Beneath Chess Piece Controls (iPhone)
-                Button {
-                    showRules = true
-                } label: {
-                    VStack(spacing: 0) {
-                        Text("Rules &")
-                        Text("Instructions")
-                    }
-                }
-                .font(.caption2)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 4)
-                .background(Color.blue.opacity(0.3))
-                .foregroundColor(.white)
-                .cornerRadius(4)
-                .scaleEffect(uiScale)
-                .position(x: geometry.size.width - 125, y: geometry.size.height / 2.3 + 180) // Position beneath chess piece controls
+                    .position(x: geometry.size.width - 125, y: geometry.size.height / 2.3)
               
                 
                 // Move Confirmation UI (overlay when move is pending)
@@ -1096,27 +1070,45 @@ struct ContentView: View {
     
     private func handleDrag(_ value: DragGesture.Value) {
         guard let modelNode = modelNode else { return }
-        let sensitivity: Float = 0.0001
-        let deltaX: Float = Float(value.translation.width) * sensitivity
-        let deltaY: Float = Float(value.translation.height) * sensitivity
-        
-        // Calculate new rotation angles
-        let newY = modelNode.eulerAngles.y + Float(deltaX)
-        let newX = modelNode.eulerAngles.x + Float(deltaY)
-        
-        // Allow rotation range centered around the initial -75 degree angle
-        let maxRotationX = Float.pi/4 // 45 degrees in radians
-        let centerRotation = -Float.pi * 5/12 // -75 degrees (initial angle)
-        
-        // Allow unlimited Y rotation (Z-axis rotation) that wraps around after 360 degrees
-        let clampedX = max(centerRotation - maxRotationX, min(centerRotation + maxRotationX, Float(newX)))
-        
-        // For Y rotation, use modulo to wrap around after 2π (360 degrees)
-        let wrappedY = Float(newY).truncatingRemainder(dividingBy: 2 * Float.pi)
-        
-        // Apply rotations
-        modelNode.eulerAngles.x = Float(CGFloat(clampedX))
-        modelNode.eulerAngles.y = Float(CGFloat(wrappedY))
+        if dragStartYaw == nil {
+            dragStartYaw = modelNode.eulerAngles.y
+            modelNode.removeAllActions()
+        }
+        guard let startYaw = dragStartYaw else { return }
+
+        // One application of the whole swipe. The old path added the running
+        // total on every event, so a small vertical wobble piled into pitch
+        // and, past about 90° of yaw, that pitch read as a topple.
+        let sensitivity: Float = 0.004
+        let dx = Float(value.translation.width)
+        let dy = Float(value.translation.height)
+
+        let swipe = atan2(dy, dx)
+        let fromHorizontal = min(abs(swipe), Float.pi - abs(swipe))
+        let allowPitch = fromHorizontal >= Float.pi / 4
+
+        var yaw = startYaw + dx * sensitivity
+        yaw = yaw.truncatingRemainder(dividingBy: 2 * Float.pi)
+
+        let uprightPitch = -Float.pi / 2
+        var pitch = uprightPitch
+        if allowPitch {
+            let maxLean = Float.pi / 3
+            let lean = max(-maxLean, min(maxLean, dy * sensitivity))
+            pitch = uprightPitch + lean
+        }
+
+        modelNode.eulerAngles = SCNVector3(pitch, yaw, 0)
+    }
+
+    private func finishBoardDrag() {
+        dragStartYaw = nil
+        guard let modelNode = modelNode else { return }
+        let yaw = modelNode.eulerAngles.y
+        SCNTransaction.begin()
+        SCNTransaction.animationDuration = 0.8
+        modelNode.eulerAngles = SCNVector3(-Float.pi / 2, yaw, 0)
+        SCNTransaction.commit()
     }
     
     // MARK: - Camera and Game Control Methods

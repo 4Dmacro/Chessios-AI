@@ -1577,30 +1577,28 @@ class ChessPieceController: ObservableObject {
         return true
     }
     
-    // Check if there are any pieces blocking the path between two positions
+    // Check if there are any pieces blocking the path between two positions.
+    // Only true rook or bishop rays are walked, and never more than 7 steps.
     private func isPathBlocked(from: ChessPosition3D, to: ChessPosition3D, excluding piece: ChessPiece3D? = nil) -> Bool {
         guard let chessGame = chessGame else { return false }
+        guard let step = sliderUnitStep(from: from, to: to, allowRook: true, allowBishop: true) else {
+            return true
+        }
         
-        let fileDiff = to.file - from.file
-        let rankDiff = to.rank - from.rank
-        let zDiff = to.z - from.z
+        var currentFile = from.file + step.file
+        var currentRank = from.rank + step.rank
+        var currentZ = from.z + step.z
         
-        // Determine the step direction for each coordinate
-        let fileStep = fileDiff == 0 ? 0 : fileDiff > 0 ? 1 : -1
-        let rankStep = rankDiff == 0 ? 0 : rankDiff > 0 ? 1 : -1
-        let zStep = zDiff == 0 ? 0 : zDiff > 0 ? 1 : -1
-        
-        // Check each position along the path (excluding start and end positions)
-        var currentFile = from.file + fileStep
-        var currentRank = from.rank + rankStep
-        var currentZ = from.z + zStep
-        
-        while currentFile != to.file || currentRank != to.rank || currentZ != to.z {
-            let checkPosition = ChessPosition3D(file: currentFile, rank: currentRank, z: currentZ)
+        for _ in 0..<7 {
+            if currentFile < 0 || currentFile > 7 || currentRank < 0 || currentRank > 7 || currentZ < 0 || currentZ > 7 {
+                return true
+            }
+            if currentFile == to.file && currentRank == to.rank && currentZ == to.z {
+                return false
+            }
             
-            // If there's any piece at this position, the path is blocked
+            let checkPosition = ChessPosition3D(file: currentFile, rank: currentRank, z: currentZ)
             if let blockingPiece = chessGame.getPieceAtPosition(checkPosition) {
-                // Don't count the piece being moved as a blocker
                 if let excludedPiece = piece, blockingPiece.position == excludedPiece.position {
                     print("🔍 Ignoring moving piece at \(checkPosition.stringValue)")
                 } else {
@@ -1609,12 +1607,12 @@ class ChessPieceController: ObservableObject {
                 }
             }
             
-            currentFile += fileStep
-            currentRank += rankStep
-            currentZ += zStep
+            currentFile += step.file
+            currentRank += step.rank
+            currentZ += step.z
         }
         
-        return false
+        return true
     }
     
     // Check if a move would resolve a check situation
@@ -1715,27 +1713,27 @@ class ChessPieceController: ObservableObject {
     
     // Check if a position blocks the attack path between attacker and target (3D)
     private func isBlockingAttack(from attackerPosition: ChessPosition3D, to targetPosition: ChessPosition3D, blockingPosition: ChessPosition3D) -> Bool {
-        let fileDiff = targetPosition.file - attackerPosition.file
-        let rankDiff = targetPosition.rank - attackerPosition.rank
-        let zDiff = targetPosition.z - attackerPosition.z
+        guard let step = sliderUnitStep(from: attackerPosition, to: targetPosition, allowRook: true, allowBishop: true) else {
+            return false
+        }
         
-        // Determine the step direction for all axes
-        let fileStep = fileDiff == 0 ? 0 : fileDiff > 0 ? 1 : -1
-        let rankStep = rankDiff == 0 ? 0 : rankDiff > 0 ? 1 : -1
-        let zStep = zDiff == 0 ? 0 : zDiff > 0 ? 1 : -1
+        var currentFile = attackerPosition.file + step.file
+        var currentRank = attackerPosition.rank + step.rank
+        var currentZ = attackerPosition.z + step.z
         
-        // Check if the blocking position is on the attack path
-        var currentFile = attackerPosition.file + fileStep
-        var currentRank = attackerPosition.rank + rankStep
-        var currentZ = attackerPosition.z + zStep
-        
-        while currentFile != targetPosition.file || currentRank != targetPosition.rank || currentZ != targetPosition.z {
+        for _ in 0..<7 {
+            if currentFile < 0 || currentFile > 7 || currentRank < 0 || currentRank > 7 || currentZ < 0 || currentZ > 7 {
+                return false
+            }
+            if currentFile == targetPosition.file && currentRank == targetPosition.rank && currentZ == targetPosition.z {
+                return false
+            }
             if currentFile == blockingPosition.file && currentRank == blockingPosition.rank && currentZ == blockingPosition.z {
                 return true
             }
-            currentFile += fileStep
-            currentRank += rankStep
-            currentZ += zStep
+            currentFile += step.file
+            currentRank += step.rank
+            currentZ += step.z
         }
         
         return false
@@ -1799,23 +1797,27 @@ class ChessPieceController: ObservableObject {
     
     // Check if a piece is blocking an attack path
     private func isPieceBlockingAttack(from attackerPosition: ChessPosition3D, to targetPosition: ChessPosition3D, blockingPiece: ChessPiece3D) -> Bool {
-        let fileDiff = targetPosition.file - attackerPosition.file
-        let rankDiff = targetPosition.rank - attackerPosition.rank
+        guard let step = sliderUnitStep(from: attackerPosition, to: targetPosition, allowRook: true, allowBishop: true) else {
+            return false
+        }
         
-        // Determine the step direction
-        let fileStep = fileDiff == 0 ? 0 : fileDiff > 0 ? 1 : -1
-        let rankStep = rankDiff == 0 ? 0 : rankDiff > 0 ? 1 : -1
+        var currentFile = attackerPosition.file + step.file
+        var currentRank = attackerPosition.rank + step.rank
+        var currentZ = attackerPosition.z + step.z
         
-        // Check if the blocking piece is on the attack path
-        var currentFile = attackerPosition.file + fileStep
-        var currentRank = attackerPosition.rank + rankStep
-        
-        while currentFile != targetPosition.file || currentRank != targetPosition.rank {
-            if currentFile == blockingPiece.position.file && currentRank == blockingPiece.position.rank {
+        for _ in 0..<7 {
+            if currentFile < 0 || currentFile > 7 || currentRank < 0 || currentRank > 7 || currentZ < 0 || currentZ > 7 {
+                return false
+            }
+            if currentFile == targetPosition.file && currentRank == targetPosition.rank && currentZ == targetPosition.z {
+                return false
+            }
+            if currentFile == blockingPiece.position.file && currentRank == blockingPiece.position.rank && currentZ == blockingPiece.position.z {
                 return true
             }
-            currentFile += fileStep
-            currentRank += rankStep
+            currentFile += step.file
+            currentRank += step.rank
+            currentZ += step.z
         }
         
         return false
@@ -1859,29 +1861,22 @@ class ChessPieceController: ObservableObject {
             return fileDiff == 1 && rankDiff == direction && zDiff <= 1
             
         case .rook:
-            return (targetPosition.file == piece.position.file || targetPosition.rank == piece.position.rank) &&
-                   !isPathBlocked(from: piece.position, to: targetPosition, excluding: movingPiece)
+            guard sliderUnitStep(from: piece.position, to: targetPosition, allowRook: true, allowBishop: false) != nil else {
+                return false
+            }
+            return !isPathBlocked(from: piece.position, to: targetPosition, excluding: movingPiece)
             
         case .bishop:
-            let fileDiff = abs(targetPosition.file - piece.position.file)
-            let rankDiff = abs(targetPosition.rank - piece.position.rank)
-            return fileDiff == rankDiff && !isPathBlocked(from: piece.position, to: targetPosition, excluding: movingPiece)
+            guard sliderUnitStep(from: piece.position, to: targetPosition, allowRook: false, allowBishop: true) != nil else {
+                return false
+            }
+            return !isPathBlocked(from: piece.position, to: targetPosition, excluding: movingPiece)
             
         case .queen:
-            let fileDiff = abs(targetPosition.file - piece.position.file)
-            let rankDiff = abs(targetPosition.rank - piece.position.rank)
-            let zDiff = abs(targetPosition.z - piece.position.z)
-            
-            // Check for straight line attacks (same file, rank, or Z)
-            let straightLineAttack = (targetPosition.file == piece.position.file || 
-                                    targetPosition.rank == piece.position.rank || 
-                                    targetPosition.z == piece.position.z)
-            
-            // Check for diagonal attacks (2D and 3D)
-            let diagonal2D = (fileDiff == rankDiff && zDiff == 0)
-            let diagonal3D = (fileDiff == rankDiff && fileDiff == zDiff && fileDiff > 0)
-            
-            return (straightLineAttack || diagonal2D || diagonal3D) && !isPathBlocked(from: piece.position, to: targetPosition, excluding: movingPiece)
+            guard sliderUnitStep(from: piece.position, to: targetPosition, allowRook: true, allowBishop: true) != nil else {
+                return false
+            }
+            return !isPathBlocked(from: piece.position, to: targetPosition, excluding: movingPiece)
             
         case .king:
             let fileDiff = abs(targetPosition.file - piece.position.file)
@@ -3164,6 +3159,7 @@ class ChessPieceController: ObservableObject {
 // SwiftUI View for the piece controller
 struct ChessPieceControllerView: View {
     @ObservedObject var controller: ChessPieceController
+    var onShowRules: (() -> Void)? = nil
     @State private var showWhitePieces = true
     
     // Computed property to automatically show current player's pieces
@@ -3210,9 +3206,10 @@ struct ChessPieceControllerView: View {
             selectedPieceInfo
             movementControls
             pieceSelection
+            rulesButton
         }
         .frame(width: frameWidth)
-        .frame(height: isIPad ? 600 : 450) // Set specific height instead of maxHeight: .infinity
+        .frame(height: isIPad ? 600 : 450, alignment: .center)
         .background(.regularMaterial.opacity(0.01))
         .overlay(
            RoundedRectangle(cornerRadius: 12)
@@ -4022,6 +4019,30 @@ struct ChessPieceControllerView: View {
         }
     }
     
+    @ViewBuilder
+    private var rulesButton: some View {
+        if let onShowRules {
+            Button(action: onShowRules) {
+                if isIPhone {
+                    VStack(spacing: 0) {
+                        Text("Rules &")
+                        Text("Instructions")
+                    }
+                } else {
+                    Text("📖 Rules and Instructions")
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+            .font(.caption2)
+            .padding(.horizontal, isIPhone ? 4 : 8)
+            .padding(.vertical, isIPhone ? 4 : 6)
+            .background(Color.blue.opacity(isIPhone ? 0.3 : 0.4))
+            .foregroundColor(.white)
+            .cornerRadius(isIPhone ? 4 : 6)
+            .padding(.top, 4)
+        }
+    }
+
     var pieceSelection: some View {
         VStack {
             // Selected piece info below the movement arrows, above the piece list

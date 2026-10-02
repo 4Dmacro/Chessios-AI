@@ -1,0 +1,117 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "FF973541",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6752686019",
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_developerTeamID" : "Y59CXV2R58",
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 782188044.37357903,
+    "_locale" : "en_US",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21804941",
+      "localizations" : [
+
+      ],
+      "name" : "subs 1",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "4.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6753935660",
+          "introductoryOffer" : {
+            "internalID" : "B856F39A",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "One year subscription to all Chess 3D features.",
+              "displayName" : "One year Subscription",
+              "locale" : "en_GB"
+            }
+          ],
+          "productID" : "com.grc.chess3d.sub1yr",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "chess3d.sub1yr",
+          "subscriptionGroupID" : "21804941",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "1.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "6753935882",
+          "introductoryOffer" : {
+            "internalID" : "D88C869B",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "Subscribe monthly to use all the Chess 3D features",
+              "displayName" : "Monthly subscription",
+              "locale" : "en_GB"
+            }
+          ],
+          "productID" : "com.grc.chess3d.submth",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "chess3d.submth",
+          "subscriptionGroupID" : "21804941",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

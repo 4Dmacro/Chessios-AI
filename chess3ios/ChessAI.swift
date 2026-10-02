@@ -36,6 +36,8 @@ enum AIDifficulty {
 class ChessAI {
     private let difficulty: AIDifficulty
     private weak var board: ChessBoard3D?
+    /// Set only for the duration of one search. Keeps make/undo off the live board.
+    private var searchBoard: ChessBoard3D?
     let aiColor: PieceColor
     
     // MARK: - Strategic Approaches
@@ -132,17 +134,20 @@ class ChessAI {
     }
     
     private func getBoard() -> ChessBoard3D? {
-        return board
+        return searchBoard ?? board
+    }
+
+    /// Search a snapshot so the live board can keep serving the UI and fallback moves.
+    func getBestMove(on snapshot: ChessBoard3D) -> ChessMove3D? {
+        searchBoard = snapshot
+        defer { searchBoard = nil }
+        return getBestMove()
     }
     
     // MARK: - Main AI Decision Making
     
     func getBestMove() -> ChessMove3D? {
         print("🤖 AI (\(aiColor.rawValue)) calculating best move with difficulty: \(difficulty)")
-        
-        // Add aggressive timeout protection
-        let startTime = Date()
-        let maxCalculationTime: TimeInterval = 2.0 // Restored to 2 seconds for proper decision making
         
         // Safety check for board corruption
         guard let board = getBoard() else {
@@ -168,401 +173,289 @@ class ChessAI {
             print("❌ AI error: Board state validation failed - board may be corrupted")
             return nil
         }
-        
-        // Check timeout
-        let elapsedTime = Date().timeIntervalSince(startTime)
-        if elapsedTime > maxCalculationTime {
-            print("⚠️ AI timeout reached (\(elapsedTime)s) - choosing first available move")
-            let allMoves = getAllValidMoves(for: aiColor)
-            return allMoves.first
-        }
-        
-        // CRITICAL: Add timeout check before any heavy evaluation
-        if Date().timeIntervalSince(startTime) > maxCalculationTime * 0.5 {
-            print("⚠️ AI early timeout - skipping complex evaluation")
-            let allMoves = getAllValidMoves(for: aiColor)
-            return allMoves.first
-        }
-        
-        // Check if king is in check - if so, we need to allow king moves
-        let isKingInCheck = board.isCheck(color: aiColor)
-        if isKingInCheck {
-            print("🤖 AI: King is in check - using emergency move selection")
-            let allMoves = getAllValidMoves(for: aiColor)
-            if allMoves.isEmpty {
-                print("🤖 AI: No valid moves available - checkmate!")
-                return nil
-            }
-            
-            // CRITICAL: When king is in check, force immediate decision to prevent freezing
-            // Don't do any complex evaluation - just pick the best available move type
-            
-            // CRITICAL: When in check, prioritize moves by type for speed
-            // Don't evaluate every move - just pick the best type available
-            let captureMoves = allMoves.filter { $0.capturedPiece != nil }
-            let kingMoves = allMoves.filter { move in
-            if let piece = board.getPiece(at: move.from) {
-                return piece.type == .king
-            }
-            return false
-        }
-        
-        // Force immediate decision - no complex evaluation when in check
-        if !captureMoves.isEmpty {
-            print("🤖 AI: Choosing capture move to escape check")
-            return captureMoves.first
-        } else if !kingMoves.isEmpty {
-            print("🤖 AI: Choosing king move to escape check")
-            return kingMoves.first
-        } else {
-            print("🤖 AI: Choosing other move to escape check")
-                return allMoves.first
-        }
-            
 
-        }
-        
-        // Update game phase based on move count
-        updateGamePhase()
-        
-        // Get all valid moves (not just pawns)
-        let allMoves = getAllValidMoves(for: aiColor)
-        
-        // Check timeout after move generation
-        if Date().timeIntervalSince(startTime) > maxCalculationTime {
-            print("⚠️ AI timeout after move generation - choosing first available move")
-            return allMoves.first
-        }
-        
-        guard !allMoves.isEmpty else {
+        // Depth 1 sees the opponent's captures. Depth 2, when there is time, sees their whole reply.
+        let started = Date()
+        guard let chosen = searchBestMove() else {
             print("🤖 AI has no valid moves available")
             return nil
         }
+        recordMove(chosen)
+        print("🤖 AI chose move: \(chosen.from.stringValue) -> \(chosen.to.stringValue)")
+        print("🤖 AI calculation time: \(String(format: "%.3f", Date().timeIntervalSince(started)))s")
+        return chosen
         
-        print("🤖 AI found \(allMoves.count) valid moves")
-        
-        // CRITICAL: Filter out king moves unless king is in check
-        let kingInCheck = self.isKingInCheck()
-        var filteredMoves: [ChessMove3D]
-        
-        if kingInCheck {
-            // If king is in check, allow all moves (including king moves)
-            filteredMoves = allMoves
-            print("🤖 AI: King is in check - allowing all moves including king moves")
-        } else {
-            // If king is not in check, exclude king moves unless they're captures
-            // Also exclude moves that are clearly bad to reduce evaluation load
-            filteredMoves = allMoves.filter { move in
-                if let piece = board.getPiece(at: move.from) {
-                    // Allow all king moves to be evaluated (no filtering)
-                    if piece.type == .king {
-                        return true // Allow all king moves to be evaluated
-                    }
-                    
-                    // Exclude queen moves unless they're captures or defensive
-                    if piece.type == .queen {
-                        if move.capturedPiece != nil {
-                            return true // Captures are always good
-                        }
-                        // Only allow defensive queen moves
-                        if let board = getBoard(), isDefensiveMove(move, piece: piece, board: board) {
-                            return true
-                        }
-                        return false // Exclude non-capture, non-defensive queen moves
-                    }
-                    
-                    // CRITICAL: Exclude moves that would allow valuable pieces to be captured by less valuable pieces
-                    let movingPieceValue = pieceValues[piece.type] ?? 0
-                    if movingPieceValue >= 3 { // Queen, rook, bishop, knight
-                        // Check timeout before expensive enemy piece analysis
-                        if Date().timeIntervalSince(startTime) > maxCalculationTime {
-                            print("⚠️ AI timeout during move filtering - allowing move")
-                            return true
-                        }
-                        
-                        // Check if this move would allow our piece to be captured by a less valuable enemy piece
-                        let enemyColor = aiColor.opposite
-                        let enemyPieces = board.getPieces(of: enemyColor)
-                        
-                        // Limit enemy piece checks to prevent infinite loops
-                        let maxEnemyChecks = min(enemyPieces.count, 5) // Only check first 5 enemy pieces
-                        for (index, enemyPiece) in enemyPieces.enumerated() {
-                            if index >= maxEnemyChecks { break } // Prevent infinite loops
-                            
-                            let enemyValue = pieceValues[enemyPiece.type] ?? 0
-                            if enemyValue < movingPieceValue { // Enemy piece is less valuable
-                                // Check if enemy can capture our piece after this move
-                                let enemyMoves = board.getValidMoves(for: enemyPiece, checkEnPassant: false, suppressDebug: true)
-                                if enemyMoves.contains(where: { $0.to == move.to }) {
-                                    // CRITICAL: This move would allow our valuable piece to be captured by a less valuable piece
-                                    print("🤖 AI CRITICAL FILTER: Excluding move that would allow \(piece.type.rawValue) to be captured by \(enemyPiece.type.rawValue)")
-                                    return false // Exclude this move completely
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Exclude moves that put pieces in obvious danger
-                    if move.capturedPiece == nil {
-                        // For non-capture moves, check if they put the piece in danger
-                        if movingPieceValue >= 3 { // Queen, rook, bishop
-                            // Check if this move puts a valuable piece in danger
-                            if wouldMovePutPieceInDanger(move: move) {
-                                return false // Exclude dangerous moves for valuable pieces
-                            }
-                        }
-                    }
-                }
-                return true
+    }
+
+    // MARK: - Reply search
+    //
+    // One ply of our moves, then the opponent's captures (and a second ply when
+    // time allows). A piece left loose shows up as the opponent's capture.
+
+    private struct TTEntry {
+        let depth: Int
+        let score: Int
+        let flag: Int // 0 exact, 1 lower (fail high), 2 upper (fail low)
+        let from: ChessPosition3D
+        let to: ChessPosition3D
+    }
+
+    private var transposition: [UInt64: TTEntry] = [:]
+    private var searchDeadline = Date.distantFuture
+    private var searchStopped = false
+    private let evalNet = PositionEvalNet()
+
+    private func searchBestMove() -> ChessMove3D? {
+        guard let board = getBoard() else { return nil }
+        board.quietSearch = true
+        defer { board.quietSearch = false }
+        transposition.removeAll(keepingCapacity: true)
+        searchStopped = false
+
+        let budget: TimeInterval = difficulty == .hard ? 5.0 : (difficulty == .medium ? 3.5 : 2.5)
+        searchDeadline = Date().addingTimeInterval(budget)
+
+        var root = searchMoves(for: aiColor, capturesOnly: false)
+        guard !root.isEmpty else { return nil }
+        root = orderMoves(root, side: aiColor)
+        if searchStopped {
+            return root[0]
+        }
+
+        evalNet.refresh(pieces: board.getAllPieces())
+
+        var best = root[0]
+        var learnedScore: Int?
+        for depth in 1...2 {
+            if Date() >= searchDeadline { break }
+            if let index = root.firstIndex(where: { $0.from == best.from && $0.to == best.to }) {
+                root.swapAt(0, index)
             }
-            print("🤖 AI: King not in check - filtered out \(allMoves.count - filteredMoves.count) moves (including non-capture king moves and dangerous moves)")
-        }
-        
-        // CRITICAL: If filtering removed all moves, use all moves as fallback
-        if filteredMoves.isEmpty {
-            print("🤖 AI Warning: All moves filtered out - using all moves as fallback")
-            filteredMoves = allMoves
-        }
-        
-        // Check timeout before move evaluation
-        if Date().timeIntervalSince(startTime) > maxCalculationTime {
-            print("⚠️ AI timeout before move evaluation - choosing first available move")
-            return filteredMoves.first ?? allMoves.first
-        }
-        
-        // CRITICAL: Prioritize captures over strategic rules, but be smart about it
-        let captureMoves = filteredMoves.filter { $0.capturedPiece != nil }
-        var movesToEvaluate: [ChessMove3D]
-        
-        if !captureMoves.isEmpty {
-            // Check if any captures are advantageous
-            let advantageousCaptures = captureMoves.filter { move in
-                if let piece = board.getPiece(at: move.from),
-                   let capturedPiece = move.capturedPiece {
-                    let captureValue = pieceValues[capturedPiece.type] ?? 0
-                    let movingPieceValue = pieceValues[piece.type] ?? 0
-                    return captureValue >= movingPieceValue
-                }
-                return false
-            }
-            
-            if !advantageousCaptures.isEmpty {
-                print("🤖 AI: Found \(advantageousCaptures.count) advantageous capture moves - bypassing strategic rules")
-                // CRITICAL: For advantageous captures, make immediate decision to prevent freezing
-                print("🤖 AI: Making immediate decision for advantageous capture")
-                return advantageousCaptures.first
-            } else {
-                print("🤖 AI: Found \(captureMoves.count) capture moves but none are advantageous - evaluating all moves")
-                movesToEvaluate = allMoves
-            }
-        } else {
-            // Filter moves using strategic rules only if no captures available
-            let strategicMoves = filteredMoves.filter { isValidStrategicMove($0) }
-            
-            // CRITICAL: If strategic rules block all moves, use all filtered moves as fallback
-            if strategicMoves.isEmpty {
-                print("🤖 AI Warning: No moves pass strategic rules, evaluating all \(filteredMoves.count) moves")
-                movesToEvaluate = filteredMoves
-            } else {
-                print("🤖 AI: Filtered to \(strategicMoves.count) strategic moves from \(filteredMoves.count) total moves")
-                movesToEvaluate = strategicMoves
-            }
-        }
-        
-        // EMERGENCY FALLBACK: If we still have no moves to evaluate, use ALL moves
-        if movesToEvaluate.isEmpty {
-            print("🚨 EMERGENCY FALLBACK: No moves to evaluate, using ALL moves as last resort")
-            movesToEvaluate = allMoves
-        }
-        
-        // CRITICAL: If too many moves, force immediate decision to prevent freezing
-        if movesToEvaluate.count > 50 {
-            print("⚠️ AI: Too many moves (\(movesToEvaluate.count)) - forcing immediate decision")
-            let captureMoves = movesToEvaluate.filter { $0.capturedPiece != nil }
-            if !captureMoves.isEmpty {
-                print("🤖 AI forced decision: Choosing capture move")
-                if let move = captureMoves.first {
-                    return move
-                }
-            } else {
-                // FAST PRIORITIZATION: Don't call getPrioritizedMove to avoid more processing
-                // Just pick the first pawn move, or first move if no pawns
-                let pawnMoves = movesToEvaluate.filter { move in
-                    if let piece = board.getPiece(at: move.from) {
-                        return piece.type == .pawn
-                    }
-                    return false
-                }
-                if !pawnMoves.isEmpty {
-                    print("🤖 AI forced decision: Choosing first pawn move")
-                    if let move = pawnMoves.first {
-                        return move
-                    }
-                }
-                print("🤖 AI forced decision: Choosing first available move")
-                if let move = movesToEvaluate.first {
-                    return move
-                }
-                // Final fallback - use any move from allMoves
-                print("🤖 AI forced decision: Using fallback from all moves")
-                if let move = allMoves.first {
-                    return move
-                }
-            }
-        }
-        
-        // EMERGENCY TIMEOUT: If we've been calculating too long, force immediate decision
-        let emergencyElapsedTime = Date().timeIntervalSince(startTime)
-        if emergencyElapsedTime > maxCalculationTime * 0.8 {
-            print("🚨 EMERGENCY TIMEOUT: AI taking too long (\(emergencyElapsedTime)s) - forcing immediate decision")
-            // FAST EMERGENCY: Just return the first available move to avoid more processing
-            if !movesToEvaluate.isEmpty {
-                print("🤖 AI emergency decision: Choosing first available move")
-                return movesToEvaluate.first
-            } else {
-                print("🤖 AI emergency decision: No moves available - using all moves")
-                return allMoves.first
-            }
-        }
-        
-        // Debug: Print moves being considered
-        print("🤖 AI: Evaluating \(movesToEvaluate.count) moves:")
-        for (index, move) in movesToEvaluate.enumerated() {
-            let captureInfo = move.capturedPiece != nil ? " (captures \(move.capturedPiece!.type.rawValue))" : ""
-            print("🤖 AI debug: Move \(index): \(move.from.stringValue) -> \(move.to.stringValue)\(captureInfo)")
-        }
-        
-        // Clear logged strategic moves for this evaluation cycle
-        loggedStrategicMoves.removeAll()
-        
-        // Evaluate moves based on current strategy and game phase
-        var evaluatedMoves: [(ChessMove3D, Int)] = []
-        
-        // CRITICAL: Limit the number of moves to evaluate to prevent timeout
-        // In 3D chess, there are many more moves, so we need to be more aggressive
-        // BUT: If king moves are present, evaluate ALL king moves
-        let kingMoves = movesToEvaluate.filter { move in
-            if let piece = board.getPiece(at: move.from) {
-                return piece.type == .king
-            }
-            return false
-        }
-        
-        let maxMovesToEvaluate = min(movesToEvaluate.count, 4) // Further reduced from 6 to 4
-        let movesToEvaluateLimited: [ChessMove3D]
-        
-        if !kingMoves.isEmpty {
-            // If king moves are present, evaluate ALL king moves plus some others
-            let nonKingMoves = movesToEvaluate.filter { move in
-                if let piece = board.getPiece(at: move.from) {
-                    return piece.type != .king
-                }
-                return true
-            }
-            let limitedNonKingMoves = Array(nonKingMoves.prefix(2)) // Limit non-king moves to 2
-            movesToEvaluateLimited = kingMoves + limitedNonKingMoves
-            print("🤖 AI: Evaluating ALL \(kingMoves.count) king moves + \(limitedNonKingMoves.count) other moves")
-        } else {
-            movesToEvaluateLimited = Array(movesToEvaluate.prefix(maxMovesToEvaluate))
-        }
-        
-        print("🤖 AI: Evaluating \(movesToEvaluateLimited.count) moves out of \(movesToEvaluate.count) total")
-        
-        // CRITICAL: Add early timeout check before starting evaluation
-        let earlyElapsedTime = Date().timeIntervalSince(startTime)
-        if earlyElapsedTime > maxCalculationTime * 0.5 { // More aggressive - 50% instead of 70%
-            print("⚠️ AI early timeout before evaluation - forcing decision")
-            // FAST EARLY TIMEOUT: Just return the first available move to avoid more processing
-            if !movesToEvaluate.isEmpty {
-                print("🤖 AI early timeout decision: Choosing first available move")
-                return movesToEvaluate.first
-            } else {
-                print("🤖 AI early timeout decision: No moves available - using all moves")
-                return allMoves.first
-            }
-        }
-        
-        for (index, move) in movesToEvaluateLimited.enumerated() {
-            // Check timeout during evaluation
-            let elapsedTime = Date().timeIntervalSince(startTime)
-            if elapsedTime > maxCalculationTime {
-                print("⚠️ AI timeout during move evaluation - stopping at move \(index)")
-                break
-            }
-            
-            // Special timeout check for king moves - force decision after evaluating king moves
-            if let piece = board.getPiece(at: move.from), piece.type == .king {
-                if elapsedTime > maxCalculationTime * 0.8 {
-                    print("⚠️ AI king move timeout - forcing decision after evaluating \(index) king moves")
+            var alpha = -1_000_000
+            let beta = 1_000_000
+            var windowBest = best
+            var windowScore = Int.min
+            var completed = true
+            for move in root {
+                if Date() >= searchDeadline {
+                    searchStopped = true
+                    completed = false
                     break
                 }
-            }
-            
-            let score = evaluateMove(move)
-            evaluatedMoves.append((move, score))
-        }
-        
-        // Sort by score descending
-        evaluatedMoves.sort { $0.1 > $1.1 }
-        
-        let bestMove: ChessMove3D?
-        if let bestEvaluatedMove = evaluatedMoves.first {
-            print("🤖 AI chose move with score \(bestEvaluatedMove.1): \(bestEvaluatedMove.0.from.stringValue) -> \(bestEvaluatedMove.0.to.stringValue)")
-            bestMove = bestEvaluatedMove.0
-        } else {
-            // Fallback: Choose a move quickly
-            print("🤖 AI: No evaluated moves - choosing fallback move")
-            
-            // CRITICAL: Final timeout check before fallback
-            let elapsedTime = Date().timeIntervalSince(startTime)
-            if elapsedTime > maxCalculationTime {
-                print("⚠️ AI final timeout - forcing decision")
-                // Force immediate decision with captures first
-                let captureMoves = filteredMoves.filter { $0.capturedPiece != nil }
-                if !captureMoves.isEmpty {
-                    print("🤖 AI final forced decision: Choosing capture move")
-                    return captureMoves.first
-                } else {
-                    // Prioritize pawns, knights, bishops over king/queen when not under attack
-                    let prioritizedMove = getPrioritizedMove(from: filteredMoves)
-                    print("🤖 AI final forced decision: Choosing prioritized move")
-                    return prioritizedMove
+                let captured = board.getPiece(at: move.to)
+                evalNet.apply(move, captured: captured)
+                board.makeMove(move)
+                let score = abSearch(depth: depth - 1, alpha: alpha, beta: beta, side: aiColor.opposite)
+                board.undoMove(move, capturedPiece: captured)
+                evalNet.revert()
+                if searchStopped {
+                    completed = false
+                    break
+                }
+                if score > windowScore {
+                    windowScore = score
+                    windowBest = move
+                    alpha = score
                 }
             }
-            
-            // Prioritize captures first
-            let captureMoves = filteredMoves.filter { $0.capturedPiece != nil }
-            if !captureMoves.isEmpty {
-                bestMove = captureMoves.first
-                print("🤖 AI fallback: Choosing capture move")
+            if windowScore != Int.min {
+                best = windowBest
+                let partial = completed ? "" : " (partial)"
+                print("🤖 search depth \(depth) score \(windowScore) corr \(evalNet.correction()): \(best.piece.color.rawValue) \(best.piece.type.rawValue) \(best.from.stringValue) -> \(best.to.stringValue)\(partial)")
+                if completed {
+                    learnedScore = windowScore
+                }
+            }
+            if !completed { break }
+        }
+        if let learnedScore {
+            evalNet.note(searchScore: learnedScore, aiColor: aiColor)
+        }
+        return best
+    }
+
+    /// Score is from the AI's point of view. Positive is good for the AI.
+    private func abSearch(depth: Int, alpha: Int, beta: Int, side: PieceColor) -> Int {
+        if Date() >= searchDeadline {
+            searchStopped = true
+            return searchMaterial()
+        }
+        if depth <= 0 {
+            return quiesce(alpha: alpha, beta: beta, side: side, ply: 0)
+        }
+        guard let board = getBoard() else { return 0 }
+
+        let key = board.positionKey()
+        var alpha = alpha
+        var beta = beta
+        if let hit = transposition[key], hit.depth >= depth {
+            if hit.flag == 0 { return hit.score }
+            if hit.flag == 1 && hit.score >= beta { return hit.score }
+            if hit.flag == 2 && hit.score <= alpha { return hit.score }
+        }
+
+        var moves = orderMoves(searchMoves(for: side, capturesOnly: false), side: side)
+        if let hit = transposition[key],
+           let ttMove = moves.first(where: { $0.from == hit.from && $0.to == hit.to }) {
+            moves.removeAll { $0.from == hit.from && $0.to == hit.to }
+            moves.insert(ttMove, at: 0)
+        }
+        if moves.isEmpty {
+            if board.isCheck(color: side, suppressDebug: true) {
+                return side == aiColor ? -800_000 : 800_000
+            }
+            return 0
+        }
+
+        let maximizing = side == aiColor
+        var bestScore = maximizing ? Int.min / 4 : Int.max / 4
+        var bestMove: ChessMove3D?
+        let originalAlpha = alpha
+        let originalBeta = beta
+        for move in moves {
+            if Date() >= searchDeadline {
+                searchStopped = true
+                break
+            }
+            let captured = board.getPiece(at: move.to)
+            evalNet.apply(move, captured: captured)
+            board.makeMove(move)
+            let score = abSearch(depth: depth - 1, alpha: alpha, beta: beta, side: side.opposite)
+            board.undoMove(move, capturedPiece: captured)
+            evalNet.revert()
+            if searchStopped { break }
+            if maximizing {
+                if score > bestScore {
+                    bestScore = score
+                    bestMove = move
+                }
+                alpha = max(alpha, score)
             } else {
-                // Prioritize pawns, knights, bishops over king/queen when not under attack
-                let prioritizedMove = getPrioritizedMove(from: filteredMoves)
-                bestMove = prioritizedMove
-                print("🤖 AI fallback: Choosing prioritized move")
+                if score < bestScore {
+                    bestScore = score
+                    bestMove = move
+                }
+                beta = min(beta, score)
+            }
+            if alpha >= beta { break }
+        }
+        if searchStopped || bestMove == nil {
+            return bestScore
+        }
+        let flag: Int
+        if maximizing {
+            if bestScore <= originalAlpha { flag = 2 }
+            else if bestScore >= beta { flag = 1 }
+            else { flag = 0 }
+        } else if bestScore >= originalBeta {
+            flag = 1
+        } else if bestScore <= alpha {
+            flag = 2
+        } else {
+            flag = 0
+        }
+        transposition[key] = TTEntry(depth: depth, score: bestScore, flag: flag, from: bestMove!.from, to: bestMove!.to)
+        return bestScore
+    }
+
+    private func quiesce(alpha: Int, beta: Int, side: PieceColor, ply: Int) -> Int {
+        if Date() >= searchDeadline {
+            searchStopped = true
+            return searchMaterial()
+        }
+        guard let board = getBoard() else { return 0 }
+        let stand = searchMaterial()
+        let inCheck = board.isCheck(color: side, suppressDebug: true)
+        let mate = side == aiColor ? -800_000 : 800_000
+        var alpha = alpha
+        var beta = beta
+        if !inCheck {
+            if side == aiColor {
+                if stand >= beta { return stand }
+                alpha = max(alpha, stand)
+            } else {
+                if stand <= alpha { return stand }
+                beta = min(beta, stand)
+            }
+            if ply >= 2 { return stand }
+        }
+
+        var moves = searchMoves(for: side, capturesOnly: !inCheck)
+        moves = orderMoves(moves, side: side)
+        if moves.count > (inCheck ? 12 : 8) {
+            moves = Array(moves.prefix(inCheck ? 12 : 8))
+        }
+        if moves.isEmpty {
+            return inCheck ? mate : stand
+        }
+
+        let maximizing = side == aiColor
+        var best = inCheck ? mate : stand
+        for move in moves {
+            if Date() >= searchDeadline {
+                searchStopped = true
+                break
+            }
+            let captured = board.getPiece(at: move.to)
+            evalNet.apply(move, captured: captured)
+            board.makeMove(move)
+            let score = quiesce(alpha: alpha, beta: beta, side: side.opposite, ply: ply + 1)
+            board.undoMove(move, capturedPiece: captured)
+            evalNet.revert()
+            if searchStopped { break }
+            if maximizing {
+                if score > best { best = score }
+                alpha = max(alpha, score)
+            } else {
+                if score < best { best = score }
+                beta = min(beta, score)
+            }
+            if alpha >= beta { break }
+        }
+        return best
+    }
+
+    private func searchMoves(for color: PieceColor, capturesOnly: Bool) -> [ChessMove3D] {
+        guard let board = getBoard() else { return [] }
+        var moves: [ChessMove3D] = []
+        var seen = Set<String>()
+        for piece in board.getPieces(of: color) {
+            if Date() >= searchDeadline {
+                searchStopped = true
+                break
+            }
+            let generated = board.getValidMoves(for: piece, checkEnPassant: false, checkKingSafety: true, suppressDebug: true)
+            for move in generated {
+                if capturesOnly && move.capturedPiece == nil { continue }
+                let key = "\(move.from.file)\(move.from.rank)\(move.from.z)\(move.to.file)\(move.to.rank)\(move.to.z)"
+                if seen.insert(key).inserted {
+                    moves.append(move)
+                }
             }
         }
-        
-        // Final timeout check - force decision if taking too long
-        let timeElapsed = Date().timeIntervalSince(startTime)
-        if timeElapsed > maxCalculationTime {
-            print("⚠️ AI final timeout - forcing decision")
-            if let move = allMoves.first {
-                print("🤖 AI forced decision: \(move.from.stringValue) -> \(move.to.stringValue)")
-                recordMove(move)
-                return move
-            }
+        return moves
+    }
+
+    private func orderMoves(_ moves: [ChessMove3D], side: PieceColor) -> [ChessMove3D] {
+        guard let board = getBoard() else { return moves }
+        let attacked = board.squaresAttacked(by: side.opposite)
+        return moves.sorted { rankMove($0, attacked: attacked) > rankMove($1, attacked: attacked) }
+    }
+
+    private func rankMove(_ move: ChessMove3D, attacked: Set<ChessPosition3D>) -> Int {
+        var score = 0
+        if let victim = move.capturedPiece {
+            score += (pieceValues[victim.type] ?? 0) * 10
+            score -= pieceValues[move.piece.type] ?? 0
         }
-        
-        // Record the move for learning
-        if let move = bestMove {
-            recordMove(move)
+        if attacked.contains(move.from) {
+            score += (pieceValues[move.piece.type] ?? 0) + 40
         }
-        
-        print("🤖 AI chose move: \(bestMove?.from.stringValue ?? "none") -> \(bestMove?.to.stringValue ?? "none")")
-        print("🤖 AI calculation time: \(String(format: "%.3f", timeElapsed))s")
-        
-        return bestMove
+        return score
+    }
+
+    private func searchMaterial() -> Int {
+        evalNet.score(for: aiColor)
     }
     
     // MARK: - Minimax Algorithm with Alpha-Beta Pruning
@@ -3676,32 +3569,13 @@ class ChessAI {
             }
             
         case .rook:
-            // Rooks can move in straight lines
-            return (fileDiff == 0 && rankDiff == 0 && zDiff > 0) || // Same file/rank, different Z
-                   (fileDiff > 0 && rankDiff == 0 && zDiff == 0) || // Same rank/Z, different file
-                   (fileDiff == 0 && rankDiff > 0 && zDiff == 0)    // Same file/Z, different rank
+            return sliderUnitStep(from: piece.position, to: targetSquare, allowRook: true, allowBishop: false) != nil
             
         case .bishop:
-            // Bishops can move diagonally
-            return fileDiff == rankDiff && fileDiff > 0 && zDiff == 0 // 2D diagonal
-                   || (fileDiff == rankDiff && fileDiff == zDiff && fileDiff > 0) // 3D diagonal
+            return sliderUnitStep(from: piece.position, to: targetSquare, allowRook: false, allowBishop: true) != nil
             
         case .queen:
-            // Queen combines rook and bishop moves (including 3D)
-            let fileDiff = abs(targetSquare.file - piece.position.file)
-            let rankDiff = abs(targetSquare.rank - piece.position.rank)
-            let zDiff = abs(targetSquare.z - piece.position.z)
-            
-            // Check for straight line attacks (same file, rank, or Z)
-            let straightLineAttack = (targetSquare.file == piece.position.file || 
-                                    targetSquare.rank == piece.position.rank || 
-                                    targetSquare.z == piece.position.z)
-            
-            // Check for diagonal attacks (2D and 3D)
-            let diagonal2D = (fileDiff == rankDiff && zDiff == 0)
-            let diagonal3D = (fileDiff == rankDiff && fileDiff == zDiff && fileDiff > 0)
-            
-            return straightLineAttack || diagonal2D || diagonal3D
+            return sliderUnitStep(from: piece.position, to: targetSquare, allowRook: true, allowBishop: true) != nil
             
         case .knight:
             // Knights move in L-shape
@@ -3743,6 +3617,45 @@ class ChessAI {
     }
     
     // MARK: - Move Prioritization
+    
+    /// A few captures, then up to two moves of each piece type, so the scored set is not
+    /// only the first pawn pushes.
+    private func shortlistMoves(_ moves: [ChessMove3D], board: ChessBoard3D) -> [ChessMove3D] {
+        var captures: [ChessMove3D] = []
+        var byType: [PieceType: [ChessMove3D]] = [:]
+        for move in moves {
+            if move.capturedPiece != nil {
+                captures.append(move)
+            }
+            guard let piece = board.getPiece(at: move.from) else { continue }
+            var ofType = byType[piece.type] ?? []
+            if ofType.count < 2 {
+                ofType.append(move)
+                byType[piece.type] = ofType
+            }
+        }
+        
+        var shortlist: [ChessMove3D] = []
+        var seen: Set<String> = []
+        func add(_ move: ChessMove3D) {
+            let key = "\(move.from.file),\(move.from.rank),\(move.from.z)->\(move.to.file),\(move.to.rank),\(move.to.z)"
+            if seen.insert(key).inserted {
+                shortlist.append(move)
+            }
+        }
+        for move in captures.prefix(4) {
+            add(move)
+        }
+        for type in [PieceType.rook, .bishop, .knight, .queen, .pawn, .king] {
+            for move in byType[type] ?? [] {
+                add(move)
+            }
+        }
+        if shortlist.isEmpty {
+            return Array(moves.prefix(4))
+        }
+        return shortlist
+    }
     
     /// Prioritizes pawns, knights, and bishops over king/queen moves when not under attack
     private func getPrioritizedMove(from moves: [ChessMove3D]) -> ChessMove3D {
