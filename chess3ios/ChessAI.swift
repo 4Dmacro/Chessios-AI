@@ -271,7 +271,38 @@ class ChessAI {
         if let learnedScore {
             evalNet.note(searchScore: learnedScore, aiColor: aiColor)
         }
-        return best
+        return variedOpening(among: root, fallback: best)
+    }
+
+    /// The first reply is otherwise always the same bishop. Pick among a few
+    /// legal developing moves when nothing is hanging.
+    private func variedOpening(among root: [ChessMove3D], fallback: ChessMove3D) -> ChessMove3D {
+        guard totalMovesPlayed == 0, fallback.capturedPiece == nil else { return fallback }
+        let book: [(Int, Int, Int, Int, Int, Int)] = aiColor == .black
+            ? [
+                (4, 7, 4, 4, 3, 0), // bishop v e8 -> i e4
+                (1, 7, 0, 2, 5, 0), // knight i b8 -> i c6
+                (6, 7, 0, 5, 5, 0), // knight i g8 -> i f6
+                (4, 6, 0, 4, 4, 0), // pawn i e7 -> i e5
+                (3, 6, 0, 3, 4, 0), // pawn i d7 -> i d5
+            ]
+            : [
+                (4, 1, 0, 4, 3, 0), // pawn e2 -> e4
+                (3, 1, 0, 3, 3, 0), // pawn d2 -> d4
+                (6, 0, 0, 5, 2, 0), // knight g1 -> f3
+                (1, 0, 0, 2, 2, 0), // knight b1 -> c3
+            ]
+        var choices: [ChessMove3D] = []
+        for squares in book {
+            let from = ChessPosition3D(file: squares.0, rank: squares.1, z: squares.2)
+            let to = ChessPosition3D(file: squares.3, rank: squares.4, z: squares.5)
+            if let move = root.first(where: { $0.from == from && $0.to == to }) {
+                choices.append(move)
+            }
+        }
+        guard choices.count >= 2, let pick = choices.randomElement() else { return fallback }
+        print("🤖 Opening variety: \(pick.piece.type.rawValue) \(pick.from.stringValue) -> \(pick.to.stringValue) (\(choices.count) options)")
+        return pick
     }
 
     /// Score is from the AI's point of view. Positive is good for the AI.
@@ -439,11 +470,18 @@ class ChessAI {
     private func orderMoves(_ moves: [ChessMove3D], side: PieceColor) -> [ChessMove3D] {
         guard let board = getBoard() else { return moves }
         let attacked = board.squaresAttacked(by: side.opposite)
-        return moves.sorted { rankMove($0, attacked: attacked) > rankMove($1, attacked: attacked) }
+        let enemyKing = board.getPieces(of: side.opposite).first { $0.type == .king }?.position
+        return moves.sorted { rankMove($0, attacked: attacked, enemyKing: enemyKing) > rankMove($1, attacked: attacked, enemyKing: enemyKing) }
     }
 
-    private func rankMove(_ move: ChessMove3D, attacked: Set<ChessPosition3D>) -> Int {
+    private func rankMove(_ move: ChessMove3D, attacked: Set<ChessPosition3D>, enemyKing: ChessPosition3D?) -> Int {
         var score = 0
+        if move.promotionType != nil {
+            score += 8000
+        }
+        if let enemyKing, attacksKing(move, king: enemyKing) {
+            score += 12000
+        }
         if let victim = move.capturedPiece {
             score += (pieceValues[victim.type] ?? 0) * 10
             score -= pieceValues[move.piece.type] ?? 0
@@ -454,8 +492,49 @@ class ChessAI {
         return score
     }
 
+    /// Ordering only. A real check still has to survive the search.
+    private func attacksKing(_ move: ChessMove3D, king: ChessPosition3D) -> Bool {
+        let fileGap = abs(move.to.file - king.file)
+        let rankGap = abs(move.to.rank - king.rank)
+        let levelGap = abs(move.to.z - king.z)
+        if fileGap == 0 && rankGap == 0 && levelGap == 0 { return false }
+        switch move.piece.type {
+        case .rook:
+            let axes = [fileGap, rankGap, levelGap].filter { $0 == 0 }.count
+            return axes == 2
+        case .bishop:
+            let steps = [fileGap, rankGap, levelGap].filter { $0 != 0 }
+            if steps.count == 2 { return steps[0] == steps[1] }
+            return steps.count == 3 && fileGap == rankGap && rankGap == levelGap
+        case .queen:
+            let rookAxes = [fileGap, rankGap, levelGap].filter { $0 == 0 }.count == 2
+            let steps = [fileGap, rankGap, levelGap].filter { $0 != 0 }
+            let bishop = (steps.count == 2 && steps[0] == steps[1]) || (steps.count == 3 && fileGap == rankGap && rankGap == levelGap)
+            return rookAxes || bishop
+        case .knight:
+            return [fileGap, rankGap, levelGap].sorted() == [0, 1, 2]
+        case .pawn:
+            let forward = move.piece.color == .white ? 1 : -1
+            return king.rank - move.to.rank == forward && abs(king.file - move.to.file) == 1 && abs(king.z - move.to.z) <= 1
+        case .king:
+            return false
+        }
+    }
+
     private func searchMaterial() -> Int {
-        evalNet.score(for: aiColor)
+        var score = evalNet.score(for: aiColor)
+        guard let board = getBoard() else { return score }
+        let pieces = board.getAllPieces()
+        guard let enemyKing = pieces.first(where: { $0.type == .king && $0.color != aiColor }) else { return score }
+        for piece in pieces where piece.color == aiColor && piece.type != .pawn && piece.type != .king {
+            let distance = max(
+                abs(piece.position.file - enemyKing.position.file),
+                abs(piece.position.rank - enemyKing.position.rank),
+                abs(piece.position.z - enemyKing.position.z)
+            )
+            score += max(0, 5 - distance) * 14
+        }
+        return score
     }
     
     // MARK: - Minimax Algorithm with Alpha-Beta Pruning

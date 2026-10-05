@@ -143,7 +143,7 @@ struct SubscriptionView: View {
                     
                     HStack(spacing: 12) {
                         Button("Terms of Service") {
-                            if let url = URL(string: "https://www.3dchesscubed.com/terms-of-service") {
+                            if let url = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") {
                                 UIApplication.shared.open(url)
                             }
                         }
