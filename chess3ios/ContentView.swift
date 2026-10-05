@@ -11,6 +11,13 @@ import UniformTypeIdentifiers
 import Combine
 import GameKit
 
+private struct LeftControlsHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 struct ContentView: View {
     @State private var sceneView = SCNView()
     @State private var scene = SCNScene()
@@ -34,6 +41,9 @@ struct ContentView: View {
     @State private var showAIWarning = false // For AI warning message
     @State private var showColorExplanation = true // For color explanation message
     @State private var showGameCenterPopover = false // For Game Center popover
+    @State private var gameCenterControlsExpanded = true
+    @State private var gameCenterCollapseToken = UUID()
+    @State private var leftControlsHeight: CGFloat = 0
     @State private var showRules = false // For rules popover
     @State private var showSubscription = false // For subscription popover
     @State private var dragStartYaw: Float?
@@ -51,6 +61,27 @@ struct ContentView: View {
     
     private var isIPad: Bool {
         UIDevice.current.userInterfaceIdiom == .pad
+    }
+
+    /// Check and checkmate copy for the iPhone top-right banner.
+    private var iPhoneTopStatusText: String? {
+        if !chessGame.mateNotice.isEmpty {
+            return chessGame.mateNotice
+        }
+        if chessGame.gameState.contains("in check") {
+            let piece = chessGame.checkingPieceSummary()
+            let headline = chessGame.turnDisplayText.replacingOccurrences(of: "!", with: "")
+            if piece.isEmpty { return chessGame.turnDisplayText }
+            return "\(headline) from \(piece)"
+        }
+        return nil
+    }
+
+    /// Space above the piece controls so the top-right check line stays fully on screen.
+    private var iPhoneTopStatusReserve: CGFloat {
+        if !chessGame.mateNotice.isEmpty { return 76 }
+        if chessGame.gameState.contains("in check") { return 56 }
+        return 8
     }
     
     // Debug device detection
@@ -131,7 +162,7 @@ struct ContentView: View {
                         //    .background(Color.red.opacity(0.9))
                         //    .cornerRadius(8)
                         
-                        Text("AI play mode is still in development, the exponential number of move possibilities makes it prone to crash, especially when in check. It is still useful to learn from.")
+                        Text("This is the second generation of Chess 3D AI Play mode and it is stable under testing on newer iPhones, iPads and Macs. It can still hang on older devices when Check is in play. Please notify the developer if you encounter any bugs or issues.")
                             .font(.caption)
                             .foregroundColor(.white)
                             .multilineTextAlignment(.center)
@@ -203,7 +234,7 @@ struct ContentView: View {
         .ignoresSafeArea()
         .onAppear {
             setupChessGame()
-            
+            revealGameCenterControls()
         }
         .onChange(of: gameKitManager.playerColor) { _, newColor in
             // Rotate board when GameKit player color changes
@@ -280,6 +311,7 @@ struct ContentView: View {
                     HStack(spacing: 0) {
                         Button("Play") {
                             chessGame.gameMode = .play
+                            collapseGameCenterControls()
                         }
                         .buttonStyle(AdaptiveButtonStyle())
                         .font(.caption)
@@ -288,6 +320,7 @@ struct ContentView: View {
                         
                         Button("Learn") {
                             chessGame.gameMode = .learn
+                            collapseGameCenterControls()
                         }
                         .buttonStyle(AdaptiveButtonStyle(opacity: 0.4))
                         .font(.caption)
@@ -299,6 +332,7 @@ struct ContentView: View {
                     
                     // AI Controls
                     Button(chessGame.isAITurn() ? "🤖 AI Thinking..." : "🤖 vs AI") {
+                        collapseGameCenterControls()
                         if !chessGame.isAITurn() {
                             // Show warning message
                             showAIWarning = true
@@ -318,17 +352,18 @@ struct ContentView: View {
                     .background(chessGame.aiModeActive ? Color.green.opacity(0.35) : Color.clear)
                     .disabled(chessGame.aiModeActive)
                     
-                    // Game State Display
-                    Text(chessGame.turnDisplayText)
-                        .font(.caption)
-                        .foregroundColor(.white)
-                        .scaleEffect(uiScale)
-                        .padding(.horizontal, 12)
+                    // Game State Display. Checkmate is the banner on the right.
+                    if !chessGame.gameState.contains("Checkmate") {
+                        Text(chessGame.turnDisplayText)
+                            .font(.caption)
+                            .foregroundColor(.white)
+                            .scaleEffect(uiScale)
+                            .padding(.horizontal, 12)
                             .padding(.vertical, 8)
-                        .background(chessGame.gameState.contains("Checkmate") ? Color.red.opacity(0.8) :
-                                   chessGame.gameState.contains("White") ? Color.red.opacity(0.6) : 
-                                   chessGame.gameState.contains("Black") ? Color.blue.opacity(0.6) : Color.clear)
+                            .background(chessGame.gameState.contains("White") ? Color.red.opacity(0.6) :
+                                       chessGame.gameState.contains("Black") ? Color.blue.opacity(0.6) : Color.clear)
                             .cornerRadius(6)
+                    }
                     
                    
                     
@@ -367,12 +402,6 @@ struct ContentView: View {
                 .padding (.vertical,20)
                 // Camera Controls
                 VStack(spacing: 15) {
-                    Text("Camera Controls")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                                .foregroundColor(.white)
-                        .scaleEffect(uiScale)
-                    
                     Button("↑ Boards Up") {
                         lowerCamera()
                     }
@@ -415,17 +444,13 @@ struct ContentView: View {
                     .buttonStyle(AdaptiveButtonStyle(opacity: 0.35))
                     .font(.caption)
                     .scaleEffect(uiScale)
-                //    .frame(maxWidth: 140)
-                //    .background(.regularMaterial.opacity(0.2))
-                //    .padding(.horizontal, 8)
-                //    .padding(.vertical, 8)
-                //    .cornerRadius(12)
-                    
-                   
-                    Spacer(minLength: 60)
                     
                     // Multiplayer Controls
-                    MultiplayerView()
+                    MultiplayerView(
+                        isExpanded: $gameCenterControlsExpanded,
+                        onControlsRevealed: revealGameCenterControls,
+                        onControlsUsed: keepGameCenterControls
+                    )
                         .scaleEffect(uiScale)
                     
                     Spacer(minLength: 40)
@@ -456,7 +481,19 @@ struct ContentView: View {
                     Spacer(minLength: 20)
             }
             .padding(.leading, 5)
-            .position(x: 75, y: geometry.size.height / 2 - 5) // Position left controls higher up for iPad
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(key: LeftControlsHeightKey.self, value: proxy.size.height)
+                }
+            )
+            .onPreferenceChange(LeftControlsHeightKey.self) { leftControlsHeight = $0 }
+            .position(x: 75, y: {
+                // Keep New Game below the iPad status bar while Game Centre is open.
+                // A short column stays centered, which is where it sits after Game Centre collapses.
+                let centered = geometry.size.height / 2 - 5
+                let belowClock = leftControlsHeight / 2
+                return max(centered, belowClock)
+            }())
             
             // Right Side Controls - Movement Controls
             // The rules button is inside this stack, under the yellow piece label,
@@ -464,6 +501,24 @@ struct ContentView: View {
             ChessPieceControllerView(controller: pieceController, onShowRules: { showRules = true })
                 .scaleEffect(uiScale)
                 .position(x: geometry.size.width - 98, y: geometry.size.height / 2)
+
+            if !chessGame.mateNotice.isEmpty {
+                Text(chessGame.mateNotice)
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: min(280, geometry.size.width - 24))
+                    .background(Color.red.opacity(0.92))
+                    .cornerRadius(6)
+                    .padding(.trailing, 12)
+                    .padding(.top, 12)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                    .allowsHitTesting(false)
+            }
         //    .padding(.horizontal, 8)
         //    .padding(.vertical, 6)
          //   .background(Color.blue.opacity(0.4))
@@ -561,6 +616,7 @@ struct ContentView: View {
                      HStack(spacing: 0) {
                          Button("Play") {
                              chessGame.gameMode = .play
+                             collapseGameCenterControls()
                          }
                          .font(.caption2)
                          .foregroundColor(.white)
@@ -573,6 +629,7 @@ struct ContentView: View {
                          
                          Button("Learn") {
                              chessGame.gameMode = .learn
+                             collapseGameCenterControls()
                          }
                          .font(.caption2)
                          .foregroundColor(.white)
@@ -593,6 +650,7 @@ struct ContentView: View {
                     
                     // AI Controls
                         Button(chessGame.isAITurn() ? "🤖 AI Thinking..." : "🤖 vs AI") {
+                            collapseGameCenterControls()
                             if !chessGame.isAITurn() {
                             // Show warning message
                             showAIWarning = true
@@ -615,17 +673,18 @@ struct ContentView: View {
                     .disabled(chessGame.aiModeActive)
                 
                     
-                    // Game State Display
-                    Text(chessGame.turnDisplayText)
-                        .font(.caption2)
-                        .foregroundColor(.white)
-                        .scaleEffect(uiScale)
-                        .padding(.horizontal, 1)
-                        .padding(.vertical, 2)
-                        .background(chessGame.gameState.contains("Checkmate") ? Color.red.opacity(0.8) :
-                                   chessGame.gameState.contains("White") ? Color.red.opacity(0.6) : 
-                                   chessGame.gameState.contains("Black") ? Color.blue.opacity(0.6) : Color.clear)
-                        .cornerRadius(4)
+                    // Game State Display. Checkmate is the banner on the right.
+                    if !chessGame.gameState.contains("Checkmate") {
+                        Text(chessGame.turnDisplayText)
+                            .font(.caption2)
+                            .foregroundColor(.white)
+                            .scaleEffect(uiScale)
+                            .padding(.horizontal, 1)
+                            .padding(.vertical, 2)
+                            .background(chessGame.gameState.contains("White") ? Color.red.opacity(0.6) :
+                                       chessGame.gameState.contains("Black") ? Color.blue.opacity(0.6) : Color.clear)
+                            .cornerRadius(4)
+                    }
                     
                     // Debug: Show current game mode
                     //  Text("Mode: \(chessGame.gameMode == .play ? "Play" : "Learn")")
@@ -794,10 +853,51 @@ struct ContentView: View {
                         .frame(width: 300, height: 250)
                 }
                 
-                // Piece controller at absolute right edge. Rules sits under the yellow piece label.
+                // Piece controller on the right. Its top stays on screen so the capture line is visible.
+                // Rules is anchored to the bottom of the screen, under this panel.
                 ChessPieceControllerView(controller: pieceController, onShowRules: { showRules = true })
                     .scaleEffect(uiScale)
-                    .position(x: geometry.size.width - 125, y: geometry.size.height / 2.3)
+                    .position(x: geometry.size.width - max(geometry.safeAreaInsets.trailing, 16) - 100, y: {
+                        let panelHeight = 420 * uiScale
+                        return iPhoneTopStatusReserve + panelHeight / 2
+                    }())
+
+                if let statusText = iPhoneTopStatusText {
+                    Text(statusText)
+                        .font(.caption2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                        .frame(maxWidth: min(210, geometry.size.width - 96))
+                        .background(Color.red.opacity(0.92))
+                        .cornerRadius(6)
+                        .padding(.trailing, max(geometry.safeAreaInsets.trailing, 28))
+                        .padding(.top, 4)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                        .allowsHitTesting(false)
+                        .zIndex(20)
+                }
+
+                Button(action: { showRules = true }) {
+                    Text("Rules & Instructions")
+                        .font(.caption2)
+                        .lineLimit(1)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Color.blue.opacity(0.45))
+                .foregroundColor(.white)
+                .cornerRadius(4)
+                .fixedSize()
+                .position(
+                    x: geometry.size.width - max(geometry.safeAreaInsets.trailing, 16) - 72,
+                    y: geometry.size.height - max(geometry.safeAreaInsets.bottom, 10) - 14
+                )
+                .zIndex(20)
               
                 
                 // Move Confirmation UI (overlay when move is pending)
@@ -858,6 +958,27 @@ struct ContentView: View {
         
     }
     // MARK: - Setup Methods
+    private func revealGameCenterControls() {
+        gameCenterControlsExpanded = true
+        let token = UUID()
+        gameCenterCollapseToken = token
+        DispatchQueue.main.asyncAfter(deadline: .now() + 60) {
+            guard gameCenterCollapseToken == token else { return }
+            gameCenterControlsExpanded = false
+            showGameCenterPopover = false
+        }
+    }
+    
+    private func keepGameCenterControls() {
+        gameCenterCollapseToken = UUID()
+    }
+    
+    private func collapseGameCenterControls() {
+        gameCenterCollapseToken = UUID()
+        gameCenterControlsExpanded = false
+        showGameCenterPopover = false
+    }
+    
     private func setupChessGame() {
         setupScene()
         setupChessInteraction()
@@ -1073,6 +1194,8 @@ struct ContentView: View {
         if dragStartYaw == nil {
             dragStartYaw = modelNode.eulerAngles.y
             modelNode.removeAllActions()
+            // Cancelling the turn animation skips its completion, which used to leave the AI waiting.
+            pieceController.cancelTurnRotationWait()
         }
         guard let startYaw = dragStartYaw else { return }
 

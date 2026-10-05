@@ -884,13 +884,12 @@ class ChessBoard3D {
         var moves: [ChessMove3D] = []
         let direction = piece.color == .white ? 1 : -1
         let startRank = piece.color == .white ? 1 : 6
-        // Only allow double Z move from z=0 for now
         // Forward move (rank) - only allow forward movement
         if let forwardPos = piece.position.offset(file: 0, rank: direction, z: 0), safeIsEmpty(at: forwardPos) {
             // Double-check that this is actually forward
             let rankDiff = forwardPos.rank - piece.position.rank
             if (piece.color == .white && rankDiff > 0) || (piece.color == .black && rankDiff < 0) {
-                moves.append(ChessMove3D(piece: piece, from: piece.position, to: forwardPos, capturedPiece: nil))
+                moves.append(ChessMove3D(piece: piece, from: piece.position, to: forwardPos, capturedPiece: nil, promotionType: queenPromotion(from: piece.position, to: forwardPos)))
                 // Double move from starting position
                 if piece.position.rank == startRank && piece.position.z == 0 {
                     if let doublePos = piece.position.offset(file: 0, rank: 2 * direction, z: 0), safeIsEmpty(at: doublePos) {
@@ -912,21 +911,16 @@ class ChessBoard3D {
                 print("  - \(move.from.stringValue) -> \(move.to.stringValue)")
             }
         }
-        // Upward move (z) - only allow forward Z movement for pawns
-        if let upPos = piece.position.offset(file: 0, rank: 0, z: 1), safeIsEmpty(at: upPos) {
-            // Only allow forward Z movement (higher Z values for white, lower for black)
-            let zDiff = upPos.z - piece.position.z
-            if (piece.color == .white && zDiff > 0) || (piece.color == .black && zDiff < 0) {
-                moves.append(ChessMove3D(piece: piece, from: piece.position, to: upPos, capturedPiece: nil))
-                // Double upward move from starting position (allow from any z level)
-                if piece.position.rank == startRank {
-                    if let doubleUp = piece.position.offset(file: 0, rank: 0, z: 2), safeIsEmpty(at: doubleUp) {
-                        let doubleZDiff = doubleUp.z - piece.position.z
-                        if (piece.color == .white && doubleZDiff > 0) || (piece.color == .black && doubleZDiff < 0) {
-                            moves.append(ChessMove3D(piece: piece, from: piece.position, to: doubleUp, capturedPiece: nil))
-                        }
-                    }
-                }
+        // Quiet level change, same as the human buttons: one level up or down
+        // onto an empty square, for both colors. Opening pawns on levels i and ii
+        // may step two levels when the square in between is empty.
+        let openingPawn = (piece.position.z == 0 || piece.position.z == 1) &&
+            ((piece.color == .white && piece.position.rank <= 1) || (piece.color == .black && piece.position.rank >= 6))
+        for zStep in [-1, 1] {
+            guard let oneLevel = piece.position.offset(file: 0, rank: 0, z: zStep), safeIsEmpty(at: oneLevel) else { continue }
+            moves.append(ChessMove3D(piece: piece, from: piece.position, to: oneLevel, capturedPiece: nil))
+            if openingPawn, let twoLevels = piece.position.offset(file: 0, rank: 0, z: zStep * 2), safeIsEmpty(at: twoLevels) {
+                moves.append(ChessMove3D(piece: piece, from: piece.position, to: twoLevels, capturedPiece: nil))
             }
         }
         // 2D Diagonal captures (traditional chess) - only 1 square
@@ -1018,6 +1012,14 @@ class ChessBoard3D {
         }
         
         return moves
+    }
+
+    /// Straight advance onto rank 1 or 8, on level i or viii only. Blue promotes on rank 1.
+    private func queenPromotion(from: ChessPosition3D, to: ChessPosition3D) -> PieceType? {
+        guard to.z == from.z, to.z == 0 || to.z == 7 else { return nil }
+        guard to.file == from.file, to.rank != from.rank else { return nil }
+        guard to.rank == 0 || to.rank == 7 else { return nil }
+        return .queen
     }
     
     // 3D Rook moves: straight lines in X, Y, or Z

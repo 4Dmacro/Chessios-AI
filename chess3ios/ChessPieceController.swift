@@ -740,7 +740,7 @@ class ChessPieceController: ObservableObject {
             print("🔍 King has no valid moves and is in check - checking for checkmate...")
             if chessGame.chessBoard.isCheckmate(color: piece.color) {
                 print("🎯 CHECKMATE DETECTED! \(piece.color.opposite.rawValue.capitalized) wins!")
-                // You could add UI notification here
+                chessGame.publishCheckmate(loser: piece.color)
             }
         }
     }
@@ -1034,7 +1034,7 @@ class ChessPieceController: ObservableObject {
                     print("🔍 isCheckmate result: \(isCheckmateResult)")
                     if isCheckmateResult {
                         print("🎯 CHECKMATE DETECTED! \(piece.color.opposite.rawValue.capitalized) wins!")
-                        // You could add UI notification here
+                        chessGame.publishCheckmate(loser: piece.color)
                     } else {
                         print("🔍 Not checkmate - king has escape moves")
                     }
@@ -1846,6 +1846,43 @@ class ChessPieceController: ObservableObject {
         
         return false
     }
+
+    /// Why the king cannot capture a checking piece that stands next to it.
+    func checkmateCoverText(for color: PieceColor) -> String {
+        guard let chessGame = chessGame else { return "" }
+        let pieces = chessGame.chessBoard.getAllPieces()
+        guard let king = pieces.first(where: { $0.type == .king && $0.color == color }) else { return "" }
+        let enemies = pieces.filter { $0.color == color.opposite }
+        let checkers = enemies.filter {
+            canPieceAttackPosition(piece: $0, targetPosition: king.position, excluding: nil)
+        }
+        var lines: [String] = []
+        for checker in checkers {
+            let fileGap = abs(checker.position.file - king.position.file)
+            let rankGap = abs(checker.position.rank - king.position.rank)
+            let levelGap = abs(checker.position.z - king.position.z)
+            let kingCanReach = max(fileGap, rankGap, levelGap) == 1
+            guard kingCanReach else { continue }
+            let covers = enemies.filter { other in
+                other.position != checker.position &&
+                canPieceAttackPosition(piece: other, targetPosition: checker.position, excluding: nil)
+            }
+            guard !covers.isEmpty else { continue }
+            let coverNames = covers.map {
+                "\(displayColor($0.color)) \($0.type.rawValue.capitalized) at \($0.position.stringValue)"
+            }.joined(separator: ", ")
+            lines.append("\(displayColor(color)) King cannot take \(displayColor(checker.color)) \(checker.type.rawValue.capitalized) at \(checker.position.stringValue), covered by \(coverNames)")
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private func displayColor(_ color: PieceColor) -> String {
+        switch color {
+        case .white: return "Red"
+        case .black: return "Blue"
+        case .none: return "Unknown"
+        }
+    }
     
     // Check if a piece can attack a specific position (same logic as in ChessBoard)
     private func canPieceAttackPosition(piece: ChessPiece3D, targetPosition: ChessPosition3D, excluding movingPiece: ChessPiece3D? = nil) -> Bool {
@@ -2593,19 +2630,7 @@ class ChessPieceController: ObservableObject {
                                                        y: CGFloat(blackAIRotation.y),
                                                        z: CGFloat(blackAIRotation.z),
                                                        duration: 0.8)
-                    
-                    // CRITICAL: Track board rotation in progress
-                    isBoardRotationInProgress = true
-                    print("🔄 Board rotation started - AI must wait until rotation completes")
-                    
-                    // Run rotation with completion handler
-                    modelNode.runAction(blackAction) {
-                        DispatchQueue.main.async {
-                            self.isBoardRotationInProgress = false
-                            print("🔄 Board rotation completed - AI can now proceed")
-                        }
-                    }
-                    
+                    runTurnRotation(blackAction, on: modelNode)
                     self.isBoardRotatedForBlack = true
                     print("🔄 AI mode: Rotated to black's turn perspective (+30° Y-axis from white default)")
                 } else {
@@ -2615,19 +2640,7 @@ class ChessPieceController: ObservableObject {
                                                        y: CGFloat(whiteRotation.y),
                                                        z: CGFloat(whiteRotation.z),
                                                        duration: 0.8)
-                    
-                    // CRITICAL: Track board rotation in progress
-                    isBoardRotationInProgress = true
-                    print("🔄 Board rotation started - AI must wait until rotation completes")
-                    
-                    // Run rotation with completion handler
-                    modelNode.runAction(whiteAction) {
-                        DispatchQueue.main.async {
-                            self.isBoardRotationInProgress = false
-                            print("🔄 Board rotation completed - AI can now proceed")
-                        }
-                    }
-                    
+                    runTurnRotation(whiteAction, on: modelNode)
                     self.isBoardRotatedForBlack = false
                     print("🔄 AI mode: Board at white's perspective (default position)")
                 }
@@ -2640,19 +2653,7 @@ class ChessPieceController: ObservableObject {
                                                        y: CGFloat(blackRotation.y),
                                                        z: CGFloat(blackRotation.z),
                                                        duration: 0.8)
-                    
-                    // CRITICAL: Track board rotation in progress
-                    isBoardRotationInProgress = true
-                    print("🔄 Board rotation started - AI must wait until rotation completes")
-                    
-                    // Run rotation with completion handler
-                    modelNode.runAction(blackAction) {
-                        DispatchQueue.main.async {
-                            self.isBoardRotationInProgress = false
-                            print("🔄 Board rotation completed - AI can now proceed")
-                        }
-                    }
-                    
+                    runTurnRotation(blackAction, on: modelNode)
                     self.isBoardRotatedForBlack = true
                     print("🔄 Player mode: Rotated to black's position: 180° Y-axis from white default")
                 } else if currentTurn == .white {
@@ -2662,26 +2663,43 @@ class ChessPieceController: ObservableObject {
                                                        y: CGFloat(whiteRotation.y),
                                                        z: CGFloat(whiteRotation.z),
                                                        duration: 0.8)
-                    
-                    // CRITICAL: Track board rotation in progress
-                    isBoardRotationInProgress = true
-                    print("🔄 Board rotation started - AI must wait until rotation completes")
-                    
-                    // Run rotation with completion handler
-                    modelNode.runAction(whiteAction) {
-                        DispatchQueue.main.async {
-                            self.isBoardRotationInProgress = false
-                            print("🔄 Board rotation completed - AI can now proceed")
-                        }
-                    }
-                    
+                    runTurnRotation(whiteAction, on: modelNode)
                     self.isBoardRotatedForBlack = false
                     print("🔄 Player mode: Rotated to white's default position")
                 }
             }
         } else {
             print("⚠️ Cannot rotate board - modelNode not available")
+            isBoardRotationInProgress = false
         }
+    }
+
+    /// A finger swipe calls removeAllActions(), which cancels this animation
+    /// without running its completion. The AI would then wait forever.
+    private var turnRotationID = UUID()
+
+    private func runTurnRotation(_ action: SCNAction, on node: SCNNode) {
+        turnRotationID = UUID()
+        let rotationID = turnRotationID
+        isBoardRotationInProgress = true
+        print("🔄 Board rotation started - AI must wait until rotation completes")
+        node.runAction(action, forKey: "turnRotation") { [weak self] in
+            DispatchQueue.main.async {
+                guard let self, self.turnRotationID == rotationID else { return }
+                self.isBoardRotationInProgress = false
+                print("🔄 Board rotation completed - AI can now proceed")
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + action.duration + 0.5) { [weak self] in
+            guard let self, self.turnRotationID == rotationID, self.isBoardRotationInProgress else { return }
+            self.isBoardRotationInProgress = false
+            print("🔄 Board rotation timed out - releasing AI")
+        }
+    }
+
+    func cancelTurnRotationWait() {
+        turnRotationID = UUID()
+        isBoardRotationInProgress = false
     }
     
     // MARK: - Visual Operation Synchronization
@@ -3113,7 +3131,7 @@ class ChessPieceController: ObservableObject {
                 print("🔍 King is in check and move was rejected - checking for checkmate...")
                 if chessGame.chessBoard.isCheckmate(color: piece.color) {
                     print("🎯 CHECKMATE DETECTED! \(piece.color.opposite.rawValue.capitalized) wins!")
-                    // You could add UI notification here
+                    chessGame.publishCheckmate(loser: piece.color)
                 }
             }
         }
@@ -3183,7 +3201,7 @@ struct ChessPieceControllerView: View {
     private var isIPad: Bool {
         UIDevice.current.userInterfaceIdiom == .pad
     }
-    
+
     // Adaptive frame dimensions
     private var frameWidth: CGFloat {
         isIPad ? 290 : 230
@@ -3206,10 +3224,12 @@ struct ChessPieceControllerView: View {
             selectedPieceInfo
             movementControls
             pieceSelection
-            rulesButton
+            if !isIPhone {
+                rulesButton
+            }
         }
         .frame(width: frameWidth)
-        .frame(height: isIPad ? 600 : 450, alignment: .center)
+        .frame(height: isIPad ? 600 : 420, alignment: isIPhone ? .top : .center)
         .background(.regularMaterial.opacity(0.01))
         .overlay(
            RoundedRectangle(cornerRadius: 12)
@@ -3236,13 +3256,30 @@ struct ChessPieceControllerView: View {
         .modifier(MoveDownZForwardRightModifier(controller: controller))
     }
     
+    private var checkWarningText: String {
+        let piece = controller.chessGame?.checkingPieceSummary() ?? ""
+        if piece.isEmpty { return "CHECK! Your king is under attack!" }
+        return "CHECK from \(piece)"
+    }
+
     private var selectedPieceInfo: some View {
         VStack(spacing: 8) {
-            // Game mode selector
+            // Captured piece stays visible after the piece has left the board.
+            if let chessGame = controller.chessGame, !chessGame.lastCaptureText.isEmpty {
+                Text(chessGame.lastCaptureText)
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, isIPhone ? 6 : 16)
+                    .padding(.vertical, 4)
+                    .frame(maxWidth: frameWidth - 12)
+                    .background(Color.red.opacity(0.85))
+                    .cornerRadius(6)
+            }
 
-            
-         
-            
             // AI move display
             if let chessGame = controller.chessGame, chessGame.showAIMoveHighlight && !chessGame.lastAIMove.isEmpty {
                 HStack {
@@ -3280,16 +3317,19 @@ struct ChessPieceControllerView: View {
             
             // Check warning (only show when a piece is selected)
             if controller.selectedPiecePosition != nil && controller.isKingInCheck() {
-                HStack {
+                HStack(spacing: 4) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.red)
-                    Text("CHECK! Your king is under attack!")
+                    Text(checkWarningText)
                         .font(.caption2)
                         .fontWeight(.bold)
                         .foregroundColor(.red)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, isIPhone ? 6 : 16)
                 .padding(.vertical, 4)
+                .frame(maxWidth: frameWidth - 12)
                 .background(Color.red.opacity(0.2))
                 .cornerRadius(6)
             }

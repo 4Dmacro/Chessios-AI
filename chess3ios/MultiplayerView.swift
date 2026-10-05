@@ -10,6 +10,9 @@ import GameKit
 
 struct MultiplayerView: View {
     @EnvironmentObject var gameKitManager: GameKitManager
+    var isExpanded: Binding<Bool> = .constant(true)
+    var onControlsRevealed: () -> Void = {}
+    var onControlsUsed: () -> Void = {}
     
     // Device detection for adaptive sizing
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
@@ -24,6 +27,26 @@ struct MultiplayerView: View {
     }
     
     var body: some View {
+        Group {
+            if isExpanded.wrappedValue {
+                controlStack
+                    .simultaneousGesture(TapGesture().onEnded { onControlsUsed() })
+            } else {
+                Button("Game Centre") {
+                    isExpanded.wrappedValue = true
+                    onControlsRevealed()
+                }
+                .font(.caption2)
+                .foregroundColor(.white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.green.opacity(0.3))
+                .cornerRadius(8)
+            }
+        }
+    }
+
+    private var controlStack: some View {
         VStack(spacing: isIPad ? 4 : 8) {
             // Game Center Status
             VStack(spacing: isIPhone ? 1 : 2) {
@@ -46,6 +69,7 @@ struct MultiplayerView: View {
                     VStack(spacing: 3) {
                         // Host button
                         Button("Host") {
+                            onControlsUsed()
                             gameKitManager.hostMatch()
                         }
                         .font(.caption2)
@@ -58,6 +82,7 @@ struct MultiplayerView: View {
                         
                         // Quick Match button
                         Button("🎯 Quick Match") {
+                            onControlsUsed()
                             gameKitManager.quickMatch()
                         }
                         .font(.caption2)
@@ -70,6 +95,7 @@ struct MultiplayerView: View {
                         
                         // Force Reset button
                         Button("Force GC Reset") {
+                            onControlsUsed()
                             gameKitManager.forceResetGameCenter()
                         }
                         .font(.caption2)
@@ -82,6 +108,7 @@ struct MultiplayerView: View {
                         // Flip Board Button (only show when connected)
                         if gameKitManager.canFlipBoard {
                             Button("Flip Board") {
+                                onControlsUsed()
                                 gameKitManager.flipBoard()
                             }
                             .font(.caption2)
@@ -96,6 +123,7 @@ struct MultiplayerView: View {
                     // iPad: Use vertical layout for consistency
                     VStack(spacing: 4) {
                         Button("Host Game") {
+                            onControlsUsed()
                             gameKitManager.hostMatch()
                         }
                         .font(.caption2)
@@ -109,6 +137,7 @@ struct MultiplayerView: View {
                   
                         
                         Button("Force GC Reset") {
+                            onControlsUsed()
                             gameKitManager.forceResetGameCenter()
                         }
                         .font(isIPhone ? .caption2 : .caption)
@@ -119,6 +148,7 @@ struct MultiplayerView: View {
                         .cornerRadius(6)
                         
                         Button("Quick Match") {
+                            onControlsUsed()
                             gameKitManager.quickMatch()
                         }
                         .font(.caption2)
@@ -133,6 +163,7 @@ struct MultiplayerView: View {
                         // Flip Board Button (only show when connected)
                         if gameKitManager.canFlipBoard {
                             Button("Flip Board") {
+                                onControlsUsed()
                                 gameKitManager.flipBoard()
                             }
                             .font(.caption2)
@@ -166,6 +197,7 @@ struct MultiplayerView: View {
                     
                     // Disconnect Button (positioned below the status, not to the far right)
                     Button("🔌 Disconnect") {
+                        onControlsUsed()
                         gameKitManager.disconnectFromMatch()
                     }
                     .font(isIPhone ? .caption2 : .caption)
@@ -178,6 +210,7 @@ struct MultiplayerView: View {
                     // Reset Invitation Button (for invitation-based matches)
                     if gameKitManager.currentInvitation != nil {
                         Button("🔄 Reset Invitation") {
+                            onControlsUsed()
                             gameKitManager.resetInvitationState()
                         }
                         .font(isIPhone ? .caption2 : .caption)
@@ -226,6 +259,7 @@ struct MultiplayerView: View {
                     
                   //  HStack(spacing: 4) {
                         Button("🔄 Reconnect") {
+                            onControlsUsed()
                             gameKitManager.reconnectToGameCenter()
                         }
                         .font(isIPhone ? .caption2 : .caption)

@@ -29,9 +29,16 @@ class ChessGameManager: ObservableObject {
     @Published var validMoves: [ChessPosition3D] = []
     @Published var gameState: String = "White's turn"
     @Published var invalidMoveMessage: String = ""
+    /// Stays on screen after mate, including why a capture of the checker is illegal.
+    @Published var mateNotice: String = ""
     
     // Display text for the turn button (maps white/black to red/blue)
     var turnDisplayText: String {
+        if gameState.contains("Checkmate") || gameState.contains("in check") {
+            return gameState
+                .replacingOccurrences(of: "White", with: "Red")
+                .replacingOccurrences(of: "Black", with: "Blue")
+        }
         if gameState.contains("White") {
             return "Red's Turn"
         } else if gameState.contains("Black") {
@@ -79,6 +86,8 @@ class ChessGameManager: ObservableObject {
     @Published var lastAIMove: String = ""
     @Published var showAIMoveHighlight = false
     @Published var lastAIMovePiece: SCNNode?
+    @Published var lastCaptureText: String = ""
+    private var captureClearWork: DispatchWorkItem?
     @Published var pendingAIMove: ChessMove3D?
     @Published var aiMoveConfirmationTimeRemaining: Double = 1.0
     private var aiMoveCountdownTimer: Timer?
@@ -193,6 +202,7 @@ class ChessGameManager: ObservableObject {
         
         // Set initial turn to white (standard chess)
         gameState = "White's Turn"
+        mateNotice = ""
         
         // Clear any existing game state
         selectedPiece = nil
@@ -210,6 +220,24 @@ class ChessGameManager: ObservableObject {
     
     // MARK: - Game Setup
     
+    func publishCheckmate(loser: PieceColor) {
+        let winner = loser.opposite
+        gameState = "Checkmate! \(winner.rawValue.capitalized) wins!"
+        isGameActive = false
+        let winnerName = getDisplayColor(for: winner)
+        let cover = pieceController?.checkmateCoverText(for: loser) ?? ""
+        let notice = cover.isEmpty
+            ? "Checkmate! \(winnerName) wins!"
+            : "Checkmate! \(winnerName) wins!\n\(cover)"
+        guard mateNotice != notice else { return }
+        let firstAnnouncement = mateNotice.isEmpty
+        mateNotice = notice
+        print("🎯 On-screen mate: \(mateNotice)")
+        if firstAnnouncement {
+            recordGameOutcome(winner: winner)
+        }
+    }
+    
     func showInvalidMoveMessage(_ message: String) {
         invalidMoveMessage = message
         // Clear the message after 3 seconds
@@ -226,6 +254,7 @@ class ChessGameManager: ObservableObject {
         selectedPiece = nil
         validMoves = []
         gameState = chessBoard.getGameState()
+        mateNotice = ""
         isGameActive = true
         
 
@@ -618,6 +647,7 @@ class ChessGameManager: ObservableObject {
         // Ensure both devices start with the same game state
         // White always goes first in chess
         gameState = "White's Turn"
+        mateNotice = ""
         
         // Clear any existing selection
         selectedPiece = nil
@@ -766,6 +796,7 @@ class ChessGameManager: ObservableObject {
         selectedPiece = nil
         validMoves = []
         gameState = chessBoard.getGameState()
+        mateNotice = ""
         isGameActive = true
         
         // Reset game mode to play mode to ensure clean reset
@@ -1708,6 +1739,7 @@ class ChessGameManager: ObservableObject {
     
     private func handleCapture(capturedPiece: ChessPiece3D, capturedUSDZPiece: SCNNode?, capturingUSDZPiece: SCNNode?, at position: ChessPosition3D) {
         print("💀 Handling capture of \(capturedPiece.color) \(capturedPiece.type) at \(position.stringValue)")
+        announceCapture(capturedPiece)
         
         // Shrink any highlights from the captured piece before processing capture
         if let capturedUSDZPiece = capturedUSDZPiece {
@@ -4310,6 +4342,7 @@ class ChessGameManager: ObservableObject {
                     // CRITICAL: The chess engine already handled the capture, so we just need to update visual tracking
                     if let capturedPiece = pieceAtTo {
                         print("🤖 AI: Chess engine captured piece: \(capturedPiece.color) \(capturedPiece.type)")
+                        announceCapture(capturedPiece)
                         
                         // CRITICAL: Find the captured piece's USDZ node and move it to graveyard
                         // The captured piece should still be at the destination position before we move the capturing piece there
@@ -4333,6 +4366,18 @@ class ChessGameManager: ObservableObject {
                     if let updatedPiece = chessBoard.getPiece(at: move.to) {
                         print("🤖 AI: Found updated piece at destination: \(updatedPiece.color) \(updatedPiece.type) at \(updatedPiece.position.stringValue)")
                         updateSpecificPiecePosition(updatedPiece, from: move.from)
+                        // The engine already records a queen. Swap the pawn model too.
+                        // Blue promotes on rank 1, Red on rank 8, and only on levels i and viii.
+                        let promotes = piece.type == .pawn
+                            && move.to.z == move.from.z
+                            && move.to.file == move.from.file
+                            && (move.to.z == 0 || move.to.z == 7)
+                            && ((piece.color == .white && move.to.rank == 7) || (piece.color == .black && move.to.rank == 0))
+                        if promotes {
+                            print("♕ AI pawn promotes to queen at \(move.to.stringValue)")
+                            pendingPromotion = (from: move.from, to: move.to, piece: piece)
+                            executePendingPromotion(to: .queen)
+                        }
                     } else {
                         print("❌ AI: Could not find updated piece at destination \(move.to.stringValue)")
                         print("❌ AI: This indicates a serious piece tracking issue!")
@@ -4347,6 +4392,9 @@ class ChessGameManager: ObservableObject {
                     // Show check or checkmate, not only whose turn it is.
                     gameState = chessBoard.getGameState()
                     print("🤖 AI: Updated game state to: \(gameState)")
+                    if gameState.contains("Checkmate") {
+                        publishCheckmate(loser: chessBoard.getCurrentTurn())
+                    }
                     
                     // CRITICAL: Resync USDZ piece tracking after AI move to prevent missing pieces
                     print("🤖 AI: Resyncing USDZ piece tracking after move...")
@@ -4636,6 +4684,16 @@ class ChessGameManager: ObservableObject {
         lastAIMovePiece = nil
         print("🤖 AI: Cleared AI move display")
     }
+
+    func announceCapture(_ piece: ChessPiece3D) {
+        lastCaptureText = "Captured \(getDisplayColor(for: piece.color)) \(piece.type.rawValue.capitalized)"
+        captureClearWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            self?.lastCaptureText = ""
+        }
+        captureClearWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: work)
+    }
     
     func clearOpponentMoveDisplay() {
         lastOpponentMove = ""
@@ -4643,6 +4701,14 @@ class ChessGameManager: ObservableObject {
         print("🎮 GameKit: Cleared opponent move display")
     }
     
+    /// Pieces currently giving check, for example "Blue Bishop iii e5".
+    func checkingPieceSummary() -> String {
+        let color = chessBoard.getCurrentTurn()
+        return chessBoard.checkers(of: color).map { piece in
+            "\(getDisplayColor(for: piece.color)) \(piece.type.rawValue.capitalized) \(piece.position.stringValue)"
+        }.joined(separator: ", ")
+    }
+
     // Helper function to convert piece colors to display colors (Red/Blue instead of White/Black)
     private func getDisplayColor(for pieceColor: PieceColor) -> String {
         switch pieceColor {
